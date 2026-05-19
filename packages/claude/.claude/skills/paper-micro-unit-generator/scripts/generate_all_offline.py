@@ -1,6 +1,4 @@
 import json
-import math
-import sys
 from pathlib import Path
 
 
@@ -31,181 +29,258 @@ def load_placeholders() -> dict:
     return v if isinstance(v, dict) else {}
 
 
-def ensure_len(text: str, min_len: int) -> str:
-    # 用户反馈不需要自动填充废话，直接返回原始内容
-    return text
+def text_value(mapping: dict, keys: list[str], default: str) -> str:
+    for key in keys:
+        value = mapping.get(key)
+        if value is None:
+            continue
+        if isinstance(value, list):
+            cleaned = [str(item).strip() for item in value if str(item).strip()]
+            if cleaned:
+                return "\n".join(f"- {item}" for item in cleaned)
+        text = str(value).strip()
+        if text:
+            return text
+    return default
+
+
+def result_value(results: dict, keys: list[str], default: str) -> str:
+    return text_value(results, keys, default)
+
+
+def unit_number(unit_id: str) -> int:
+    try:
+        return int(str(unit_id).split("-")[-1])
+    except Exception:
+        return 1
+
+
+def entry_command() -> str:
+    parts = {part.lower() for part in Path(__file__).resolve().parts}
+    if ".claude" in parts:
+        return "python .claude/skills/paper-workflow-orchestrator/scripts/run_all.py"
+    if ".trae" in parts:
+        return "python .trae/skills/paper-workflow-orchestrator/scripts/run_all.py"
+    return "python skills/paper-workflow-orchestrator/scripts/run_all.py"
+
+
+def render_abstract(unit_id: str, ph: dict) -> str:
+    title = text_value(ph, ["论文题目", "题目"], "当前数学建模赛题")
+    keywords = text_value(ph, ["关键词"], "数学建模；模型构建；数据分析；可视化；稳健性检验")
+    templates = {
+        "ABS-1": text_value(
+            ph,
+            ["摘要第一段"],
+            f"本文围绕“{title}”展开研究，将题目要求拆解为可计算、可验证的建模任务，并建立从数据处理到结果分析的完整求解流程。",
+        ),
+        "ABS-2": text_value(
+            ph,
+            ["摘要第二段"],
+            "针对问题一，本文先进行题意解析与变量梳理，构建可解释的基线模型，并给出相应的求解步骤与评价指标。",
+        ),
+        "ABS-3": text_value(
+            ph,
+            ["摘要第三段"],
+            "针对问题二，本文在基线模型基础上结合数据特征进行改进，通过对比实验、误差分析或约束检验说明模型的有效性。",
+        ),
+        "ABS-4": text_value(
+            ph,
+            ["摘要第四段"],
+            "针对问题三，本文进一步开展综合分析、敏感性检验与推广讨论，使结论能够对应题目要求并具备可复现性。",
+        ),
+    }
+    return templates.get(unit_id, f"关键词：{keywords}")
+
+
+def render_intro(unit_id: str, ph: dict) -> str:
+    templates = {
+        "INTRO-1": text_value(
+            ph,
+            ["问题重述第一段", "题目背景"],
+            "题目背景需要先从现实场景、研究对象和决策需求展开，说明该问题为什么具有建模价值，并明确论文将解决的核心矛盾。",
+        ),
+        "INTRO-2": text_value(
+            ph,
+            ["问题重述第二段", "子问题概述"],
+            "根据题面要求，可将任务拆解为若干子问题：先明确输入数据与输出指标，再分别建立模型、设计算法并验证结果。",
+        ),
+        "INTRO-3": text_value(
+            ph,
+            ["问题重述第三段", "论文任务定义"],
+            "因此，本文的工作重点是把原始题目转化为标准化的数学问题，形成数据预处理、模型建立、求解验证和结论解释的闭环。",
+        ),
+    }
+    return templates.get(unit_id, templates["INTRO-3"])
+
+
+def render_assumption(unit_id: str, ph: dict) -> str:
+    assumptions = text_value(
+        ph,
+        ["模型假设", "假设列表"],
+        "- 假设题目所给数据来源可靠，主要误差来自测量、缺失和口径差异。\n"
+        "- 假设研究时段内外部环境相对稳定，模型参数在分析区间内具有可解释性。\n"
+        "- 假设缺失值、异常值和重复记录经过统一规则处理后不会改变主要结论。",
+    )
+    if unit_id == "ASSUMP-1":
+        return assumptions
+    return text_value(
+        ph,
+        ["假设合理性"],
+        "上述假设的作用是降低问题复杂度，并保证模型能够在有限数据条件下稳定求解。后续将通过敏感性分析和误差检验评估假设对结果的影响。",
+    )
+
+
+def render_symbols(ph: dict) -> str:
+    custom = text_value(ph, ["符号说明", "符号表"], "")
+    if custom:
+        return custom
+    return (
+        "| 符号 | 含义 | 单位/说明 |\n"
+        "|---|---|---|\n"
+        "| $x_i$ | 第 $i$ 个样本或决策对象 | 由题目数据定义 |\n"
+        "| $y_i$ | 模型输出或评价结果 | 由题目目标定义 |\n"
+        "| $w_j$ | 第 $j$ 个指标权重 | 无量纲 |\n"
+        "| $f(\\cdot)$ | 建模函数或预测函数 | 由所选模型确定 |\n"
+        "| $E$ | 误差、损失或评价指标 | 按问题口径定义 |\n"
+    )
+
+
+def render_data(unit_id: str, ph: dict, results: dict) -> str:
+    n = unit_number(unit_id)
+    if n == 1:
+        return text_value(
+            ph,
+            ["数据来源说明"],
+            "数据预处理首先确认附件、外部数据和题目指标的来源，记录字段含义、单位口径、时间范围和样本粒度，避免后续建模时出现口径混用。",
+        )
+    if n == 2:
+        return text_value(
+            ph,
+            ["数据清洗说明"],
+            "清洗阶段重点处理缺失值、异常值、重复记录和类型转换；所有规则应写入论文的数据说明部分，并将清洗后的文件统一保存到 `paper_output/data_cleaned/`。",
+        )
+    if n == 3:
+        return text_value(
+            ph,
+            ["可视化说明"],
+            "可视化阶段应根据当前赛题重新选择图表类型。`scripts/` 中的绘图代码主要提供尺寸、配色、标注、保存路径和论文引用格式的样板。",
+        )
+    summary = result_value(results, ["data_summary", "数据摘要"], "清洗和可视化结果需要结合当前赛题的数据字段进一步补充。")
+    return f"数据质量概况：{summary} 后续建模应优先使用清洗后的结构化数据，并在图表标题中明确变量、单位和样本范围。"
+
+
+def problem_name(section: str) -> str:
+    return {"问题一": "问题一", "问题二": "问题二", "问题三": "问题三"}.get(section, section)
+
+
+def render_model(section: str, unit_id: str, ph: dict, results: dict) -> str:
+    p = problem_name(section)
+    n = unit_number(unit_id)
+    model = text_value(ph, [f"{p}模型", f"{p}方法", "核心模型"], "与题目任务匹配的基线模型")
+    algo = text_value(ph, [f"{p}算法", f"{p}求解方法", "核心算法"], "可复现的求解算法")
+    result = result_value(results, [f"{p}结果", f"{p}_result", "核心结果"], "核心数值结果需由当前赛题计算脚本生成")
+    metric = text_value(ph, [f"{p}评价指标", "评价指标"], "误差、得分、约束满足率或稳定性指标")
+    if n == 1:
+        return f"{p}首先需要明确输入、输出和评价口径。本文将其转化为可计算任务，并选择“{model}”作为主要建模框架。"
+    if n == 2:
+        return f"模型建立时，应说明变量定义、目标函数或损失函数，并解释“{model}”为什么与题目要求、数据结构和评分点相匹配。"
+    if n == 3:
+        return f"求解过程采用“{algo}”，需要给出算法步骤、关键参数和复杂度说明，保证读者能够根据论文和附录代码复现结果。"
+    if n == 4:
+        return "为了避免模型只停留在形式推导，本文应设置基线方案或对照实验，用相同数据和相同评价指标比较不同方法的效果。"
+    if n == 5:
+        return f"结果展示部分应围绕题目原问展开，给出表格、图形或关键数值。当前结果摘要为：{result}。"
+    if n == 6:
+        return f"模型检验阶段使用“{metric}”评价结果可靠性，并结合残差、敏感性或约束检查说明模型是否稳定。"
+    if n == 7:
+        return "若结果对某些参数、权重或数据口径敏感，应单独进行扰动分析，解释结论在合理变化范围内是否保持一致。"
+    return f"综上，{p}的论文写作应形成“任务定义 → 模型建立 → 算法求解 → 结果验证 → 回答原问”的闭环。"
+
+
+def render_analysis(unit_id: str, ph: dict, results: dict) -> str:
+    n = unit_number(unit_id)
+    if n == 1:
+        return text_value(ph, ["结果总述"], "结果分析应先用一段话回答各子问题的核心结论，再说明这些结论对应哪些图表和数值证据。")
+    if n == 2:
+        return "图表解读应避免只描述形状，而要说明变量关系、变化趋势、异常点和结论含义，并明确它们如何支撑模型判断。"
+    if n == 3:
+        return "误差分析需要区分数据误差、模型误差和求解误差；若有对照实验，应说明改进模型相比基线方案的优势和代价。"
+    if n == 4:
+        return "敏感性分析应围绕权重、参数、阈值或样本扰动展开，观察结论是否发生方向性变化。"
+    return "最终分析应回到赛题要求，确认每一问都有结果、有解释、有验证，并且图表、公式和结论之间不存在断链。"
+
+
+def render_evaluation(unit_id: str, ph: dict) -> str:
+    n = unit_number(unit_id)
+    if n == 1:
+        return text_value(ph, ["模型优点"], "模型优点应结合题目任务说明，例如可解释性强、计算稳定、数据需求适中、能够直接回答原问题。")
+    if n == 2:
+        return text_value(ph, ["模型不足"], "模型不足应具体到数据口径、假设条件、参数敏感性或泛化范围，不宜写成空泛的自我否定。")
+    return text_value(ph, ["模型推广"], "模型推广部分可以说明该方法如何迁移到相似场景，以及需要补充哪些数据或约束才能保持可靠。")
+
+
+def render_conclusion(unit_id: str, ph: dict, results: dict) -> str:
+    if unit_id == "CONCL-1":
+        return text_value(
+            ph,
+            ["结论第一段"],
+            "本文围绕赛题要求完成了数据处理、模型建立、算法求解和结果分析，并分别给出各子问题的可复现结论。",
+        )
+    result = result_value(results, ["final_summary", "结论摘要"], "最终数值和图表证据需结合当前赛题的计算结果补充。")
+    return text_value(ph, ["结论第二段"], f"综合结果表明，所建模型能够形成较完整的解释与验证闭环。{result}")
+
+
+def render_references(ph: dict) -> str:
+    refs = text_value(ph, ["参考文献", "文献列表"], "")
+    if refs:
+        return refs
+    return (
+        "[1] 赛题官方文件及附件数据。\n"
+        "[2] 与本题模型、算法和数据来源相关的公开资料或教材。\n"
+        "[3] 权威数据源、统计年鉴、政府开放数据或行业报告。"
+    )
+
+
+def render_appendix(unit_id: str, ph: dict) -> str:
+    if unit_id == "APP-1":
+        return (
+            "附录应给出关键代码的复现说明。数据清洗、可视化和模型计算代码可以参考各 skill 的 `scripts/` 样板，"
+            "但真实赛题应根据当前数据字段和图表需求二次生成或修改。"
+        )
+    return f"复现入口建议为 `{entry_command()}`。运行前应确认 `problem_files/`、`crawled_data/`、`paper_output/` 的输入输出路径符合项目约定。"
 
 
 def render_unit(task: dict, ph: dict, results: dict) -> str:
     section = str(task.get("section", ""))
     unit_id = str(task.get("id", ""))
-    
-    # Generic Header
     header = f"【{section}｜{unit_id}】\n"
-    
-    # Load from placeholders with generic fallbacks
-    title = str(ph.get("论文题目", "（论文题目缺失）"))
-    
+
     if section == "摘要":
-        if unit_id == "ABS-1":
-            return header + ph.get("摘要第一段", f"本文围绕{title}，建立数学模型并求解...") + "\n"
-        if unit_id == "ABS-2":
-            return header + ph.get("摘要第二段", "针对问题一，我们建立了相关模型...") + "\n"
-        if unit_id == "ABS-3":
-            return header + ph.get("摘要第三段", "针对问题二，我们构建了优化模型...") + "\n"
-        if unit_id == "ABS-4":
-            return header + ph.get("摘要第四段", "此外，我们还进行了灵敏度分析与模型检验...") + "\n"
-        return header + "关键词：" + ph.get("关键词", "关键词1；关键词2") + "\n"
+        body = render_abstract(unit_id, ph)
+    elif section == "问题重述":
+        body = render_intro(unit_id, ph)
+    elif section == "模型假设":
+        body = render_assumption(unit_id, ph)
+    elif section == "符号说明":
+        body = render_symbols(ph)
+    elif section == "数据预处理":
+        body = render_data(unit_id, ph, results)
+    elif section in {"问题一", "问题二", "问题三"}:
+        body = render_model(section, unit_id, ph, results)
+    elif section == "结果分析":
+        body = render_analysis(unit_id, ph, results)
+    elif section == "模型评价":
+        body = render_evaluation(unit_id, ph)
+    elif section == "结论":
+        body = render_conclusion(unit_id, ph, results)
+    elif section == "参考文献":
+        body = render_references(ph)
+    elif section == "附录":
+        body = render_appendix(unit_id, ph)
+    else:
+        body = f"本单元用于支撑“{section}”部分，应结合当前赛题补充任务、模型、数据、图表和验证结论。"
 
-    if section == "问题重述":
-        if unit_id == "INTRO-1":
-            return header + ph.get("问题重述第一段", "题目背景介绍...") + "\n"
-        if unit_id == "INTRO-2":
-            return header + ph.get("问题重述第二段", "具体问题描述...") + "\n"
-        return header + ph.get("问题重述第三段", "") + "\n"
-
-    if section == "模型假设":
-        if unit_id == "ASSUMP-1":
-            return header + ph.get("模型假设第一段", "假设1：系统处于理想状态...\n假设2：忽略次要因素影响...") + "\n"
-        return header + ph.get("模型假设第二段", "") + "\n"
-    
-    # Default fallback for other sections
-    return header + f"（{section} - {unit_id} 内容生成中...）\n"
-
-    if section == "符号说明":
-        return (
-            header
-            + "| 符号 | 含义 | 单位 |\n|---|---|---|\n"
-            + "| σ | 波数 | cm$^{-1}$ |\n"
-            + "| θ | 入射角 | ° |\n"
-            + "| n | 外延层有效折射率 | 无 |\n"
-            + "| d | 外延层厚度 | μm |\n"
-            + "| R(σ) | 反射率 | % |\n"
-            + "| f | 频域主峰频率(对应光程) | cm |\n"
-        )
-
-    if section == "数据预处理":
-        if unit_id == "DATA-1":
-            return header + f"附件数据第1列为波数σ(cm$^{{-1}}$)，第2列为反射率(%)。为进行FFT，先按σ排序并插值到等间距网格。随后用滑动平均去除缓慢变化背景，得到以干涉振荡为主的去趋势信号。\n"
-        if unit_id == "DATA-2":
-            return header + "对去趋势信号施加Hann窗以降低频谱泄漏，并在合理频率区间内搜索主峰，主峰对应条纹周期的倒数。对同一晶圆片的两角度数据，利用主峰频率与厚度关系交叉验证一致性。\n"
-        if unit_id == "DATA-3":
-            return (
-                header
-                + f"为增强“图文并茂”的可读性，本文给出原始谱、去趋势谱、FFT频谱与拟合对照图。所有图均由 step2_calc_results.py 自动生成并保存在 {fig_base}/。\n"
-                + "图 1 SiC 干涉反射谱（原始）\n\n"
-                + f"![SiC 原始谱]({fig_base}/sic_raw_pair.png)\n\n"
-                + "图 2 SiC 干涉反射谱（去趋势）\n\n"
-                + f"![SiC 去趋势谱]({fig_base}/sic_detrended_pair.png)\n"
-            )
-        return header + "此外记录处理参数（网格长度、去趋势窗宽、搜索频带），以保证重复运行可得到一致结果；并在结果分析中讨论这些参数变化对厚度估计的影响。\n"
-
-    if section == "问题一":
-        if unit_id == "MODEL1-1":
-            return header + "一次反射近似下，两束反射光的光程差近似为 $\Delta=2nd\cos\theta$，对应相位差 $\delta(\sigma)=2\pi\sigma\Delta=4\pi nd\cos\theta\,\sigma$。因此反射率可写为 $R(\sigma)=A+B\cos(\delta(\sigma)+\varphi)$。\n"
-        if unit_id == "MODEL1-2":
-            return header + "条纹周期满足 $\delta(\sigma+\Delta\sigma)-\delta(\sigma)=2\pi$，得 $\Delta\sigma=\frac{1}{2nd\cos\theta}$。定义频率 $f=\frac{1}{\Delta\sigma}=2nd\cos\theta$，则 $d=\frac{f}{2n\cos\theta}$。\n"
-        if unit_id == "MODEL1-3":
-            return header + "模型解释：折射率n与厚度d成对出现，频域主峰直接给出等效光程长度f；若n未知，可通过文献给定n的代表值，或利用双角数据构造一致性检验来评估可信度。\n"
-        if unit_id == "MODEL1-4":
-            return header + "为了获得稳定的f，需先去除背景项A(σ)并抑制噪声。本文采用滑动平均去趋势与窗函数处理，使主峰更突出。该处理不会改变条纹主周期，只影响幅值与低频成分。\n"
-        if unit_id == "MODEL1-5":
-            return header + "对确定的f，在固定频率下用线性最小二乘拟合 $R_d(\sigma)=\alpha\cos(2\pi f\sigma)+\beta\sin(2\pi f\sigma)+\gamma$，可得到拟合优度R²并反映模型解释能力。\n"
-        if unit_id == "MODEL1-6":
-            return header + "由式(1)–式(2)可见，厚度估计误差受n与θ共同影响。对小角度，$\cos\theta$变化缓慢，双角数据的厚度差主要来自频率估计误差与n的波数依赖。\n"
-        if unit_id == "MODEL1-7":
-            return header + "在后续问题二中，我们用两角厚度相对差与R²作为可靠性指标；若相对差显著偏大或R²较低，则提示存在多光束效应或折射率随波数变化较强，需要改进模型。\n"
-        return header + "综上，一次反射模型将厚度反演转化为频域主峰识别与参数拟合问题，具有计算简单、鲁棒性强的特点，适合作为问题二与问题三的基线模型与对照。\n"
-
-    if section == "问题二":
-        if unit_id == "MODEL2-1":
-            return header + "算法步骤：①读入附件1/2并等间距重采样；②去趋势得到干涉振荡分量；③FFT定位主峰频率f；④代入 $d=\\frac{f}{2n\\cos\\theta}$ 得厚度；⑤以最小二乘拟合计算R²并输出报告。\n"
-        if unit_id == "MODEL2-2":
-            return (
-                header
-                + f"计算结果（碳化硅）：10°厚度 {fnum(sic_th.get('10'))} μm，15°厚度 {fnum(sic_th.get('15'))} μm，均值 {fnum(sic_th.get('mean'))} μm。\n"
-                + "图 3 SiC 10° FFT 频谱\n\n"
-                + f"![SiC 10° FFT]({fig_base}/sic_fft_10.png)\n\n"
-                + "图 4 SiC 15° FFT 频谱\n\n"
-                + f"![SiC 15° FFT]({fig_base}/sic_fft_15.png)\n"
-            )
-        if unit_id == "MODEL2-3":
-            return header + "可靠性分析一：角度一致性。理论上同一样品在两角度下厚度应一致，本文用相对差作为一致性指标；相对差越小，说明主峰提取稳定且一次反射模型适用性更强。\n"
-        if unit_id == "MODEL2-4":
-            return header + "可靠性分析二：拟合优度与残差结构。对固定频率的正弦拟合给出R²，若R²显著偏低或残差呈现非正弦的尖峰结构，往往提示多光束干涉或折射率随波数变化。\n"
-        if unit_id == "MODEL2-5":
-            return header + "可靠性分析三：参数敏感性。由 $d=\frac{f}{2n\cos\theta}$，相对误差近似满足 $\frac{\Delta d}{d}\approx\frac{\Delta f}{f}-\frac{\Delta n}{n}+\tan\theta\,\Delta\theta$。其中n的不确定性是主要误差源之一。\n"
-        if unit_id == "MODEL2-6":
-            return header + "为降低n带来的系统误差，可采用文献中SiC折射率在测量波段的经验模型n(σ)并进行分段拟合；或将n作为待估参数，在两角数据联合拟合中与d同时反演。本文以常数n作为可复现基线并给出一致性检验。\n"
-        if unit_id == "MODEL2-7":
-            return header + "若怀疑存在多光束效应，厚度估计将受到条纹尖锐化与高次谐波影响，FFT主峰仍可提供初值，但需要在问题三中引入Airy模型进行修正与对照，避免把多光束带来的结构误当作噪声。\n"
-        return header + f"综合上述三类可靠性指标，可对结果给出置信解释：当两角厚度一致且R²较高时，输出厚度可信；当两角偏差增大或Airy拟合显著优于正弦拟合时，需采用多光束模型。\n"
-
-    if section == "问题三":
-        if unit_id == "MODEL3-1":
-            return header + "多光束干涉的必要条件包括：界面反射率足够大使高阶反射项不可忽略；外延层两界面近似平行以保持相位相干；光源相干长度与谱分辨率满足多次往返仍能产生可观干涉。\n"
-        if unit_id == "MODEL3-2":
-            return header + "将外延层视为Fabry–Pérot腔，多次反射叠加导致传递函数呈Airy形式。以相位 $\delta(\sigma)=4\pi nd\cos\theta\,\sigma$ 表示，则可用 $T(\sigma)=\frac{1}{1+F\sin^2(\delta/2)}$ 描述条纹尖锐化，其中F由等效反射率决定。\n"
-        if unit_id == "MODEL3-3":
-            return (
-                header
-                + "对硅样品（附件3/4），分别对正弦模型与Airy模型进行拟合对照；若Airy拟合R²显著更高，且残差结构更随机，则可判定存在多光束干涉并采用Airy模型给出厚度。\n"
-                + "图 5 Si 干涉反射谱（原始）\n\n"
-                + f"![Si 原始谱]({fig_base}/si_raw_pair.png)\n\n"
-                + "图 6 Si 10° Airy 拟合对照\n\n"
-                + f"![Si 10° Airy]({fig_base}/si_fit_airy_10.png)\n\n"
-                + "图 7 Si 15° Airy 拟合对照\n\n"
-                + f"![Si 15° Airy]({fig_base}/si_fit_airy_15.png)\n"
-            )
-        if unit_id == "MODEL3-4":
-            return header + f"计算结果（硅）：10°厚度 {fnum(si_th.get('10'))} μm，15°厚度 {fnum(si_th.get('15'))} μm，均值 {fnum(si_th.get('mean'))} μm。两角一致性可作为对厚度结果的交叉检验。\n"
-        if unit_id == "MODEL3-5":
-            return header + "多光束对精度的影响主要体现在：①条纹变尖导致频谱出现高次谐波，简单正弦拟合会系统性偏差；②反射率参数引入额外不确定性，需通过拟合或先验约束降低耦合。本文采用“FFT初值 + Airy网格拟合”的策略缓解该问题。\n"
-        if unit_id == "MODEL3-6":
-            return header + "若多光束也出现在碳化硅数据中，可用同样的Airy拟合消除影响：先用正弦模型给出f初值，再引入F并联合拟合，以R²提升与残差改善作为是否需要修正的判据，从而输出修正后的厚度。\n"
-        if unit_id == "MODEL3-7":
-            return header + "必要时可通过滤除高次谐波或限制拟合频带来降低多光束影响，但应避免过度平滑导致主周期偏移。更稳妥的做法是在模型层面显式刻画多次反射项，并用数据拟合决定其强度。\n"
-        return header + "综上，问题三给出了多光束干涉的物理判别与数学刻画方式，并将其落地为可复现的拟合算法；该算法既能解释硅样品的条纹尖锐特征，也可作为碳化硅结果的稳健性补充检验。\n"
-
-    if section == "结果分析":
-        if unit_id == "ANALYSIS-1":
-            return header + "从角度一致性看，厚度估计在10°与15°下应接近一致；若一致性较好说明主峰提取与预处理稳定。本文分别对碳化硅与硅样品给出两角厚度与相对差作为直接证据。\n"
-        if unit_id == "ANALYSIS-2":
-            return header + "从模型对照看，正弦模型对应一次反射近似，Airy模型对应多光束。对同一数据分别拟合并比较R²，可作为“是否存在多光束干涉”的定量判据，同时能反映修正必要性。\n"
-        if unit_id == "ANALYSIS-3":
-            return header + "从误差来源看，折射率n的选取是系统误差主项。本文用文献常用代表值给出基线结果，并通过两角一致性与拟合优度间接检验n取值的合理性；进一步可扩展为n(σ)的分段模型以提升精度。\n"
-        if unit_id == "ANALYSIS-4":
-            return header + "从算法鲁棒性看，FFT峰值法对噪声和背景变化具有一定免疫力，适合作为初值；而最终厚度由拟合模型给出，可通过残差结构发现异常（多光束、折射率变化、测量漂移等）。\n"
-        return header + "综上，本文用“基线模型 + 对照模型 + 一致性约束”形成闭环：模型解释条纹、算法提取厚度、检验保证可靠性。该闭环结构也符合竞赛论文评分对“可验证性与可复现性”的要求。\n"
-
-    if section == "模型评价":
-        if unit_id == "EVAL-1":
-            return header + "优点：模型从物理机理出发，推导清晰；FFT提取主周期计算量低、鲁棒性强；双角一致性提供无需额外标定的可靠性指标；Airy对照可解释尖峰条纹并修正系统偏差。\n"
-        if unit_id == "EVAL-2":
-            return header + "不足：折射率n采用常数近似会引入系统误差；Airy拟合参数存在耦合，需更强的先验或更多角度/波段数据支持；当前误差估计以经验指标为主，仍可引入更严格的不确定度传播与置信区间。\n"
-        return header + "推广：同类薄膜厚度测量、Fabry–Pérot腔参数估计、光谱条纹分析等问题均可复用本文的“频域初值 + 物理模型拟合 + 多角一致性检验”框架。\n"
-
-    if section == "结论":
-        if unit_id == "CONCL-1":
-            return header + f"(1) 建立一次反射双光束干涉模型，并由条纹周期导出厚度公式 $d=\frac{{f}}{{2n\cos\theta}}$。\n(2) 对碳化硅附件1/2，得到厚度均值 {fnum(sic_th.get('mean'))} μm，并给出两角一致性与R²评估。\n"
-        return header + f"(3) 推导并采用多光束Airy模型，对硅附件3/4进行拟合对照并给出厚度均值 {fnum(si_th.get('mean'))} μm；当Airy拟合显著优于正弦拟合时，判定多光束干涉不可忽略并需修正。\n"
-
-    if section == "参考文献":
-        return (
-            header
-            + "[1] Hecht E. Optics (4th Edition). Addison-Wesley.\n"
-            + "[2] Born M, Wolf E. Principles of Optics. Cambridge University Press.\n"
-            + "[3] Jenkins F A, White H E. Fundamentals of Optics. McGraw-Hill.\n"
-            + "[4] 文献与数据来源：2025年高教社杯全国大学生数学建模竞赛B题及其附件数据。\n"
-            + "[5] 相关折射率数据可参考公开材料中Si与SiC在红外波段的光学常数数据集。\n"
-        )
-
-    if section == "附录":
-        if unit_id == "APP-1":
-            return header + "附录给出主要计算流程：读取附件→重采样→去趋势→FFT主峰→厚度计算→正弦/ Airy 拟合→输出JSON与图表。关键脚本为 step2_calc_results.py，一键入口为 .claude/skills/paper-workflow-orchestrator/scripts/run_all.py。\n"
-        return header + f"图表文件位于 {fig_base}/，论文合并稿位于 paper_output/final_paper.md。若需复现，只需保证 problem_files/附件 下四个xlsx存在，然后运行一键入口即可。\n"
-
-    return header + f"本单元用于支撑{section}部分的逻辑闭环：给出定义、模型、算法、结果或检验要点，并与图表和公式编号保持一致，保证合并后全文可读且可复现。\n"
+    return header + body.rstrip() + "\n"
 
 
 def main() -> int:
@@ -224,10 +299,8 @@ def main() -> int:
     log = []
 
     for t in tasks:
-        target = int(t.get("target_words", 300))
         fp = Path(t.get("file_path", str(UNITS_DIR / f"{t.get('id','unit')}.txt")))
         text = render_unit(t, ph, results)
-        text = ensure_len(text, target)
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(text, encoding="utf-8")
         log.append({"id": t.get("id"), "len": len(text), "file": str(fp)})
@@ -239,4 +312,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

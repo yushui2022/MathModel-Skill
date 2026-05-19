@@ -42,7 +42,7 @@ description: "按常见评分点生成建模论文结构与写作清单，并根
 
 ### 调用示例
 - 方式1（路径）：
-  - `paper_prompt_path: c:\Users\xiaoy\Desktop\trae\数学建模\paper_output\plan\paper_prompt.md`
+  - `paper_prompt_path: <项目根目录>\paper_output\plan\paper_prompt.md`
 - 方式2（粘贴）：
   - `paper_prompt_text: <把你的论文结构提示词全文粘贴在这里>`
 

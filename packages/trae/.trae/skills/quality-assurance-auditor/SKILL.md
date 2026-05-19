@@ -15,7 +15,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 - 当用户怀疑“AI 偷偷简化了模型”或“生成的内容空洞”时，立即调用本 skill 进行强制审计。
 
 ## 输入
-- 必填：待审计产物（如 problem-doc-model-selector 输出的模型路线、paper-structured-composer 给出的结构清单、或单个微单元文本）。
+- 必填：待审计产物（如 `problem-doc-model-selector` 输出的模型路线、论文结构清单、或单个微单元文本）。
 - 必填：原始赛题 PDF/Word 内容或关键约束摘录，用于对照。
 - 可选：用户自定义的评分点清单（如 CUMCM 官方 rubric），可覆盖默认规则。
 
@@ -80,6 +80,8 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 ## 附录 A：脚本入口（推荐）
 本 skill 的可执行脚本都放在 `scripts/` 下。
+
+当前 `scripts/pipeline.py` 是基础门禁脚本，负责初始化目录、检查 `problem_files/` 并生成 `paper_output/tasks.json`。更细的审计规则写在本 `SKILL.md` 中，Agent 在真正验收论文时必须结合正文、题面、任务清单和图表引用执行这些规则，而不能只把脚本跑通当作质量通过。
 
 **在 Trae 终端直接运行**：
 ```bash

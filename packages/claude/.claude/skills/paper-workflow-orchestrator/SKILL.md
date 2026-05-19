@@ -7,6 +7,8 @@ description: "串联赛题解析、数据计算与微单元脚本，一键从赛
 
 ## 目标
 - 串联现有技能与脚本，用尽量少的人工操作从赛题文件夹直接得到可提交的完整论文草稿。
+- 保持本项目的核心思路：以 skill 为主线，把“赛题解析 → 模型选择 → 数据处理 → QA → 微单元生成 → 合并交付”串成一套可执行工作流。
+- 注意：`scripts/run_all.py` 是离线一键样板入口，负责把已落地的脚本串起来；真正遇到新赛题时，Agent 仍应先读取 `problem-doc-model-selector`、`modeling-paper-rubric-and-model-selector` 和相关 `scripts/`，再按当前赛题二次生成或修改数据处理与建模代码。
 
 ## 自动化运行约定（Claude Code 中一键）
 - **零交互原则 (Zero Interaction)**: 

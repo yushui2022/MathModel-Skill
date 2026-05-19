@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -21,7 +22,21 @@ def has_problem_files() -> bool:
     return any(PROBLEM_DIR.iterdir())
 
 
-def generate_task_manifest(target_words: int = 300) -> list[dict]:
+def load_existing_tasks() -> list[dict] | None:
+    if not TASKS_FILE.exists():
+        return None
+    try:
+        tasks = json.loads(TASKS_FILE.read_text(encoding="utf-8"))
+        return tasks if isinstance(tasks, list) else None
+    except Exception:
+        return None
+
+
+def generate_task_manifest(target_words: int = 300, force: bool = False) -> tuple[list[dict], bool]:
+    existing = load_existing_tasks()
+    if existing is not None and not force:
+        return existing, False
+
     sections = [
         ("ABS", "摘要", 5),
         ("INTRO", "问题重述", 3),
@@ -54,7 +69,7 @@ def generate_task_manifest(target_words: int = 300) -> list[dict]:
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     TASKS_FILE.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
-    return tasks
+    return tasks, True
 
 
 def audit_gate(stage_name: str) -> bool:
@@ -88,6 +103,26 @@ def verify_completeness() -> tuple[int, int, int]:
     return ok, total, total_chars
 
 
+def scan_generated_text() -> list[str]:
+    warnings: list[str] = []
+    targets = []
+    if (OUTPUT_DIR / "final_paper.md").exists():
+        targets.append(OUTPUT_DIR / "final_paper.md")
+    if MICRO_UNITS_DIR.exists():
+        targets.extend(sorted(MICRO_UNITS_DIR.glob("*.txt")))
+
+    bad_markers = ["内容生成中", "论文题目缺失", "关键词1；关键词2"]
+    for path in targets:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        for marker in bad_markers:
+            if marker in text:
+                warnings.append(f"{path}: 检测到占位痕迹 `{marker}`")
+    return warnings
+
+
 def run_pipeline() -> int:
     print("=== QA 流水线（quality-assurance-auditor）===")
     init_project()
@@ -95,12 +130,22 @@ def run_pipeline() -> int:
     if not audit_gate("赛题目录检查"):
         return 1
 
-    tasks = generate_task_manifest(target_words=270)
-    print(f"[+] 已生成任务清单：{TASKS_FILE}（{len(tasks)} 个微单元）")
+    force_regenerate = os.environ.get("MATHMODEL_REGENERATE_TASKS") == "1"
+    tasks, generated = generate_task_manifest(target_words=270, force=force_regenerate)
+    action = "已生成" if generated else "已读取已有"
+    print(f"[+] {action}任务清单：{TASKS_FILE}（{len(tasks)} 个微单元）")
 
     ok, total, total_chars = verify_completeness()
     print(f"[+] 进度：{ok}/{total}")
     print(f"[+] 当前总长度：{total_chars}")
+
+    warnings = scan_generated_text()
+    if warnings:
+        print("[!] 发现需要人工复核的占位痕迹：")
+        for item in warnings[:20]:
+            print(f"    - {item}")
+        if len(warnings) > 20:
+            print(f"    - ... 共 {len(warnings)} 项")
     return 0
 
 

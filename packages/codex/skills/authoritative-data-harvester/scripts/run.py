@@ -37,7 +37,7 @@ def load_config():
                     "type": "manual_search",
                     "query": "2023年全球半导体产量统计",
                     "notes": "Need to find authoritative report manually if API fails",
-                    "active": True
+                    "active": False
                 }
             ]
         }
