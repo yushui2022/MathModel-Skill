@@ -197,16 +197,6 @@ python .trae/skills/paper-micro-unit-generator/scripts/merge.py
 
 Claude Code 把 `.trae/skills/` 换成 `.claude/skills/`；Codex 把 `.trae/skills/` 换成 `skills/`。
 
-## 当前版本边界
-
-当前版本已经具备完整多平台 skill 包分发和一键脚本骨架，但论文生产质量仍可继续升级：
-
-- 根据赛题动态生成更细的 `tasks.json`。
-- 扩展更接近 200 个微单元的长文生成能力。
-- 强化 QA 对占位符、重复段落、子问题覆盖、图表断链的检查。
-- 增加模型对比图、敏感性分析图、误差分析图等论文级图表模板。
-- 进一步消除 Windows 终端编码问题。
-
 ## 一句话总结
 
 MathModel Skill 的价值不是“一个提示词写完整篇论文”，而是把数学建模比赛拆成可控、可检查、可重跑的完整 skill 工作流。Trae、Claude Code、Codex 用户都可以下载对应原生包，自主接入自己的 Agent 工作环境。
