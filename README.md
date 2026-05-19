@@ -40,7 +40,7 @@ MathModel Skill 是一套面向数学建模比赛的完整 skill 工作流，把
 ## 仓库结构
 
 ```text
-liuhuan-mathmodel-skills/
+MathModel-Skill/
 ├── README.md
 ├── assets/                       # 项目 logo 等展示资源
 ├── docs/                         # 安装与使用文档
