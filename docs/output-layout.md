@@ -41,8 +41,8 @@ paper_output/
 ├── micro_units/                   # 微单元文本
 ├── tasks.json                     # 微单元任务清单
 ├── generate_log.json              # 微单元生成日志
-├── final_paper.md                 # Markdown 草稿
-├── final_paper.docx               # Word 草稿
+├── final_paper.md                 # Markdown 稿；证据门禁通过后才可称为正式稿
+├── final_paper.docx               # Word 稿；证据门禁通过后才可称为正式稿
 └── ref_check.md                   # 引用、图表和公式断链检查
 ```
 
@@ -122,7 +122,9 @@ paper_output/final_paper.docx
 paper_output/ref_check.md
 ```
 
-`tasks.json` 是正文生成的唯一任务清单入口。微单元生成器应优先读取其中的 `main_model`、`model_reason`、`validation_plan`、`figure_suggestions`、`result_summary`、`key_metrics`、`tables` 和 `conclusions`。
+`tasks.json` 是微单元草稿生成和写作辅助的任务清单入口。微单元生成器应优先读取其中的 `main_model`、`model_reason`、`validation_plan`、`figure_suggestions`、`result_summary`、`key_metrics`、`tables` 和 `conclusions`。
+
+正式论文不应只机械合并微单元。Agent 应在证据门禁通过后读取完整证据链，全局撰写或改写 `final_paper.md` 与 `final_paper.docx`。若结果仍标记为 `missing`、`needs_real_modeling` 或 `scaffold_result_needs_review`，当前 Word 只能称为验证草稿。
 
 ## Ownership
 
@@ -138,5 +140,5 @@ paper_output/ref_check.md
 | `paper_output/tables/` | `model-code-and-result-generator` / Agent | 论文表格 |
 | `paper_output/results/` | `model-code-and-result-generator` / Agent | 模型结果、指标和结论 |
 | `paper_output/tasks.json` | `quality-assurance-auditor` | 微单元任务清单 |
-| `paper_output/micro_units/` | `paper-micro-unit-generator` | 微单元文本 |
-| `paper_output/final_paper.*` | `paper-micro-unit-generator` | Markdown 与 Word 草稿 |
+| `paper_output/micro_units/` | `paper-micro-unit-generator` | 微单元文本和提示词辅助草稿 |
+| `paper_output/final_paper.*` | Agent + `paper-micro-unit-generator` | Markdown 与 Word 稿；证据门禁通过后才是正式稿 |

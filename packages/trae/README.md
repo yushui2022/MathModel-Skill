@@ -57,8 +57,10 @@ Trae 应先读取 `.trae/skills/paper-workflow-orchestrator/SKILL.md`。这是 M
 如果只是验证安装，也可以手动运行随 skill 附带的辅助脚本：
 
 ```bash
-python .trae/skills/paper-workflow-orchestrator/scripts/run_all.py
+python .trae/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 ```
+
+该命令只用于 quickstart / smoke test，输出是验证草稿，不代表正式比赛论文质量。正式赛题应由 Trae 先读取总控 skill，生成当前赛题专用代码、真实结果和证据门禁报告后再全局写作。
 
 ## 输出位置
 

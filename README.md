@@ -3,7 +3,7 @@
 
 # MathModel Skill
 
-### 数学建模论文自动化多 Agent 原生 Skill 包
+### Agent-native 数学建模工作流 Skill 包
 
 #### 为 Trae、Claude Code、Codex 设计的完整数学建模工作流
 
@@ -15,10 +15,10 @@
 
 </div>
 
-MathModel Skill 是一套面向数学建模比赛的完整 skill 工作流，把常见流程固化为可复用的 Agent 原生能力：
+MathModel Skill 是一套面向数学建模比赛的 Agent-native skill 工作流，不是黑盒一键论文生成器。它把常见流程固化为可复用的 Agent 原生能力，让 Codex、Claude Code、Trae 知道先读什么、代码写到哪里、结果如何沉淀、正文如何引用证据。
 
 ```text
-赛题解析 -> 模型选择 -> 数据获取 -> 数据清洗与可视化 -> 结果证据 -> QA 门禁 -> 微单元生成 -> 合并成稿
+读题 -> 拆题 -> 模型路线 -> 判断附件性质 -> 生成/修改赛题专用代码 -> 运行代码 -> 真实图表/表格/结果 -> QA 门禁 -> Agent 全局写作 -> 最终 QA
 ```
 
 本仓库按“完整 skill 包”分发，不把 skill 压平成单个 Markdown 文件。每个 skill 都保留自己的 `SKILL.md`、`scripts/`、`references/`、memory 文件等资源。
@@ -26,6 +26,8 @@ MathModel Skill 是一套面向数学建模比赛的完整 skill 工作流，把
 这套 workflow 通过少量 JSON 文件沉淀模型路线、评分证据、数据处理、图表计划和结果证据，让不同 skill 能稳定交接上下文。JSON 是交接单，不是黑盒系统；详细规则见 [工作流契约说明](docs/workflow-contracts.md)。
 
 所有生成物都有固定位置：skill 包目录只放可复用能力，当前赛题产物统一放 `paper_output/`；当前赛题专用代码统一放 `paper_output/code/`。完整位置规划见 [Output Layout](docs/output-layout.md)。
+
+原有高质量提示词不会废弃。微单元提示词、评分闭环提示词、模型选择提示词和 QA 审稿提示词仍是本项目的核心资产；它们用于指导 Agent 写作、审稿、拆解和局部重写，而不是强制机械拼接正文。见 [Prompt Assets](docs/prompt-assets.md)。
 
 ## 选择你的 Agent
 
@@ -48,7 +50,7 @@ MathModel Skill 是一套面向数学建模比赛的完整 skill 工作流，把
 开始生成数学建模论文
 ```
 
-三端入口文件和 skill 元数据都会指向 `paper-workflow-orchestrator`。它是 MathModel Skill 的总入口，负责判断当前阶段，并路由到题意解析、模型路线、数据图表、QA、微单元生成等子 skill。
+三端入口文件和 skill 元数据都会指向 `paper-workflow-orchestrator`。它是 MathModel Skill 的总入口，负责判断当前阶段，并路由到题意解析、模型路线、数据图表、结果证据、QA 和写作辅助等子 skill。
 
 ## 3 分钟跑通示例
 
@@ -60,7 +62,7 @@ examples/quickstart/problem_files/
 └── sample_data.csv
 ```
 
-你可以新建空项目，复制对应平台 skill 包，再复制这个 `problem_files/` 目录，然后让 Agent 使用 `paper-workflow-orchestrator`。如果只是验证安装，也可以手动运行随 skill 附带的 `run_all.py`。完整步骤见 [Quickstart Demo Walkthrough](docs/demo-walkthrough.md)。
+你可以新建空项目，复制对应平台 skill 包，再复制这个 `problem_files/` 目录，然后让 Agent 使用 `paper-workflow-orchestrator`。如果只是验证安装，也可以手动运行随 skill 附带的 `quickstart_run.py`。完整步骤见 [Quickstart Demo Walkthrough](docs/demo-walkthrough.md)。
 
 这个示例用于验证安装和 workflow 是否跑通；真实赛题中仍应让 Agent 根据当前题目、附件字段和模型输出二次修改数据处理、建模和图表代码。
 
@@ -138,7 +140,7 @@ crawled_data/       # 可选，放外部补充数据
 
 也可以先复制 `examples/quickstart/problem_files/` 跑通最小示例。
 
-### 4. 让 Agent 自动使用
+### 4. 让 Agent 正式使用
 
 推荐方式是直接对 Agent 说：
 
@@ -146,25 +148,25 @@ crawled_data/       # 可选，放外部补充数据
 开始生成数学建模论文
 ```
 
-Agent 应先读取 `paper-workflow-orchestrator/SKILL.md`，再按 skill 里定义的流程调用其他 skill。`run_all.py` 只是这个总编排 skill 附带的可执行辅助脚本，用来把已确定的流程顺序稳定串起来。
+正式赛题不要先跑一键脚本。Agent 应先读取 `paper-workflow-orchestrator/SKILL.md`，再按当前赛题判断附件性质、生成赛题专用代码、运行真实结果、通过证据门禁，最后基于完整证据链全局写作。
 
 如果想写得更明确，可以复制 [Starter Prompts](docs/starter-prompts.md) 里的完整流程提示词。
 
 ### 5. 可选：手动验证安装
 
-如果你想确认 skill 包路径、Python 依赖和示例 workflow 是否能跑通，可以手动执行验证命令：
+如果你想确认 skill 包路径、Python 依赖和示例 workflow 是否能跑通，可以手动执行 quickstart 验证命令。该命令只生成验证草稿，不代表正式比赛论文质量：
 
 按你安装的平台执行：
 
 ```bash
 # Trae
-python .trae/skills/paper-workflow-orchestrator/scripts/run_all.py
+python .trae/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 
 # Claude Code
-python .claude/skills/paper-workflow-orchestrator/scripts/run_all.py
+python .claude/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 
 # Codex
-python skills/paper-workflow-orchestrator/scripts/run_all.py
+python skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 ```
 
 如果 Windows PowerShell 出现 GBK 编码问题，先执行：
@@ -206,7 +208,7 @@ paper_output/
 ├── tables/
 │   ├── table_index.json          # 表格索引、表题、用途和路径
 │   └── *.csv                     # 参数表、结果表、误差表、对比表等
-├── final_paper.docx              # Word 最终稿
+├── final_paper.docx              # Word 稿；证据门禁通过后才可称为正式稿
 ├── final_paper.md                # Markdown 合并稿
 ├── tasks.json                    # 微单元任务清单
 ├── generate_log.json             # 微单元生成日志
@@ -231,7 +233,7 @@ paper_output/
 | 论文表格 | `paper_output/tables/` | 表格 CSV 与 `table_index.json` 放这里 |
 | 结果证据 | `paper_output/results/` | 模型输出、指标和结论的 JSON 交接单 |
 | 微单元正文 | `paper_output/micro_units/` | 逐段生成，再合并成 Markdown 和 Word |
-| 最终稿 | `paper_output/final_paper.md`、`paper_output/final_paper.docx` | Word 是主要交付物，Markdown 便于检查和重跑 |
+| Word/Markdown 稿 | `paper_output/final_paper.md`、`paper_output/final_paper.docx` | Word 是主要交付物；证据门禁通过后才可称为正式稿 |
 
 ## JSON 通信契约
 
@@ -274,7 +276,7 @@ problem_analysis.json -> model_route.json / rubric_alignment.json -> data_plan.j
 
 - `quality-assurance-auditor`：作为全局门禁，优先读取 `model_route.json` 和 `rubric_alignment.json` 动态生成任务清单，并检查输入目录、微单元进度和最终产物。
 - `paper-micro-unit-generator`：把论文拆成微单元，批量生成并合并为 Markdown/Word。
-- `paper-workflow-orchestrator`：中心编排器，指导 Agent 按顺序串联数据、QA、生成、合并和 Word 导出；其中 `scripts/run_all.py` 可作为可选的稳定执行器。
+- `paper-workflow-orchestrator`：中心编排器，指导 Agent 按顺序串联题意、模型、数据、专用代码、结果证据、QA 和全局写作；其中 `scripts/quickstart_run.py` 只用于安装验证和 smoke test。
 
 ### 辅助记忆
 

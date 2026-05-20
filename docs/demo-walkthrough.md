@@ -62,24 +62,24 @@ $env:PYTHONIOENCODING="utf-8"
 
 Agent 应优先读取 `paper-workflow-orchestrator/SKILL.md`，再按 workflow 调用其他 skill。
 
-如果你只是想验证安装和示例链路，也可以手动运行随 skill 附带的辅助脚本：
+如果你只是想验证安装和示例链路，也可以手动运行随 skill 附带的 quickstart 辅助脚本。它只生成验证草稿，不代表正式比赛论文质量：
 
 Trae:
 
 ```bash
-python .trae/skills/paper-workflow-orchestrator/scripts/run_all.py
+python .trae/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 ```
 
 Claude Code:
 
 ```bash
-python .claude/skills/paper-workflow-orchestrator/scripts/run_all.py
+python .claude/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 ```
 
 Codex:
 
 ```bash
-python skills/paper-workflow-orchestrator/scripts/run_all.py
+python skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 ```
 
 ## 5. 检查输出
@@ -123,6 +123,6 @@ paper_output/figures/
 - `results/` 和 `tables/table_index.json` 是结果、指标、结论和表格证据交接单；示例里会标记真实建模结果待补。
 - `OUTPUT_LAYOUT.md` 和 `code/README.md` 说明当前赛题的生成代码、图表、表格、微单元和 Word 草稿应该放在哪里。
 - `tasks.json` 是微单元任务清单。
-- `final_paper.docx` 是最终 Word 草稿。
+- `final_paper.docx` 是 quickstart 验证草稿。正式比赛稿必须先补齐真实建模证据并通过证据门禁。
 
 示例中的图表和正文是 workflow 草稿，用于证明链路可跑。真实赛题中，Agent 应读取这些 JSON 和 `scripts/` 样板，再结合当前数据字段、模型输出和图表需求，把赛题专用代码生成或修改到 `paper_output/code/`，再重跑 QA 和正文生成。

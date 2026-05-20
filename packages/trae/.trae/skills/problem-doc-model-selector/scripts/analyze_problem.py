@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,14 @@ OUTPUT_DIR = BASE_DIR / "paper_output"
 STEP1_DIR = OUTPUT_DIR / "step1"
 ANALYSIS_FILE = STEP1_DIR / "problem_analysis.json"
 DATA_REQUIREMENTS_FILE = BASE_DIR / "data_requirements.json"
+
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
 
 QUESTION_NUMERALS = {
@@ -197,23 +206,37 @@ def chinese_num_to_int(value: str) -> int | None:
     if value.isdigit():
         return int(value)
     reverse = {v: k for k, v in QUESTION_NUMERALS.items()}
-    return reverse.get(value)
+    if value in reverse:
+        return reverse[value]
+    digits = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+    if "十" in value:
+        left, _, right = value.partition("十")
+        tens = digits.get(left, 1) if left else 1
+        ones = digits.get(right, 0) if right else 0
+        return tens * 10 + ones
+    return None
 
 
 def split_questions(text: str) -> list[dict[str, str]]:
     if not text:
         return []
 
-    pattern = re.compile(r"(?:^|\n)\s*(?:问题|任务|第)\s*([一二三四五六七八九十\d]+)\s*(?:问|题)?[：:、.．\s]*(.*)")
+    pattern = re.compile(
+        r"(?:^|\n)\s*"
+        r"(?:(?:问题|任务)\s*(?P<num1>[一二三四五六七八九十\d]+)\s*(?:问|题)?"
+        r"|第\s*(?P<num2>[一二三四五六七八九十\d]+)\s*(?:问|题|小问))"
+        r"[：:、.．\s]*(?P<title>.*)"
+    )
     matches = list(pattern.finditer(text))
     questions: list[dict[str, str]] = []
 
     for idx, match in enumerate(matches):
-        num = chinese_num_to_int(match.group(1)) or (idx + 1)
+        raw_num = match.group("num1") or match.group("num2") or str(idx + 1)
+        num = chinese_num_to_int(raw_num) or (idx + 1)
         start = match.start()
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
         chunk = text[start:end].strip()
-        first_line = match.group(2).strip() or f"问题{QUESTION_NUMERALS.get(num, num)}"
+        first_line = match.group("title").strip() or f"问题{QUESTION_NUMERALS.get(num, num)}"
         questions.append(
             {
                 "id": f"Q{num}",
@@ -405,6 +428,7 @@ def write_data_requirements(analysis: dict[str, Any]) -> None:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     STEP1_DIR.mkdir(parents=True, exist_ok=True)
 

@@ -7,7 +7,7 @@
 当用户要求“开始生成”“跑一下这个题”“生成数学建模论文”时，按 MathModel Skill 工作流完成：
 
 ```text
-赛题解析 -> 模型选择 -> 数据获取 -> 数据与图表计划 -> 数据清洗与可视化 -> 结果证据 -> QA 门禁 -> 微单元生成 -> 合并 Word
+读题 -> 拆题 -> 模型路线 -> 判断附件性质 -> 生成/修改赛题专用代码 -> 运行代码 -> 真实图表/表格/结果 -> QA 门禁 -> Agent 全局写作 -> 最终 QA
 ```
 
 ## Start Rule
@@ -58,7 +58,7 @@ problem_files/
 crawled_data/
 ```
 
-最终产物在：
+输出产物在：
 
 ```text
 paper_output/OUTPUT_LAYOUT.md
@@ -83,11 +83,13 @@ paper_output/ref_check.md
 
 ## 可选验证命令
 
-普通使用时不需要用户手动运行脚本；Agent 应先读取总控 skill。若只是验证安装、跑 quickstart 或调试，可在项目根目录运行：
+普通使用时不需要用户手动运行脚本；Agent 应先读取总控 skill。正式赛题不要先跑 quickstart。若只是验证安装、跑 quickstart 或调试，可在项目根目录运行：
 
 ```bash
-python skills/paper-workflow-orchestrator/scripts/run_all.py
+python skills/paper-workflow-orchestrator/scripts/quickstart_run.py
 ```
+
+旧命令 `run_all.py` 已废弃，只保留迁移提示。quickstart 输出是验证草稿，不代表正式比赛论文质量。
 
 如果 Windows 终端出现 GBK 编码问题，先运行：
 
@@ -99,6 +101,7 @@ $env:PYTHONIOENCODING="utf-8"
 
 - 不要跳过 `quality-assurance-auditor`。
 - 数据清洗后如果需要正文引用结果，先让 `model-code-and-result-generator` 生成或补齐结果、指标、结论和表格证据契约。
+- 若 `evidence_status` 仍为 `missing`、`needs_real_modeling` 或 `scaffold_result_needs_review`，不得把 Word 称为最终稿；必须先补齐赛题专用代码和真实结果。
 - 不要把输出散落到根目录，统一写入 `paper_output/`。
 - 不要把当前赛题专用代码写回 `skills/`；先读取 skill 脚本作为样板，再在 `paper_output/code/` 下生成适配当前数据的代码。
 - 不要改动 `problem_files/` 中的原始赛题和附件。

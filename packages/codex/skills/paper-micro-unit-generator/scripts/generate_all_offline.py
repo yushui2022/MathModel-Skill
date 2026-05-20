@@ -56,7 +56,7 @@ def unit_number(unit_id: str) -> int:
 
 
 def entry_command() -> str:
-    return "python skills/paper-workflow-orchestrator/scripts/run_all.py"
+    return "python skills/paper-workflow-orchestrator/scripts/quickstart_run.py"
 
 
 def render_abstract(unit_id: str, ph: dict) -> str:

@@ -7,15 +7,16 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
 
 ## 执行契约
 - 上游输入：必须读取 `paper_output/tasks.json`；可参考 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/` 与 `paper_output/tables/table_index.json`。
-- 必须输出：`paper_output/micro_units/*.txt`、`paper_output/generate_log.json`、`paper_output/final_paper.md`、`paper_output/ref_check.md` 与 `paper_output/final_paper.docx`。
-- 下游交接：合并后的 `final_paper.md` 和 `final_paper.docx` 是论文草稿交付物；最终把关可再次调用 `quality-assurance-auditor`。
+- 可输出：`paper_output/micro_units/*.txt`、`paper_output/generate_log.json`、`paper_output/final_paper.md`、`paper_output/ref_check.md` 与 `paper_output/final_paper.docx`。
+- 下游交接：合并后的 `final_paper.md` 和 `final_paper.docx` 是验证草稿或局部写作素材；正式论文必须由 Agent 读取完整证据链后全局改写或重写，并再次调用 `quality-assurance-auditor`。
 - 推荐下一步：合并完成后进入 `quality-assurance-auditor` 做最终一致性检查；完整论文目标应回到 `paper-workflow-orchestrator` 汇总产物。
 - 失败回退：若 `tasks.json` 缺失，先运行 `quality-assurance-auditor`；若图表或结果契约尚未生成，正文只能生成通用草稿，并在 QA warning 或 `ref_check.md` 中提示真实结果待补。
 
 ## 目标
-- 配合 `scripts/generate_all_offline.py` 与 `scripts/merge.py`，自动完成：微单元生成 → 合并 → 编号与交叉引用检查，生成可交付的论文草稿。
-- 本技能保留了一套 CUMCM 风格的长文微单元提示词资产。它的重点不是让脚本机械套用某一道历史题，而是让 Agent 按“章 → 节 → 段 → 句”的方式拆解论文，逐块生成、逐块检查、最后合并。
-- `scripts/generate_all_offline.py` 是离线样板生成器：可直接跑出通用论文草稿，也可读取 `tasks.json`、`step3_filled_placeholder.py` 和结果证据，把当前赛题的信息填入正文。它必须输出自然论文段落，不应把微单元编号写进正文。
+- 保留并组织 CUMCM 风格的高质量长文提示词资产，包括章节拆解、段落/句级写作模板、评分点覆盖和交叉引用要求。
+- 配合 `scripts/generate_all_offline.py` 与 `scripts/merge.py`，可自动完成：微单元生成 → 合并 → 编号与交叉引用检查，生成 quickstart 验证草稿或低能力模型兜底草稿。
+- 正式论文不应机械拼接微单元。Agent 应把本技能作为提示词资产库、结构辅助器和局部重写来源，在证据门禁通过后进行全局写作。
+- `scripts/generate_all_offline.py` 是离线样板生成器：可读取 `tasks.json`、`step3_filled_placeholder.py` 和结果证据，把当前赛题的信息填入草稿。它必须输出自然论文段落，不应把微单元编号写进正文，也不应替代正式主笔。
 
 ## 适用时机
 - 用户已经明确采用 CUMCM 风格的细粒度拆分模板，希望把一篇大论文拆成大量小片段，逐步生成并自动合并时。
@@ -64,6 +65,7 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
 - 运行前必须满足：`paper_output/tasks.json` 已存在且可读；否则必须先调用 `quality-assurance-auditor`。
 - 若 `tasks.json` 中已经包含 `main_model`、`model_reason`、`validation_plan`、`figure_suggestions`、`planned_figures`、`rubric_points`、`result_summary`、`key_metrics`、`tables`、`conclusions` 等字段，正文生成必须优先遵守这些模型路线、评分证据和结果证据，不得脱离契约自行发挥。
 - 微单元编号只用于文件名、日志和局部重跑，不得作为正文标题写入最终稿；最终稿只保留章节标题和自然段。
+- 原附录 A 的 200+ 微单元提示词是本项目核心提示词资产，必须保留。正式写作时可以按需引用这些提示词，但不能机械逐段拼接成低质量正文。
 - 离线草稿应尽量接近 `tasks.json` 中的 `target_words`，避免每个微单元只生成一句任务式短句。
 - 合并输出以 `paper_output/final_paper.md` 为唯一权威合并稿；不要在根目录或其他目录另起“final_paper.md”，避免引用混乱。
 - 若用户目标是“论文生产完整”，本技能完成后必须确认 `paper_output/final_paper.md` 与 `paper_output/ref_check.md` 同时存在；若 `ref_check.md` 报断链，则视为未完成，需要修复后重跑合并。

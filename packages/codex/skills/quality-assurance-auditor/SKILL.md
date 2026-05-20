@@ -7,7 +7,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 ## 执行契约
 - 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/` 与 `paper_output/tables/table_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
-- 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在。
+- 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在；正式成稿前必须输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`。
 - 下游交接：`paper-micro-unit-generator` 只应在 `tasks.json` 存在后生成正文；任务中必须保留模型路线、验证计划、图表建议、评分点、结果摘要、指标、表格和结论字段。
 - 推荐下一步：正文生成前通过后进入 `paper-micro-unit-generator`；若已经生成 `final_paper.md` 或 `final_paper.docx`，则执行最终一致性检查并回到 `paper-workflow-orchestrator` 汇总。
 - 失败回退：若 `problem_files/` 为空应阻塞；若模型路线缺失则用题意分析生成任务；若题意分析也缺失才使用通用任务模板。
@@ -15,6 +15,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 ## 目标
 - 在论文生成的每一个关键节点插入“强制验收点”，只有审计通过才能进入下一步，防止“字数达标但逻辑错误”或“模型偷换”等隐性偷懒。
 - 提供可量化的通过/失败判定，并给出具体修改清单，确保最终论文既“厚”又“对”。
+- 明确区分“quickstart 验证草稿”和“正式比赛稿”：脚本跑通不等于论文合格；结果证据仍为骨架时，不得交付最终稿。
 
 ## 适用时机
 - 任何一步 skill（赛题解析、模型选型、结构设计、微单元生成）完成后，用户希望确认“这一步真的做对了吗？”
@@ -90,6 +91,8 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 当前 `scripts/pipeline.py` 是基础门禁脚本，负责初始化目录、检查 `problem_files/` 并生成 `paper_output/tasks.json`。
 
+`scripts/evidence_gate.py` 是正式成稿前证据门禁脚本，负责检查每个 `question_id` 是否具备真实模型结果、评价指标、图表或表格证据、结论回扣和任务追踪。它会输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`。official 模式下未通过会返回非零退出码；quickstart 模式只给 warning。
+
 - 若存在 `paper_output/plan/model_route.json`，脚本会优先按模型路线、评分点证据、主模型、验证计划和建议图表动态生成微单元清单。
 - 若存在 `paper_output/plan/data_plan.json`、`visualization_plan.json` 与 `paper_output/figure_index.json`，脚本会做轻量证据链检查：确认图表 ID、输出路径和数据路径可追溯，但不会因为计划图尚未实际生成就阻塞全流程。
 - 若存在 `paper_output/results/model_results.json`、`metrics.json`、`conclusions.json` 与 `paper_output/tables/table_index.json`，脚本会把 `result_summary`、`key_metrics`、`tables`、`conclusions`、`evidence_status` 写入每个子问题任务，供微单元生成器直接使用。
@@ -102,6 +105,16 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 **在项目根目录运行**：
 ```bash
 python skills/quality-assurance-auditor/scripts/pipeline.py
+```
+
+**正式成稿前运行证据门禁**：
+```bash
+python skills/quality-assurance-auditor/scripts/evidence_gate.py
+```
+
+**quickstart 验证时只看 warning**：
+```bash
+python skills/quality-assurance-auditor/scripts/evidence_gate.py --mode quickstart
 ```
 
 **行为**：初始化目录 → 检查 `problem_files/` 是否为空（不通过则阻塞）→ 优先读取 `paper_output/plan/model_route.json` 与 `rubric_alignment.json` → 读取数据/图表/结果/表格契约做轻量证据链提示 → 回退读取 `paper_output/step1/problem_analysis.json` → 生成动态 `paper_output/tasks.json` → 汇报当前微单元完成进度并扫描占位痕迹。
@@ -120,4 +133,5 @@ python skills/quality-assurance-auditor/scripts/pipeline.py
   - **审计通过后**：必须调用 `context-memory-keeper`，将“审计通过状态”与“生成的任务清单概况”更新到 `Short-term Workbench`。
 - 本技能是全局门禁：当用户要进入“生成正文/合并全文/交付论文”阶段，必须先通过本技能的目录检查与任务清单生成。
 - 未生成 `paper_output/tasks.json` 时，禁止直接进入 `paper-micro-unit-generator`。
+- 若 `evidence_gate.py` 未通过，禁止把 `final_paper.docx` 称为最终稿；必须回到 `model-code-and-result-generator` 或当前赛题专用代码，补齐真实结果、指标、图表、表格和结论。
 - 当用户已生成 `paper_output/final_paper.md` 时，建议再次调用本技能做最终一致性把关，确保“每问有结论、图表可定位、引用不断链”。
