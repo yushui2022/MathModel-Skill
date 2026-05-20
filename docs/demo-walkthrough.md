@@ -89,6 +89,9 @@ python skills/paper-workflow-orchestrator/scripts/run_all.py
 ```text
 paper_output/final_paper.docx
 paper_output/final_paper.md
+paper_output/OUTPUT_LAYOUT.md
+paper_output/code/README.md
+paper_output/code/modeling/README.md
 paper_output/tasks.json
 paper_output/ref_check.md
 paper_output/figure_index.json
@@ -113,7 +116,8 @@ paper_output/figures/
 - `visualization_plan.json` 是图表计划交接单。
 - `figure_index.json` 是图表索引，用于检查图文断链。
 - `results/` 和 `tables/table_index.json` 是结果、指标、结论和表格证据交接单；示例里会标记真实建模结果待补。
+- `OUTPUT_LAYOUT.md` 和 `code/README.md` 说明当前赛题的生成代码、图表、表格、微单元和 Word 草稿应该放在哪里。
 - `tasks.json` 是微单元任务清单。
 - `final_paper.docx` 是最终 Word 草稿。
 
-示例中的图表和正文是 workflow 草稿，用于证明链路可跑。真实赛题中，Agent 应读取这些 JSON 和 `scripts/` 样板，再结合当前数据字段、模型输出和图表需求二次生成代码和正文。
+示例中的图表和正文是 workflow 草稿，用于证明链路可跑。真实赛题中，Agent 应读取这些 JSON 和 `scripts/` 样板，再结合当前数据字段、模型输出和图表需求，把赛题专用代码生成或修改到 `paper_output/code/`，再重跑 QA 和正文生成。

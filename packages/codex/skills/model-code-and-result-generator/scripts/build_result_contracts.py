@@ -15,6 +15,7 @@ OUTPUT_DIR = BASE_DIR / "paper_output"
 PLAN_DIR = OUTPUT_DIR / "plan"
 RESULTS_DIR = OUTPUT_DIR / "results"
 TABLES_DIR = OUTPUT_DIR / "tables"
+MODELING_CODE_DIR = OUTPUT_DIR / "code" / "modeling"
 MODEL_ROUTE_FILE = PLAN_DIR / "model_route.json"
 DATA_PLAN_FILE = PLAN_DIR / "data_plan.json"
 VISUALIZATION_PLAN_FILE = PLAN_DIR / "visualization_plan.json"
@@ -189,9 +190,69 @@ def question_table_rows(question: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def write_modeling_code_readme(questions: list[dict[str, Any]], cleaned_files: list[Path]) -> None:
+    MODELING_CODE_DIR.mkdir(parents=True, exist_ok=True)
+    planned_files = []
+    for index, question in enumerate(questions, start=1):
+        qid = str(question.get("question_id") or question.get("id") or f"Q{index}").lower()
+        planned_files.append(f"{qid}_model.py")
+
+    lines = [
+        "# Modeling Code Workspace",
+        "",
+        "This directory is for current-contest generated modeling code. Do not write generated contest code back into the skill package directory.",
+        "",
+        "## Planned Files",
+        "",
+        "```text",
+        "paper_output/code/modeling/",
+        "├── run_modeling.py          # optional unified entry for Q1/Q2/Q3 modeling scripts",
+        "├── result_contract_io.py    # helper for writing results, metrics, conclusions and table_index contracts",
+    ]
+    for filename in planned_files:
+        lines.append(f"├── {filename:<23} # current-contest modeling script")
+    lines.extend(
+        [
+            "└── README.md",
+            "```",
+            "",
+            "## Inputs",
+            "",
+            "- `paper_output/plan/model_route.json`",
+            "- `paper_output/plan/data_plan.json`",
+            "- `paper_output/plan/visualization_plan.json`",
+            "- `paper_output/data_cleaned/`",
+            "",
+            "## Outputs To Write Back",
+            "",
+            "- `paper_output/results/model_results.json`",
+            "- `paper_output/results/metrics.json`",
+            "- `paper_output/results/conclusions.json`",
+            "- `paper_output/tables/table_index.json`",
+            "- `paper_output/tables/*.csv`",
+            "",
+            "## Cleaned Data Detected",
+            "",
+        ]
+    )
+    if cleaned_files:
+        lines.extend(f"- `{rel(path)}`" for path in cleaned_files)
+    else:
+        lines.append("- No cleaned CSV files detected yet.")
+    lines.extend(
+        [
+            "",
+            "The generated result contracts may currently be draft skeletons. For a real contest, Agent should create or modify the planned scripts in this directory, run them, and then regenerate QA/tasks before final writing.",
+            "",
+        ]
+    )
+    (MODELING_CODE_DIR / "README.md").write_text("\n".join(lines), encoding="utf-8")
+
+
 def main() -> int:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    MODELING_CODE_DIR.mkdir(parents=True, exist_ok=True)
 
     model_route = load_json(MODEL_ROUTE_FILE)
     data_plan = load_json(DATA_PLAN_FILE)
@@ -200,6 +261,7 @@ def main() -> int:
     cleaned_files = find_cleaned_csv_files()
 
     table_entries, data_summary = build_data_profile_tables(cleaned_files)
+    write_modeling_code_readme(questions, cleaned_files)
     result_items: list[dict[str, Any]] = []
     metric_items: list[dict[str, Any]] = []
     conclusion_items: list[dict[str, Any]] = []
@@ -296,6 +358,7 @@ def main() -> int:
     print(f"✅ 已生成指标契约：{RESULTS_DIR / 'metrics.json'}")
     print(f"✅ 已生成结论契约：{RESULTS_DIR / 'conclusions.json'}")
     print(f"✅ 已生成表格索引：{TABLES_DIR / 'table_index.json'}")
+    print(f"✅ 已准备建模代码工作区：{MODELING_CODE_DIR / 'README.md'}")
     print(f"   子问题数量：{len(result_items)}，表格数量：{len(table_entries)}")
     if data_plan is None:
         print("⚠️ 未检测到 data_plan.json，结果契约仅根据模型路线生成。")
@@ -306,4 +369,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

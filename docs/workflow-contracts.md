@@ -4,6 +4,8 @@ MathModel Skill 使用少量 JSON 文件作为不同 skill 之间的结构化交
 
 JSON 只保存后续环节必须稳定读取的结构化信息；长篇解释、写作策略和提示词仍放 Markdown 或 `references/`。
 
+生成物位置遵守 [Output Layout](output-layout.md)：当前赛题专用代码统一写入 `paper_output/code/`，不要写回 skill 包目录。
+
 ## Contract List
 
 | Contract | Producer | Consumers | Purpose |
@@ -33,6 +35,11 @@ JSON 只保存后续环节必须稳定读取的结构化信息；长篇解释、
 ## Current Flow
 
 ```text
+paper-workflow-orchestrator
+        ↓
+paper_output/OUTPUT_LAYOUT.md
+paper_output/code/
+        ↓
 problem_files/
         ↓
 problem-doc-model-selector
@@ -51,8 +58,14 @@ paper_output/plan/data_plan.json
 paper_output/plan/visualization_plan.json
 paper_output/figure_index.json
         ↓
+paper_output/code/data_processing/
+paper_output/code/visualization/
+paper_output/data_cleaned/
+paper_output/figures/
+        ↓
 model-code-and-result-generator
         ↓
+paper_output/code/modeling/
 paper_output/results/model_results.json
 paper_output/results/metrics.json
 paper_output/results/conclusions.json

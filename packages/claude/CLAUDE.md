@@ -61,8 +61,13 @@ crawled_data/
 最终产物在：
 
 ```text
+paper_output/OUTPUT_LAYOUT.md
 paper_output/final_paper.docx
 paper_output/final_paper.md
+paper_output/code/data_processing/
+paper_output/code/visualization/
+paper_output/code/modeling/
+paper_output/code/qa/
 paper_output/plan/model_route.json
 paper_output/plan/data_plan.json
 paper_output/plan/visualization_plan.json
@@ -73,6 +78,8 @@ paper_output/results/conclusions.json
 paper_output/tables/table_index.json
 paper_output/ref_check.md
 ```
+
+`.claude/skills/*/scripts/` 是可复用模板和代码级提示词；当前赛题生成或二次修改的代码只写入 `paper_output/code/`。数据处理脚本放 `paper_output/code/data_processing/`，绘图脚本放 `paper_output/code/visualization/`，q1/q2/q3 建模脚本放 `paper_output/code/modeling/`，可选检查脚本放 `paper_output/code/qa/`。
 
 ## 可选验证命令
 
@@ -93,6 +100,7 @@ $env:PYTHONIOENCODING="utf-8"
 - 不要跳过 `quality-assurance-auditor`。
 - 数据清洗后如果需要正文引用结果，先让 `model-code-and-result-generator` 生成或补齐结果、指标、结论和表格证据契约。
 - 不要把输出散落到根目录，统一写入 `paper_output/`。
+- 不要把当前赛题专用代码写回 `.claude/skills/`；先读取 skill 脚本作为样板，再在 `paper_output/code/` 下生成适配当前数据的代码。
 - 不要改动 `problem_files/` 中的原始赛题和附件。
 - 当用户只要求局部重跑时，按对应 skill 的 `scripts/` 执行。
 - 若流程失败，先检查 `problem_files/` 是否非空，再检查脚本路径和依赖。

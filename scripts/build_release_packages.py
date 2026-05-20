@@ -46,6 +46,7 @@ PACKAGE_SPECS = (
             (REPO_ROOT / "packages" / "trae" / "README.md", Path("README-MathModel-Skill.md")),
             (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
             (REPO_ROOT / "docs" / "starter-prompts.md", Path("starter-prompts.md")),
+            (REPO_ROOT / "docs" / "output-layout.md", Path("output-layout.md")),
         ),
     ),
     PackageSpec(
@@ -57,6 +58,7 @@ PACKAGE_SPECS = (
             (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill.md")),
             (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
             (REPO_ROOT / "docs" / "starter-prompts.md", Path("starter-prompts.md")),
+            (REPO_ROOT / "docs" / "output-layout.md", Path("output-layout.md")),
         ),
     ),
     PackageSpec(
@@ -68,6 +70,7 @@ PACKAGE_SPECS = (
             (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill.md")),
             (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
             (REPO_ROOT / "docs" / "starter-prompts.md", Path("starter-prompts.md")),
+            (REPO_ROOT / "docs" / "output-layout.md", Path("output-layout.md")),
         ),
     ),
 )

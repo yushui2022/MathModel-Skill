@@ -8,7 +8,14 @@ def main() -> int:
     root = Path.cwd().resolve()
     os.chdir(root)
 
-    print("=== Step--1 赛题结构化分析 ===")
+    print("=== Step-0 输出目录规划 ===")
+    layout_script = root / ".claude/skills/paper-workflow-orchestrator/scripts/prepare_output_layout.py"
+    if layout_script.exists():
+        subprocess.run([sys.executable, str(layout_script)], check=False)
+    else:
+        print("   未检测到输出目录规划脚本，跳过。")
+
+    print("=== Step-1 赛题结构化分析 ===")
     analyzer_script = root / ".claude/skills/problem-doc-model-selector/scripts/analyze_problem.py"
     if analyzer_script.exists():
         r_analyze = subprocess.run(
@@ -20,7 +27,7 @@ def main() -> int:
     else:
         print("   未检测到赛题分析脚本，跳过。")
 
-    print("=== Step--0 模型路线与评分闭环 ===")
+    print("=== Step-2 模型路线与评分闭环 ===")
     model_route_script = root / ".claude/skills/modeling-paper-rubric-and-model-selector/scripts/build_model_route.py"
     if model_route_script.exists():
         r_route = subprocess.run(
@@ -32,7 +39,7 @@ def main() -> int:
     else:
         print("   未检测到模型路线脚本，跳过。")
 
-    print("=== Step-Optional 外部资源获取 (Silent) ===")
+    print("=== Step-3 外部资源获取 (可选) ===")
     harvester_script = root / ".claude/skills/authoritative-data-harvester/scripts/run.py"
     if harvester_script.exists():
         print("   正在检查外部数据源...")
@@ -43,7 +50,7 @@ def main() -> int:
     else:
         print("   未检测到外部数据获取脚本，跳过。")
 
-    print("=== Step-0 数据与图表计划、清洗与可视化 ===")
+    print("=== Step-4 数据与图表计划、清洗与可视化 ===")
     r_clean = subprocess.run(
         [sys.executable, ".claude/skills/data-cleaning-and-visualization/scripts/run_pipeline.py"],
         check=False,
@@ -51,7 +58,7 @@ def main() -> int:
     if r_clean.returncode != 0:
         print("⚠️ 数据清洗步骤未成功执行（可能是没有数据文件），继续后续步骤...")
 
-    print("=== Step-1 结果计算与出图 ===")
+    print("=== Step-5 结果计算与出图（可选自定义） ===")
     calc_script = Path("step2_calc_results.py")
     if calc_script.exists():
         r_calc = subprocess.run(
@@ -63,7 +70,7 @@ def main() -> int:
     else:
         print("ℹ️ 未找到 step2_calc_results.py，跳过自定义计算步骤。")
 
-    print("=== Step-1.5 建模代码与结果证据生成 ===")
+    print("=== Step-6 建模代码与结果证据生成 ===")
     result_contract_script = root / ".claude/skills/model-code-and-result-generator/scripts/build_result_contracts.py"
     if result_contract_script.exists():
         r_result = subprocess.run(
@@ -75,7 +82,7 @@ def main() -> int:
     else:
         print("   未检测到结果证据生成脚本，跳过。")
 
-    print("=== Step-2 质量审计与任务清单 ===")
+    print("=== Step-7 质量审计与任务清单 ===")
     r0 = subprocess.run(
         [sys.executable, ".claude/skills/quality-assurance-auditor/scripts/pipeline.py"],
         check=False,
@@ -83,7 +90,7 @@ def main() -> int:
     if r0.returncode != 0:
         return r0.returncode
 
-    print("=== Step-3 微单元离线生成 ===")
+    print("=== Step-8 微单元离线生成 ===")
     r1 = subprocess.run(
         [sys.executable, ".claude/skills/paper-micro-unit-generator/scripts/generate_all_offline.py"],
         check=False,
@@ -91,7 +98,7 @@ def main() -> int:
     if r1.returncode != 0:
         return r1.returncode
 
-    print("=== Step-4 合并 ===")
+    print("=== Step-9 合并 ===")
     r2 = subprocess.run(
         [sys.executable, ".claude/skills/paper-micro-unit-generator/scripts/merge.py"],
         check=False,
@@ -99,7 +106,7 @@ def main() -> int:
     if r2.returncode != 0:
         return r2.returncode
 
-    print("=== Step-5 转换为 Word (docx) ===")
+    print("=== Step-10 转换为 Word (docx) ===")
 
     direct_docx = root / "paper_output/final_paper_direct.docx"
     final_docx = root / "paper_output/final_paper.docx"
@@ -110,7 +117,6 @@ def main() -> int:
         try:
             shutil.copy(direct_docx, final_docx)
             print(f"✅ 已直接生成 Word 文档：{final_docx}")
-            print("   (注：此版本由脚本直接构建，公式保留为 LaTeX 源码)")
         except Exception as e:
             print(f"⚠️ 移动文件失败: {e}")
     else:

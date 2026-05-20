@@ -25,6 +25,8 @@ MathModel Skill 是一套面向数学建模比赛的完整 skill 工作流，把
 
 这套 workflow 通过少量 JSON 文件沉淀模型路线、评分证据、数据处理、图表计划和结果证据，让不同 skill 能稳定交接上下文。JSON 是交接单，不是黑盒系统；详细规则见 [工作流契约说明](docs/workflow-contracts.md)。
 
+所有生成物都有固定位置：skill 包目录只放可复用能力，当前赛题产物统一放 `paper_output/`；当前赛题专用代码统一放 `paper_output/code/`。完整位置规划见 [Output Layout](docs/output-layout.md)。
+
 ## 选择你的 Agent
 
 根据你使用的平台，只复制对应包即可：
@@ -190,6 +192,13 @@ paper_output/
 │   ├── data_plan.json            # 数据字段、清洗任务与子问题链接
 │   └── visualization_plan.json   # 建议图表、图题、用途与输出路径
 ├── figure_index.json             # 图表计划索引
+├── OUTPUT_LAYOUT.md              # 当前项目输出位置说明
+├── code/
+│   ├── README.md                 # 当前赛题专用代码工作区说明
+│   ├── data_processing/          # 当前赛题专用数据处理代码
+│   ├── visualization/            # 当前赛题专用绘图代码
+│   ├── modeling/                 # q1/q2/q3 建模代码脚手架位置
+│   └── qa/                       # 当前赛题专用检查代码
 ├── results/
 │   ├── model_results.json        # 模型输出、参数、方案、预测值等结果证据
 │   ├── metrics.json              # 误差、得分、约束满足率等评价指标
@@ -200,10 +209,29 @@ paper_output/
 ├── final_paper.docx              # Word 最终稿
 ├── final_paper.md                # Markdown 合并稿
 ├── tasks.json                    # 微单元任务清单
+├── generate_log.json             # 微单元生成日志
 ├── ref_check.md                  # 引用/图表/公式断链检查
 ├── data_cleaned/                 # 清洗后的数据
+├── micro_units/                  # 逐段生成的微单元正文
 └── figures/                      # 自动生成的图表
 ```
+
+注意：`packages/*/skills/*/scripts/` 是 skill 自带样板和代码级提示词；`paper_output/code/` 才是当前赛题生成或二次修改的代码位置。不要把当前赛题的 `q1_model.py`、绘图脚本或清洗脚本写回 skill 包目录。
+
+## 生成位置规划
+
+| 生成物 | 固定位置 | 说明 |
+|---|---|---|
+| 赛题专用数据处理代码 | `paper_output/code/data_processing/` | 根据当前附件字段生成或修改，不写回 skill 包 |
+| 赛题专用绘图代码 | `paper_output/code/visualization/` | 读取图表计划和模型结果，输出论文级图片 |
+| 赛题专用建模代码 | `paper_output/code/modeling/` | 建议放 `q1_model.py`、`q2_model.py`、`q3_model.py` 与 `run_modeling.py` |
+| QA/检查代码 | `paper_output/code/qa/` | 可放当前赛题专用的断链、占位符、证据检查脚本 |
+| 清洗数据 | `paper_output/data_cleaned/` | 建模脚本优先读取这里的标准化数据 |
+| 格式化图表和图片 | `paper_output/figures/` | 正文引用的图片应能追溯到 `figure_index.json` |
+| 论文表格 | `paper_output/tables/` | 表格 CSV 与 `table_index.json` 放这里 |
+| 结果证据 | `paper_output/results/` | 模型输出、指标和结论的 JSON 交接单 |
+| 微单元正文 | `paper_output/micro_units/` | 逐段生成，再合并成 Markdown 和 Word |
+| 最终稿 | `paper_output/final_paper.md`、`paper_output/final_paper.docx` | Word 是主要交付物，Markdown 便于检查和重跑 |
 
 ## JSON 通信契约
 

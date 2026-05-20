@@ -63,8 +63,13 @@ python .trae/skills/paper-workflow-orchestrator/scripts/run_all.py
 ## 输出位置
 
 ```text
+paper_output/OUTPUT_LAYOUT.md
 paper_output/final_paper.docx
 paper_output/final_paper.md
+paper_output/code/data_processing/
+paper_output/code/visualization/
+paper_output/code/modeling/
+paper_output/code/qa/
 paper_output/plan/model_route.json
 paper_output/plan/data_plan.json
 paper_output/plan/visualization_plan.json
@@ -78,6 +83,8 @@ paper_output/ref_check.md
 paper_output/data_cleaned/
 paper_output/figures/
 ```
+
+当前赛题专用代码统一放在 `paper_output/code/`：数据处理代码放 `data_processing/`，绘图代码放 `visualization/`，q1/q2/q3 建模代码放 `modeling/`，检查脚本放 `qa/`。`.trae/skills/*/scripts/` 只作为可复用模板和代码级提示词，不写入当前赛题产物。
 
 ## 说明
 

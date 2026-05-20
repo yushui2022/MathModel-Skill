@@ -15,7 +15,7 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
 ## 目标
 - 配合 `scripts/generate_all_offline.py` 与 `scripts/merge.py`，自动完成：微单元生成 → 合并 → 编号与交叉引用检查，生成可交付的论文草稿。
 - 本技能保留了一套 CUMCM 风格的长文微单元提示词资产。它的重点不是让脚本机械套用某一道历史题，而是让 Agent 按“章 → 节 → 段 → 句”的方式拆解论文，逐块生成、逐块检查、最后合并。
-- `scripts/generate_all_offline.py` 是离线样板生成器：可直接跑出通用论文骨架，也可读取 `step3_filled_placeholder.py` 和计算结果，把当前赛题的信息填入正文。
+- `scripts/generate_all_offline.py` 是离线样板生成器：可直接跑出通用论文草稿，也可读取 `tasks.json`、`step3_filled_placeholder.py` 和结果证据，把当前赛题的信息填入正文。它必须输出自然论文段落，不应把微单元编号写进正文。
 
 ## 适用时机
 - 用户已经明确采用 CUMCM 风格的细粒度拆分模板，希望把一篇大论文拆成大量小片段，逐步生成并自动合并时。
@@ -24,10 +24,10 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
 ## 脚本清单（本技能实际会用到的）
 - `scripts/generate_all_offline.py`
   - 何时用：已有 `paper_output/tasks.json`，需要批量产出微单元文本文件时。
-  - 做什么：生成 `paper_output/micro_units/*.txt` 和 `paper_output/generate_log.json`。
+  - 做什么：生成 `paper_output/micro_units/*.txt` 和 `paper_output/generate_log.json`；每个文件是正式正文段落草稿，不带 `【章节 | 编号】` 这类过程标签。
 - `scripts/merge.py`
   - 何时用：微单元已生成（或部分生成），需要合并成一份可读的论文草稿时。
-  - 做什么：生成 `paper_output/final_paper.md` 和 `paper_output/ref_check.md`。
+  - 做什么：清理历史微单元过程标签，按章节合并，生成 `paper_output/final_paper.md`、`paper_output/final_paper.docx` 和 `paper_output/ref_check.md`。
 
 ## 输入
 - 必填：
@@ -63,6 +63,8 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
   - **合并完成后**：必须调用 `context-memory-keeper`，更新项目进度为“论文草稿已生成”，并记录 `final_paper.md` 的路径。
 - 运行前必须满足：`paper_output/tasks.json` 已存在且可读；否则必须先调用 `quality-assurance-auditor`。
 - 若 `tasks.json` 中已经包含 `main_model`、`model_reason`、`validation_plan`、`figure_suggestions`、`planned_figures`、`rubric_points`、`result_summary`、`key_metrics`、`tables`、`conclusions` 等字段，正文生成必须优先遵守这些模型路线、评分证据和结果证据，不得脱离契约自行发挥。
+- 微单元编号只用于文件名、日志和局部重跑，不得作为正文标题写入最终稿；最终稿只保留章节标题和自然段。
+- 离线草稿应尽量接近 `tasks.json` 中的 `target_words`，避免每个微单元只生成一句任务式短句。
 - 合并输出以 `paper_output/final_paper.md` 为唯一权威合并稿；不要在根目录或其他目录另起“final_paper.md”，避免引用混乱。
 - 若用户目标是“论文生产完整”，本技能完成后必须确认 `paper_output/final_paper.md` 与 `paper_output/ref_check.md` 同时存在；若 `ref_check.md` 报断链，则视为未完成，需要修复后重跑合并。
 
@@ -88,11 +90,13 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
 ### 3. 批量生成脚本协同
 - `scripts/generate_all_offline.py`：
   - 读取 `paper_output/tasks.json`，逐微单元生成离线文本并写入 `paper_output/micro_units/*.txt`。
+  - 每个微单元应生成可直接进入论文的自然段，围绕任务类型、主模型、验证计划、图表建议和结果证据展开，不输出任务编号标签。
 - 本技能在被调用时，指导如何配置与调用这些脚本，解释每个参数的含义与对最终论文风格/长度的影响。
 
 ### 4. 合并与自动编号
 - 使用 `scripts/merge.py`：
   - 按 `paper_output/tasks.json` 的顺序读取各微单元文件并合并。
+  - 自动清理历史生成中可能残留的 `【摘要 | ABS-1】` 等过程标签。
   - 合并为一个 Markdown 文本，并执行：
     - 自动生成目录与章节编号（如“1 问题背景”“2 问题提出”）。
     - 图/表/公式/参考文献的统一编号（如“图1”“表2”“式(3)”与“[4]”）。

@@ -20,10 +20,17 @@ FINAL_FILE = OUTPUT_DIR / "final_paper.md"
 REF_REPORT = OUTPUT_DIR / "ref_check.md"
 
 
+def clean_unit_text(text: str) -> str:
+    text = text.strip()
+    text = re.sub(r"^【[^】]+】\s*", "", text)
+    text = re.sub(r"^\[[^\]]+\]\s*", "", text)
+    return text.strip()
+
+
 def collect_units_from_tasks() -> List[str]:
     if not TASKS_FILE.exists():
         files = sorted(UNITS_DIR.glob("*.txt"), key=lambda x: x.stem)
-        return [f.read_text(encoding="utf-8").strip() for f in files]
+        return [clean_unit_text(f.read_text(encoding="utf-8")) for f in files]
 
     tasks = json.loads(TASKS_FILE.read_text(encoding="utf-8"))
     units: List[str] = []
@@ -35,10 +42,10 @@ def collect_units_from_tasks() -> List[str]:
             last_section = section
         fp = Path(t.get("file_path", ""))
         if fp.exists():
-            units.append(fp.read_text(encoding="utf-8").strip())
+            units.append(clean_unit_text(fp.read_text(encoding="utf-8")))
         else:
             unit_id = t.get("id", "")
-            units.append(f"【{unit_id}】\n(缺失)\n")
+            units.append(f"(微单元 {unit_id} 缺失，需要重新生成。)\n")
     return units
 
 
@@ -146,13 +153,7 @@ class SimpleMarkdownToDocx:
         self.doc = Document()
         
     def convert(self, md_text: str, output_path: Path):
-        self.doc.add_heading('数学建模论文 (自动生成)', 0)
-        
-        # Warning note
-        p = self.doc.add_paragraph()
-        run = p.add_run('注意：本 Word 文档由脚本直接生成（未使用 Pandoc），数学公式将显示为 LaTeX 源码。')
-        run.bold = True
-        run.font.color.rgb = RGBColor(255, 0, 0)
+        self.doc.add_heading('数学建模论文', 0)
         
         def sanitize(s):
             # Remove control characters that are not allowed in XML
