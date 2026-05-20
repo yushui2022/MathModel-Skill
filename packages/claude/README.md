@@ -13,6 +13,7 @@ claude/
         ├── modeling-paper-rubric-and-model-selector/
         ├── authoritative-data-harvester/
         ├── data-cleaning-and-visualization/
+        ├── model-code-and-result-generator/
         ├── quality-assurance-auditor/
         ├── paper-micro-unit-generator/
         ├── paper-workflow-orchestrator/
@@ -74,6 +75,10 @@ paper_output/plan/model_route.json
 paper_output/plan/data_plan.json
 paper_output/plan/visualization_plan.json
 paper_output/figure_index.json
+paper_output/results/model_results.json
+paper_output/results/metrics.json
+paper_output/results/conclusions.json
+paper_output/tables/table_index.json
 paper_output/tasks.json
 paper_output/ref_check.md
 paper_output/data_cleaned/
@@ -85,3 +90,4 @@ paper_output/figures/
 - Claude Code 包基于 Trae 原版 skill 包适配。
 - 适配只改变平台路径和平台称呼，不改变工作流设计。
 - 每个 skill 都是完整文件夹，保留脚本和参考材料。
+- `model-code-and-result-generator` 只生成结果证据契约和代码样板，不承诺自动解决所有赛题建模。

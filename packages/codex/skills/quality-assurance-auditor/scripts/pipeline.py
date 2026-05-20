@@ -16,6 +16,11 @@ RUBRIC_ALIGNMENT_FILE = PLAN_DIR / "rubric_alignment.json"
 DATA_PLAN_FILE = PLAN_DIR / "data_plan.json"
 VISUALIZATION_PLAN_FILE = PLAN_DIR / "visualization_plan.json"
 FIGURE_INDEX_FILE = OUTPUT_DIR / "figure_index.json"
+RESULTS_DIR = OUTPUT_DIR / "results"
+MODEL_RESULTS_FILE = RESULTS_DIR / "model_results.json"
+METRICS_FILE = RESULTS_DIR / "metrics.json"
+CONCLUSIONS_FILE = RESULTS_DIR / "conclusions.json"
+TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
 
 
 def init_project() -> None:
@@ -102,11 +107,154 @@ def figures_by_question(visualization_plan: dict | None) -> dict[str, list[dict]
     return grouped
 
 
+def question_ids_from_route(model_route: dict | None) -> set[str]:
+    questions = model_route.get("questions") if isinstance(model_route, dict) else []
+    if not isinstance(questions, list):
+        return set()
+    return {str(item.get("question_id") or item.get("id")).strip() for item in questions if isinstance(item, dict) and (item.get("question_id") or item.get("id"))}
+
+
+def group_items_by_question(items: object) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    if not isinstance(items, list):
+        return grouped
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        qid = str(item.get("question_id") or "").strip()
+        if qid:
+            grouped.setdefault(qid, []).append(item)
+    return grouped
+
+
+def model_results_by_question(model_results: dict | None) -> dict[str, dict]:
+    questions = model_results.get("questions") if isinstance(model_results, dict) else []
+    grouped: dict[str, dict] = {}
+    if not isinstance(questions, list):
+        return grouped
+    for item in questions:
+        if not isinstance(item, dict):
+            continue
+        qid = str(item.get("question_id") or "").strip()
+        if qid:
+            grouped[qid] = item
+    return grouped
+
+
+def metrics_by_question(metrics: dict | None) -> dict[str, list[dict]]:
+    items = metrics.get("items") if isinstance(metrics, dict) else []
+    return group_items_by_question(items)
+
+
+def conclusions_by_question(conclusions: dict | None) -> dict[str, list[dict]]:
+    items = conclusions.get("items") if isinstance(conclusions, dict) else []
+    return group_items_by_question(items)
+
+
+def tables_by_question(table_index: dict | None) -> dict[str, list[dict]]:
+    tables = table_index.get("tables") if isinstance(table_index, dict) else []
+    return group_items_by_question(tables)
+
+
+def compact_metrics(items: list[dict]) -> list[dict]:
+    result = []
+    for item in items:
+        result.append(
+            {
+                "metric_name": item.get("metric_name", ""),
+                "metric_role": item.get("metric_role", ""),
+                "value": item.get("value", None),
+                "unit": item.get("unit", ""),
+                "status": item.get("status", ""),
+            }
+        )
+    return result
+
+
+def compact_tables(items: list[dict]) -> list[dict]:
+    result = []
+    for item in items:
+        result.append(
+            {
+                "table_id": item.get("table_id", ""),
+                "title": item.get("title", ""),
+                "purpose": item.get("purpose", ""),
+                "path": item.get("path", ""),
+                "status": item.get("status", ""),
+            }
+        )
+    return result
+
+
+def compact_conclusions(items: list[dict]) -> list[dict]:
+    result = []
+    for item in items:
+        result.append(
+            {
+                "conclusion_text": item.get("conclusion_text", ""),
+                "evidence_status": item.get("evidence_status", ""),
+            }
+        )
+    return result
+
+
+def evidence_status_for(result_item: dict | None, metric_items: list[dict], table_items: list[dict], conclusion_items: list[dict]) -> str:
+    if not result_item and not metric_items and not table_items and not conclusion_items:
+        return "missing"
+    markers = [
+        str((result_item or {}).get("evidence_status") or ""),
+        str((result_item or {}).get("status") or ""),
+        *[str(item.get("status") or item.get("evidence_status") or "") for item in metric_items],
+        *[str(item.get("status") or item.get("evidence_status") or "") for item in table_items],
+        *[str(item.get("status") or item.get("evidence_status") or "") for item in conclusion_items],
+    ]
+    if any(marker in {"needs_real_modeling", "draft_contract", "to_be_filled", "template", "draft"} for marker in markers):
+        return "needs_real_modeling"
+    return "ready"
+
+
+def build_result_evidence(model_results: dict | None, metrics: dict | None, conclusions: dict | None, table_index: dict | None) -> dict[str, dict]:
+    result_map = model_results_by_question(model_results)
+    metric_map = metrics_by_question(metrics)
+    conclusion_map = conclusions_by_question(conclusions)
+    table_map = tables_by_question(table_index)
+    all_tables = table_map.get("ALL", [])
+    qids = set(result_map) | set(metric_map) | set(conclusion_map) | {qid for qid in table_map if qid != "ALL"}
+    evidence: dict[str, dict] = {}
+    for qid in qids:
+        result_item = result_map.get(qid)
+        metric_items = metric_map.get(qid, [])
+        table_items = table_map.get(qid, []) + all_tables
+        conclusion_items = conclusion_map.get(qid, [])
+        evidence[qid] = {
+            "result_summary": (result_item or {}).get("result_summary", ""),
+            "key_metrics": compact_metrics(metric_items),
+            "tables": compact_tables(table_items),
+            "conclusions": compact_conclusions(conclusion_items),
+            "evidence_status": evidence_status_for(result_item, metric_items, table_items, conclusion_items),
+        }
+    return evidence
+
+
+def manifest_has_result_evidence(tasks: list[dict]) -> bool:
+    question_tasks = [task for task in tasks if isinstance(task, dict) and task.get("question_id")]
+    if not question_tasks:
+        return False
+    required = {"result_summary", "key_metrics", "tables", "conclusions", "evidence_status"}
+    return all(required.issubset(set(task.keys())) for task in question_tasks)
+
+
 def check_evidence_contracts() -> list[str]:
     warnings: list[str] = []
+    model_route = load_model_route()
+    route_qids = question_ids_from_route(model_route)
     data_plan = load_json_contract(DATA_PLAN_FILE)
     visualization_plan = load_json_contract(VISUALIZATION_PLAN_FILE)
     figure_index = load_json_contract(FIGURE_INDEX_FILE)
+    model_results = load_json_contract(MODEL_RESULTS_FILE)
+    metrics = load_json_contract(METRICS_FILE)
+    conclusions = load_json_contract(CONCLUSIONS_FILE)
+    table_index = load_json_contract(TABLE_INDEX_FILE)
 
     if data_plan is None:
         warnings.append(f"缺少数据处理计划：{DATA_PLAN_FILE}")
@@ -151,6 +299,64 @@ def check_evidence_contracts() -> list[str]:
             for figure in figures:
                 if isinstance(figure, dict) and not is_relative_path(figure.get("path")):
                     warnings.append(f"figure_index.json 的 path 必须是相对路径：{figure.get('path')}")
+
+    result_map = model_results_by_question(model_results)
+    metric_map = metrics_by_question(metrics)
+    conclusion_map = conclusions_by_question(conclusions)
+    table_map = tables_by_question(table_index)
+
+    if model_results is None:
+        warnings.append(f"缺少模型结果契约：{MODEL_RESULTS_FILE}")
+    elif route_qids:
+        for qid in result_map:
+            if qid not in route_qids:
+                warnings.append(f"model_results.json 引用了不存在的 question_id：{qid}")
+
+    if metrics is None:
+        warnings.append(f"缺少评价指标契约：{METRICS_FILE}")
+    elif route_qids:
+        for qid in metric_map:
+            if qid not in route_qids:
+                warnings.append(f"metrics.json 引用了不存在的 question_id：{qid}")
+
+    if conclusions is None:
+        warnings.append(f"缺少结论契约：{CONCLUSIONS_FILE}")
+    elif route_qids:
+        for qid in conclusion_map:
+            if qid not in route_qids:
+                warnings.append(f"conclusions.json 引用了不存在的 question_id：{qid}")
+
+    if table_index is None:
+        warnings.append(f"缺少表格索引契约：{TABLE_INDEX_FILE}")
+    else:
+        tables = table_index.get("tables")
+        if not isinstance(tables, list):
+            warnings.append("table_index.json 中没有 tables[]")
+        else:
+            for table in tables:
+                if not isinstance(table, dict):
+                    continue
+                path = table.get("path")
+                if not is_relative_path(path):
+                    warnings.append(f"table_index.json 的 path 必须是相对路径：{path}")
+                qid = str(table.get("question_id") or "").strip()
+                if route_qids and qid and qid != "ALL" and qid not in route_qids:
+                    warnings.append(f"table_index.json 引用了不存在的 question_id：{qid}")
+
+    if route_qids:
+        figure_map = figures_by_question(visualization_plan)
+        result_evidence = build_result_evidence(model_results, metrics, conclusions, table_index)
+        for qid in sorted(route_qids):
+            evidence = result_evidence.get(qid, {})
+            has_metric = bool(evidence.get("key_metrics"))
+            has_table = bool(evidence.get("tables"))
+            has_figure = bool(figure_map.get(qid))
+            if not any((has_metric, has_table, has_figure)):
+                warnings.append(f"{qid} 缺少图表、表格或指标证据之一，正文生成时只能写通用草稿")
+            if evidence.get("evidence_status") == "missing":
+                warnings.append(f"{qid} 缺少模型结果/指标/结论契约，真实建模结果待补")
+            elif evidence.get("evidence_status") == "needs_real_modeling":
+                warnings.append(f"{qid} 的结果证据仍是草稿骨架，需要结合真实建模代码补齐")
     return warnings
 
 
@@ -252,6 +458,11 @@ def generate_dynamic_manifest(analysis: dict, target_words: int) -> list[dict]:
             "improved_model": model.get("improved", "结合题目需求的改进模型"),
             "validation_plan": question.get("validation_plan", []),
             "figure_suggestions": question.get("figure_suggestions", []),
+            "result_summary": "",
+            "key_metrics": [],
+            "tables": [],
+            "conclusions": [],
+            "evidence_status": "missing",
         }
         roles = [
             "task_definition",
@@ -289,10 +500,12 @@ def generate_route_manifest(
     rubric_alignment: dict | None,
     target_words: int,
     visualization_plan: dict | None = None,
+    result_evidence: dict[str, dict] | None = None,
 ) -> list[dict]:
     questions = model_route.get("questions")
     if not isinstance(questions, list) or not questions:
         questions = []
+    result_evidence = result_evidence or {}
 
     tasks: list[dict] = []
     add_task(tasks, "ABS-1", "摘要", target_words, role="background_and_problem")
@@ -338,6 +551,7 @@ def generate_route_manifest(
         route_figure_titles = figure_titles(question.get("figures"))
         planned_figure_titles = figure_titles(planned_figures)
         figure_suggestions = list(dict.fromkeys(route_figure_titles + planned_figure_titles))
+        evidence = result_evidence.get(qid, {})
         metadata = {
             "question_id": qid,
             "task_type": question.get("task_type", "综合建模/统计分析"),
@@ -352,6 +566,11 @@ def generate_route_manifest(
             "planned_figures": planned_figures,
             "rubric_points": rubric_points_for(qid, rubric_alignment),
             "paper_sections": question.get("paper_sections", []),
+            "result_summary": evidence.get("result_summary", ""),
+            "key_metrics": evidence.get("key_metrics", []),
+            "tables": evidence.get("tables", []),
+            "conclusions": evidence.get("conclusions", []),
+            "evidence_status": evidence.get("evidence_status", "missing"),
             "contract_source": "paper_output/plan/model_route.json",
         }
         roles = [
@@ -388,13 +607,19 @@ def generate_route_manifest(
 def generate_task_manifest(target_words: int = 300, force: bool = False) -> tuple[list[dict], bool]:
     existing = load_existing_tasks()
     if existing is not None and not force:
-        return existing, False
+        if not MODEL_ROUTE_FILE.exists() or manifest_has_result_evidence(existing):
+            return existing, False
 
     model_route = load_model_route()
     if model_route is not None:
         rubric_alignment = load_rubric_alignment()
         visualization_plan = load_json_contract(VISUALIZATION_PLAN_FILE)
-        tasks = generate_route_manifest(model_route, rubric_alignment, target_words, visualization_plan)
+        model_results = load_json_contract(MODEL_RESULTS_FILE)
+        metrics = load_json_contract(METRICS_FILE)
+        conclusions = load_json_contract(CONCLUSIONS_FILE)
+        table_index = load_json_contract(TABLE_INDEX_FILE)
+        result_evidence = build_result_evidence(model_results, metrics, conclusions, table_index)
+        tasks = generate_route_manifest(model_route, rubric_alignment, target_words, visualization_plan, result_evidence)
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         TASKS_FILE.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
         return tasks, True
@@ -507,6 +732,10 @@ def run_pipeline() -> int:
         print(f"[+] 已连接模型路线契约：{MODEL_ROUTE_FILE}")
         if RUBRIC_ALIGNMENT_FILE.exists():
             print(f"[+] 已连接评分点契约：{RUBRIC_ALIGNMENT_FILE}")
+        if MODEL_RESULTS_FILE.exists():
+            print(f"[+] 已连接结果证据契约：{MODEL_RESULTS_FILE}")
+        if TABLE_INDEX_FILE.exists():
+            print(f"[+] 已连接表格证据索引：{TABLE_INDEX_FILE}")
     elif PROBLEM_ANALYSIS_FILE.exists():
         print(f"[+] 已连接结构化赛题分析：{PROBLEM_ANALYSIS_FILE}")
     else:
@@ -514,13 +743,13 @@ def run_pipeline() -> int:
 
     evidence_warnings = check_evidence_contracts()
     if evidence_warnings:
-        print("[!] 数据/图表证据链提示：")
+        print("[!] 数据/图表/结果证据链提示：")
         for item in evidence_warnings[:20]:
             print(f"    - {item}")
         if len(evidence_warnings) > 20:
             print(f"    - ... 共 {len(evidence_warnings)} 项")
     else:
-        print("[+] 数据/图表证据链契约检查通过")
+        print("[+] 数据/图表/结果证据链契约检查通过")
 
     ok, total, total_chars = verify_completeness()
     print(f"[+] 进度：{ok}/{total}")

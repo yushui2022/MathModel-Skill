@@ -6,9 +6,9 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 # 质量审计员（Quality Assurance Auditor）
 
 ## 执行契约
-- 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json` 与 `paper_output/figure_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
+- 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/` 与 `paper_output/tables/table_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
 - 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在。
-- 下游交接：`paper-micro-unit-generator` 只应在 `tasks.json` 存在后生成正文；任务中必须保留模型路线、验证计划、图表建议和评分点字段。
+- 下游交接：`paper-micro-unit-generator` 只应在 `tasks.json` 存在后生成正文；任务中必须保留模型路线、验证计划、图表建议、评分点、结果摘要、指标、表格和结论字段。
 - 推荐下一步：正文生成前通过后进入 `paper-micro-unit-generator`；若已经生成 `final_paper.md` 或 `final_paper.docx`，则执行最终一致性检查并回到 `paper-workflow-orchestrator` 汇总。
 - 失败回退：若 `problem_files/` 为空应阻塞；若模型路线缺失则用题意分析生成任务；若题意分析也缺失才使用通用任务模板。
 
@@ -92,6 +92,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 - 若存在 `paper_output/plan/model_route.json`，脚本会优先按模型路线、评分点证据、主模型、验证计划和建议图表动态生成微单元清单。
 - 若存在 `paper_output/plan/data_plan.json`、`visualization_plan.json` 与 `paper_output/figure_index.json`，脚本会做轻量证据链检查：确认图表 ID、输出路径和数据路径可追溯，但不会因为计划图尚未实际生成就阻塞全流程。
+- 若存在 `paper_output/results/model_results.json`、`metrics.json`、`conclusions.json` 与 `paper_output/tables/table_index.json`，脚本会把 `result_summary`、`key_metrics`、`tables`、`conclusions`、`evidence_status` 写入每个子问题任务，供微单元生成器直接使用。
 - 若不存在模型路线契约但存在 `paper_output/step1/problem_analysis.json`，脚本会按真实子问题、任务类型、推荐模型、验证计划和建议图表动态生成微单元清单。
 - 若不存在结构化题意分析，脚本才回退到通用任务清单模板。
 - 若 `paper_output/tasks.json` 已存在，默认不覆盖；需要按最新题意重新生成时，设置 `MATHMODEL_REGENERATE_TASKS=1` 后再运行。
@@ -103,7 +104,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 python .trae/skills/quality-assurance-auditor/scripts/pipeline.py
 ```
 
-**行为**：初始化目录 → 检查 `problem_files/` 是否为空（不通过则阻塞）→ 优先读取 `paper_output/plan/model_route.json` 与 `rubric_alignment.json` → 读取数据/图表计划做轻量证据链提示 → 回退读取 `paper_output/step1/problem_analysis.json` → 生成动态 `paper_output/tasks.json` → 汇报当前微单元完成进度并扫描占位痕迹。
+**行为**：初始化目录 → 检查 `problem_files/` 是否为空（不通过则阻塞）→ 优先读取 `paper_output/plan/model_route.json` 与 `rubric_alignment.json` → 读取数据/图表/结果/表格契约做轻量证据链提示 → 回退读取 `paper_output/step1/problem_analysis.json` → 生成动态 `paper_output/tasks.json` → 汇报当前微单元完成进度并扫描占位痕迹。
 
 ## 目录约定（与项目全局对齐）
 - 本技能会强制要求 `problem_files/` 非空。

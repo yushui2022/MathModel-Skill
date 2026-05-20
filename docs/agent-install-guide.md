@@ -64,6 +64,13 @@ paper_output/
 │   ├── data_plan.json
 │   └── visualization_plan.json
 ├── figure_index.json
+├── results/
+│   ├── model_results.json
+│   ├── metrics.json
+│   └── conclusions.json
+├── tables/
+│   ├── table_index.json
+│   └── *.csv
 ├── final_paper.docx
 ├── final_paper.md
 ├── tasks.json
@@ -72,7 +79,7 @@ paper_output/
 └── figures/
 ```
 
-`problem_analysis.json` 是三端共同使用的结构化题意契约。总编排器会先生成它，再生成 `paper_output/plan/model_route.json` 与 `rubric_alignment.json`。数据清洗 skill 会补充 `data_plan.json`、`visualization_plan.json` 和 `figure_index.json`，QA 再根据模型路线、评分证据和图表计划生成动态 `tasks.json`。
+`problem_analysis.json` 是三端共同使用的结构化题意契约。总编排器会先生成它，再生成 `paper_output/plan/model_route.json` 与 `rubric_alignment.json`。数据清洗 skill 会补充 `data_plan.json`、`visualization_plan.json` 和 `figure_index.json`；结果证据 skill 会补充 `paper_output/results/` 与 `paper_output/tables/`；QA 再根据模型路线、评分证据、图表计划和结果证据生成动态 `tasks.json`。
 
 ## Skill 包结构
 

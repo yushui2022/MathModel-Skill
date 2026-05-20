@@ -7,7 +7,7 @@
 当用户要求“开始生成”“跑一下这个题”“生成数学建模论文”时，按 MathModel Skill 工作流完成：
 
 ```text
-赛题解析 -> 模型选择 -> 数据获取 -> 数据与图表计划 -> 数据清洗与可视化 -> QA 门禁 -> 微单元生成 -> 合并 Word
+赛题解析 -> 模型选择 -> 数据获取 -> 数据与图表计划 -> 数据清洗与可视化 -> 结果证据 -> QA 门禁 -> 微单元生成 -> 合并 Word
 ```
 
 ## Start Rule
@@ -67,6 +67,10 @@ paper_output/plan/model_route.json
 paper_output/plan/data_plan.json
 paper_output/plan/visualization_plan.json
 paper_output/figure_index.json
+paper_output/results/model_results.json
+paper_output/results/metrics.json
+paper_output/results/conclusions.json
+paper_output/tables/table_index.json
 paper_output/ref_check.md
 ```
 
@@ -87,6 +91,7 @@ $env:PYTHONIOENCODING="utf-8"
 ## 执行规则
 
 - 不要跳过 `quality-assurance-auditor`。
+- 数据清洗后如果需要正文引用结果，先让 `model-code-and-result-generator` 生成或补齐结果、指标、结论和表格证据契约。
 - 不要把输出散落到根目录，统一写入 `paper_output/`。
 - 不要改动 `problem_files/` 中的原始赛题和附件。
 - 当用户只要求局部重跑时，按对应 skill 的 `scripts/` 执行。

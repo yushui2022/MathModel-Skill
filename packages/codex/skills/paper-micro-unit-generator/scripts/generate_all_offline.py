@@ -174,12 +174,82 @@ def list_text(value: object) -> list[str]:
     result = []
     for item in value:
         if isinstance(item, dict):
-            text = str(item.get("title") or item.get("rubric_point") or item.get("figure_id") or "").strip()
+            text = str(
+                item.get("title")
+                or item.get("table_id")
+                or item.get("rubric_point")
+                or item.get("figure_id")
+                or item.get("metric_name")
+                or item.get("conclusion_text")
+                or ""
+            ).strip()
         else:
             text = str(item).strip()
         if text:
             result.append(text)
     return result
+
+
+def metric_text(metrics: object) -> str:
+    if not isinstance(metrics, list):
+        return ""
+    parts = []
+    for item in metrics:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("metric_name") or "").strip()
+        role = str(item.get("metric_role") or "").strip()
+        value = item.get("value")
+        unit = str(item.get("unit") or "").strip()
+        status = str(item.get("status") or "").strip()
+        if value is None or value == "":
+            value_text = "待真实建模补齐" if status else "待补齐"
+        else:
+            value_text = f"{value}{unit}"
+        label = name or role
+        if label:
+            suffix = f"（{role}）" if role and role != label else ""
+            parts.append(f"{label}{suffix}: {value_text}")
+    return "；".join(parts)
+
+
+def table_text(tables: object) -> str:
+    if not isinstance(tables, list):
+        return ""
+    parts = []
+    for item in tables:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or item.get("table_id") or "").strip()
+        path = str(item.get("path") or "").strip()
+        if title and path:
+            parts.append(f"{title}（{path}）")
+        elif title:
+            parts.append(title)
+    return "；".join(parts)
+
+
+def conclusion_text(conclusions: object) -> str:
+    if not isinstance(conclusions, list):
+        return ""
+    parts = []
+    for item in conclusions:
+        if isinstance(item, dict):
+            text = str(item.get("conclusion_text") or "").strip()
+        else:
+            text = str(item).strip()
+        if text:
+            parts.append(text)
+    return "；".join(parts)
+
+
+def evidence_note(task: dict) -> str:
+    status = str(task.get("evidence_status") or "").strip()
+    if status == "needs_real_modeling":
+        return "当前结果证据仍是契约骨架，正式提交前必须用当前赛题专用建模代码补齐真实数值。"
+    if status == "missing":
+        return "当前缺少结果证据契约，正文应标记真实建模结果待补。"
+    return ""
 
 
 def render_model(section: str, unit_id: str, ph: dict, results: dict, task: dict) -> str:
@@ -195,13 +265,18 @@ def render_model(section: str, unit_id: str, ph: dict, results: dict, task: dict
     validation_plan = task.get("validation_plan") if isinstance(task.get("validation_plan"), list) else []
     figure_suggestions = list_text(task.get("figure_suggestions")) or list_text(task.get("figures"))
     rubric_points = list_text(task.get("rubric_points"))
+    task_result_summary = str(task.get("result_summary") or "").strip()
+    task_metrics = metric_text(task.get("key_metrics"))
+    task_tables = table_text(task.get("tables"))
+    task_conclusions = conclusion_text(task.get("conclusions"))
+    task_evidence_note = evidence_note(task)
     model = text_value(ph, [f"{p}模型", f"{p}方法", "核心模型"], main_default)
     algo = text_value(ph, [f"{p}算法", f"{p}求解方法", "核心算法"], main_default)
-    result = result_value(results, [f"{p}结果", f"{p}_result", "核心结果"], "核心数值结果需由当前赛题计算脚本生成")
+    result = task_result_summary or result_value(results, [f"{p}结果", f"{p}_result", "核心结果"], "核心数值结果需由当前赛题计算脚本生成")
     metric = text_value(
         ph,
         [f"{p}评价指标", "评价指标"],
-        "；".join(str(item) for item in validation_plan) or "误差、得分、约束满足率或稳定性指标",
+        task_metrics or "；".join(str(item) for item in validation_plan) or "误差、得分、约束满足率或稳定性指标",
     )
     if n == 1:
         return f"{p}（{question_id}）首先需要明确输入、输出和评价口径。根据模型路线契约，本问属于“{task_type}”任务，本文选择“{model}”作为主模型。"
@@ -214,13 +289,18 @@ def render_model(section: str, unit_id: str, ph: dict, results: dict, task: dict
         return f"为了避免模型只停留在形式推导，本文应以“{baseline_default}”作为基线方案，并可用{backup_text}进行对照，比较不同方法的效果。"
     if n == 5:
         figure_text = "、".join(str(item) for item in figure_suggestions) or "表格、图形或关键数值"
-        return f"结果展示部分应围绕题目原问展开，优先给出{figure_text}。当前结果摘要为：{result}。"
+        table_sentence = f" 可引用的表格证据包括：{task_tables}。" if task_tables else ""
+        note_sentence = f" {task_evidence_note}" if task_evidence_note else ""
+        return f"结果展示部分应围绕题目原问展开，优先给出{figure_text}。当前结果摘要为：{result}。{table_sentence}{note_sentence}"
     if n == 6:
-        return f"模型检验阶段使用“{metric}”评价结果可靠性，并结合残差、敏感性或约束检查说明模型是否稳定。"
+        note_sentence = f" {task_evidence_note}" if task_evidence_note else ""
+        return f"模型检验阶段使用“{metric}”评价结果可靠性，并结合残差、敏感性或约束检查说明模型是否稳定。{note_sentence}"
     if n == 7:
         rubric_text = "、".join(rubric_points) if rubric_points else "题意覆盖、模型合理性、结果可信和图表证据"
         return f"敏感性分析和结果解释应对齐评分点：{rubric_text}，并说明结论在合理扰动范围内是否保持一致。"
-    return f"综上，{p}（{question_id}）必须形成“任务定义 → 模型建立 → 算法求解 → 结果验证 → 回答原问”的闭环。"
+    conclusion = task_conclusions or f"{p}（{question_id}）必须形成“任务定义 → 模型建立 → 算法求解 → 结果验证 → 回答原问”的闭环。"
+    note_sentence = f" {task_evidence_note}" if task_evidence_note else ""
+    return f"综上，{conclusion}{note_sentence}"
 
 
 def render_analysis(unit_id: str, ph: dict, results: dict) -> str:
@@ -270,8 +350,8 @@ def render_references(ph: dict) -> str:
 def render_appendix(unit_id: str, ph: dict) -> str:
     if unit_id == "APP-1":
         return (
-            "附录应给出关键代码的复现说明。数据清洗、可视化和模型计算代码可以参考各 skill 的 `scripts/` 样板，"
-            "但真实赛题应根据当前数据字段和图表需求二次生成或修改。"
+            "附录应给出关键代码的复现说明。数据清洗、可视化、模型计算和结果契约代码可以参考各 skill 的 `scripts/` 样板，"
+            "但真实赛题应根据当前数据字段、图表需求和建模结果二次生成或修改。"
         )
     return f"复现入口建议为 `{entry_command()}`。运行前应确认 `problem_files/`、`crawled_data/`、`paper_output/` 的输入输出路径符合项目约定。"
 

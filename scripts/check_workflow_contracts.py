@@ -11,6 +11,10 @@ RUBRIC_ALIGNMENT_FILE = BASE_DIR / "paper_output" / "plan" / "rubric_alignment.j
 DATA_PLAN_FILE = BASE_DIR / "paper_output" / "plan" / "data_plan.json"
 VISUALIZATION_PLAN_FILE = BASE_DIR / "paper_output" / "plan" / "visualization_plan.json"
 FIGURE_INDEX_FILE = BASE_DIR / "paper_output" / "figure_index.json"
+MODEL_RESULTS_FILE = BASE_DIR / "paper_output" / "results" / "model_results.json"
+METRICS_FILE = BASE_DIR / "paper_output" / "results" / "metrics.json"
+CONCLUSIONS_FILE = BASE_DIR / "paper_output" / "results" / "conclusions.json"
+TABLE_INDEX_FILE = BASE_DIR / "paper_output" / "tables" / "table_index.json"
 TASKS_FILE = BASE_DIR / "paper_output" / "tasks.json"
 
 
@@ -33,6 +37,20 @@ def qids_from_model_route(data: dict[str, Any]) -> set[str]:
     if not isinstance(questions, list):
         return set()
     return {str(q.get("question_id")) for q in questions if isinstance(q, dict) and q.get("question_id")}
+
+
+def qids_from_model_results(data: dict[str, Any]) -> set[str]:
+    questions = data.get("questions") if isinstance(data, dict) else []
+    if not isinstance(questions, list):
+        return set()
+    return {str(q.get("question_id")) for q in questions if isinstance(q, dict) and q.get("question_id")}
+
+
+def qids_from_items_contract(data: dict[str, Any]) -> set[str]:
+    items = data.get("items") if isinstance(data, dict) else []
+    if not isinstance(items, list):
+        return set()
+    return {str(item.get("question_id")) for item in items if isinstance(item, dict) and item.get("question_id")}
 
 
 def is_relative_contract_path(value: Any) -> bool:
@@ -83,6 +101,57 @@ def check_optional_evidence_contracts(failures: list[str]) -> None:
             for figure in figures:
                 if isinstance(figure, dict) and not is_relative_contract_path(figure.get("path")):
                     failures.append(f"figure_index.json 的 path 必须是相对路径：{figure.get('path')}")
+
+
+def check_optional_result_contracts(failures: list[str], route_qids: set[str], tasks: Any) -> None:
+    if MODEL_RESULTS_FILE.exists():
+        model_results = load_json(MODEL_RESULTS_FILE)
+        for qid in qids_from_model_results(model_results):
+            if route_qids and qid not in route_qids:
+                failures.append(f"model_results.json 引用了不存在的 question_id：{qid}")
+
+    if METRICS_FILE.exists():
+        metrics = load_json(METRICS_FILE)
+        for qid in qids_from_items_contract(metrics):
+            if route_qids and qid not in route_qids:
+                failures.append(f"metrics.json 引用了不存在的 question_id：{qid}")
+
+    if CONCLUSIONS_FILE.exists():
+        conclusions = load_json(CONCLUSIONS_FILE)
+        conclusion_qids = qids_from_items_contract(conclusions)
+        for qid in conclusion_qids:
+            if route_qids and qid not in route_qids:
+                failures.append(f"conclusions.json 引用了不存在的 question_id：{qid}")
+        items = conclusions.get("items") if isinstance(conclusions, dict) else []
+        if isinstance(items, list):
+            for item in items:
+                if isinstance(item, dict) and item.get("question_id") and not str(item.get("conclusion_text") or "").strip():
+                    failures.append(f"conclusions.json 中 {item.get('question_id')} 缺少 conclusion_text")
+
+    if TABLE_INDEX_FILE.exists():
+        table_index = load_json(TABLE_INDEX_FILE)
+        tables = table_index.get("tables") if isinstance(table_index, dict) else []
+        if not isinstance(tables, list):
+            failures.append("table_index.json 中没有 tables[]")
+        else:
+            for table in tables:
+                if not isinstance(table, dict):
+                    continue
+                if not is_relative_contract_path(table.get("path")):
+                    failures.append(f"table_index.json 的 path 必须是相对路径：{table.get('path')}")
+                qid = str(table.get("question_id") or "").strip()
+                if route_qids and qid and qid != "ALL" and qid not in route_qids:
+                    failures.append(f"table_index.json 引用了不存在的 question_id：{qid}")
+
+    result_contracts_exist = any(path.exists() for path in (MODEL_RESULTS_FILE, METRICS_FILE, CONCLUSIONS_FILE, TABLE_INDEX_FILE))
+    if result_contracts_exist and isinstance(tasks, list):
+        required = {"result_summary", "key_metrics", "tables", "conclusions", "evidence_status"}
+        for task in tasks:
+            if not isinstance(task, dict) or not task.get("question_id"):
+                continue
+            missing = required - set(task)
+            if missing:
+                failures.append(f"tasks.json 中 {task.get('id', task.get('question_id'))} 缺少结果证据字段：{sorted(missing)}")
 
 
 def main() -> int:
@@ -143,6 +212,7 @@ def main() -> int:
                     failures.append(f"expected_path 必须是相对路径：{expected_path}")
 
     check_optional_evidence_contracts(failures)
+    check_optional_result_contracts(failures, route_qids, tasks)
 
     if failures:
         for failure in failures:

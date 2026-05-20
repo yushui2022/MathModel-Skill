@@ -1,0 +1,8 @@
+interface:
+  display_name: "Model Result Generator"
+  short_description: "生成模型结果、指标、结论和论文表格证据契约"
+  brand_color: "#0F766E"
+  default_prompt: "Use $model-code-and-result-generator to create model result, metric, conclusion, and table evidence contracts for the MathModel Skill workflow."
+
+policy:
+  allow_implicit_invocation: true

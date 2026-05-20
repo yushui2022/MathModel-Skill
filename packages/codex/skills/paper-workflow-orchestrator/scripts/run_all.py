@@ -63,6 +63,18 @@ def main() -> int:
     else:
         print("ℹ️ 未找到 step2_calc_results.py，跳过自定义计算步骤。")
 
+    print("=== Step-1.5 建模代码与结果证据生成 ===")
+    result_contract_script = root / "skills/model-code-and-result-generator/scripts/build_result_contracts.py"
+    if result_contract_script.exists():
+        r_result = subprocess.run(
+            [sys.executable, str(result_contract_script)],
+            check=False,
+        )
+        if r_result.returncode != 0:
+            print("⚠️ 结果证据契约未成功生成，QA 将提示真实建模结果待补。")
+    else:
+        print("   未检测到结果证据生成脚本，跳过。")
+
     print("=== Step-2 质量审计与任务清单 ===")
     r0 = subprocess.run(
         [sys.executable, "skills/quality-assurance-auditor/scripts/pipeline.py"],

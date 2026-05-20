@@ -95,6 +95,10 @@ paper_output/figure_index.json
 paper_output/plan/model_route.json
 paper_output/plan/data_plan.json
 paper_output/plan/visualization_plan.json
+paper_output/results/model_results.json
+paper_output/results/metrics.json
+paper_output/results/conclusions.json
+paper_output/tables/table_index.json
 paper_output/data_cleaned/
 paper_output/figures/
 ```
@@ -108,6 +112,7 @@ paper_output/figures/
 - `data_plan.json` 是数据处理交接单。
 - `visualization_plan.json` 是图表计划交接单。
 - `figure_index.json` 是图表索引，用于检查图文断链。
+- `results/` 和 `tables/table_index.json` 是结果、指标、结论和表格证据交接单；示例里会标记真实建模结果待补。
 - `tasks.json` 是微单元任务清单。
 - `final_paper.docx` 是最终 Word 草稿。
 

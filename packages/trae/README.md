@@ -12,6 +12,7 @@ trae/
         ├── modeling-paper-rubric-and-model-selector/
         ├── authoritative-data-harvester/
         ├── data-cleaning-and-visualization/
+        ├── model-code-and-result-generator/
         ├── quality-assurance-auditor/
         ├── paper-micro-unit-generator/
         ├── paper-workflow-orchestrator/
@@ -68,6 +69,10 @@ paper_output/plan/model_route.json
 paper_output/plan/data_plan.json
 paper_output/plan/visualization_plan.json
 paper_output/figure_index.json
+paper_output/results/model_results.json
+paper_output/results/metrics.json
+paper_output/results/conclusions.json
+paper_output/tables/table_index.json
 paper_output/tasks.json
 paper_output/ref_check.md
 paper_output/data_cleaned/
@@ -78,4 +83,5 @@ paper_output/figures/
 
 - Trae 包是当前 canonical skill source 的原版复制。
 - 本包按完整 skill 文件夹分发，包含 `SKILL.md`、`scripts/`、`references/` 和 memory 文件。
+- `model-code-and-result-generator` 是结果证据辅助 skill，用于生成结果、指标、结论和表格契约；它不是万能自动建模系统。
 - `context-memory-keeper` 是辅助记忆 skill，不计入 7 个论文生产核心 skill。
