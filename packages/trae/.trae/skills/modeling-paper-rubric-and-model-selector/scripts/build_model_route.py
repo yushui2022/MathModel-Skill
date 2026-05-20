@@ -1,5 +1,6 @@
 import json
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,14 @@ RUBRIC_ALIGNMENT_FILE = PLAN_DIR / "rubric_alignment.json"
 SCORING_STRATEGY_FILE = PLAN_DIR / "scoring_strategy.md"
 SKILL_DIR = Path(__file__).resolve().parents[1]
 PAPER_PROMPT_FILE = SKILL_DIR / "references" / "paper_prompt_default.md"
+
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
 
 BACKUP_MODELS = {
@@ -256,6 +265,7 @@ def write_scoring_strategy(model_route: dict[str, Any], rubric_alignment: dict[s
 
 
 def main() -> int:
+    configure_utf8_stdio()
     analysis = load_json(PROBLEM_ANALYSIS_FILE)
     if analysis is None:
         print(f"❌ 未找到结构化题意分析：{PROBLEM_ANALYSIS_FILE}")

@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import sys
 from datetime import datetime
 from pathlib import Path
 
 
 BASE_DIR = Path.cwd().resolve()
 OUTPUT_DIR = BASE_DIR / "paper_output"
+
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
 
 DIRECTORIES = [
@@ -156,6 +165,7 @@ General workflow QA remains in the reusable `quality-assurance-auditor` skill.
 
 
 def main() -> int:
+    configure_utf8_stdio()
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for dirname in DIRECTORIES:
         (OUTPUT_DIR / dirname).mkdir(parents=True, exist_ok=True)
