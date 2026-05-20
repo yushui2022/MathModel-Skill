@@ -1,6 +1,6 @@
 ---
 name: "paper-workflow-orchestrator"
-description: "串联赛题解析、数据计算与微单元脚本，一键从赛题文件夹到完整论文。Invoke when用户已放好赛题与附件，希望自动跑完全流程。"
+description: "MathModel Skill 的总入口和工作流编排器。Invoke when 用户要开始数学建模论文、分析赛题、生成论文、使用 MathModel Skill，或不知道该调用哪个数学建模 skill；必须先读取本 skill，再按阶段调用其他 skill。"
 ---
 
 # 论文生成全流程编排器
@@ -8,33 +8,41 @@ description: "串联赛题解析、数据计算与微单元脚本，一键从赛
 ## 执行契约
 - 上游输入：`problem_files/` 中的赛题与附件数据；可选读取 `crawled_data/` 中的补充权威数据。
 - 必须输出：`problem_analysis.json`、`model_route.json`、`rubric_alignment.json`、`scoring_strategy.md`、数据/图表计划、`tasks.json`、微单元、`final_paper.md`、`final_paper.docx` 与 `ref_check.md`。
-- 下游交接：本技能是总入口，负责串联其他 skill；用户要“一键生成/跑完整流程”时优先调用它。
+- 下游交接：本技能是总入口，负责判断当前阶段并路由到其他 skill；用户不知道从哪个 skill 开始时优先调用它。
 - 失败回退：`problem_files/` 为空时阻塞；模型路线、数据计划或图表生成失败时打印 warning 并继续，让 QA 按可用契约回退。
 
 ## 目标
 - 串联现有技能与脚本，用尽量少的人工操作从赛题文件夹直接得到可提交的完整论文草稿。
 - 保持本项目的核心思路：以 skill 为主线，把“赛题解析 → 模型选择 → 数据处理 → QA → 微单元生成 → 合并交付”串成一套可执行工作流。
-- 注意：`scripts/run_all.py` 是离线一键样板入口，负责把已落地的脚本串起来；真正遇到新赛题时，Agent 仍应先读取 `problem-doc-model-selector`、`modeling-paper-rubric-and-model-selector` 和相关 `scripts/`，再按当前赛题二次生成或修改数据处理与建模代码。
+- 注意：`scripts/run_all.py` 是可选稳定执行器，适合 quickstart、安装验证和已确认流程的重复执行；真实赛题中，Agent 仍应先读取本 workflow 与相关子 skill，再按当前赛题二次生成或修改数据处理、建模和图表代码。
 
-## 自动化运行约定（Claude Code 中一键）
-- **零交互原则 (Zero Interaction)**: 
-  - 当用户给出赛题（或说“跑一下”、“生成论文”）时，**不要询问**“是否要生成？”、“是否需要清洗数据？”。
-  - **立即**、**沉默**地启动 `run_all.py` 脚本。
-  - 告诉用户：“正在全速生成中，预计耗时 20 分钟，请稍候...”，然后直接开始跑。
-- 用户不需要手动运行任何脚本。
-- 当用户在对话中要求“一键完成/自动跑完全流程”时，本技能应直接执行：
+## 入口路由规则
+- 当用户说“开始生成数学建模论文”“帮我做这个数学建模题”“分析赛题”“使用 MathModel Skill”或不知道该调用哪个 skill 时，先读取本技能。
+- 先判断用户目标：完整论文走全流程；只要题意、模型、数据、QA 或正文时，路由到对应子 skill。
+- 不要让用户理解或选择 8 个 skill 的顺序；由本技能负责说明下一阶段，并在阶段完成后回到本技能判断下一步。
+- 如用户只是验证安装、跑 quickstart，或明确要求自动执行已确认流程，可调用：
   - `python .claude/skills/paper-workflow-orchestrator/scripts/run_all.py`
-  该脚本会按顺序执行：赛题结构化分析 → 模型路线与评分闭环 → 外部资源检查 → 数据与图表计划 → 数据清洗与可视化 → QA 动态任务清单 → 微单元离线生成 → 合并。
+
+## 阶段路由表
+| 当前目标 | 优先调用 |
+|---|---|
+| 刚开始、只给了赛题或不知道用哪个 skill | `problem-doc-model-selector` |
+| 已有 `problem_analysis.json`，需要模型路线和评分闭环 | `modeling-paper-rubric-and-model-selector` |
+| 需要外部权威数据 | `authoritative-data-harvester` |
+| 需要处理附件数据、生成数据/图表计划或图表样板 | `data-cleaning-and-visualization` |
+| 进入正文生成前，需要任务清单和门禁检查 | `quality-assurance-auditor` |
+| 已有 `tasks.json`，需要生成微单元、合并 Markdown/Word | `paper-micro-unit-generator` |
+| 已有 `final_paper.md` 或 `final_paper.docx`，需要最终把关 | `quality-assurance-auditor` |
 
 ## 适用时机
 - 用户已经在项目根目录下按约定放好了赛题 PDF/Word 和附件数据，需要“从零到万字论文”的一条龙自动流程时。
-- 已经完成部分计算或占位符填充，但希望检查整体步骤是否完整、顺序是否合理，或想一键重跑核心流程时。
+- 已经完成部分计算或占位符填充，但希望检查整体步骤是否完整、顺序是否合理，或想重跑核心流程时。
 
 ## 约束（必须遵守）
 
 - **Memory Interaction (必做)**:
   - **全流程中**：作为总控，应当在每个关键步骤（清洗完、QA完、生成完）结束后，主动调用 `context-memory-keeper` 更新进度，确保如果流程中断，Memory 中留有断点记录。
-- 本技能是全项目唯一“权威一键入口”。用户只要提出“生成完整论文/一键跑完”，优先执行本技能而不是让多个技能分散运行。
+- 本技能是全项目唯一“入口路由 skill”。用户只要提出“生成完整论文/跑完整流程”，优先读取本技能而不是让多个技能分散运行。
 - 若 `problem_files/` 为空，必须先补齐赛题与附件数据，再运行流程。
 - 若用户分开调用了其他技能，最终仍应回到本技能或按本技能的顺序完成：清洗与出图 → QA 任务清单 → 微单元生成 → 合并。
 
@@ -53,8 +61,8 @@ description: "串联赛题解析、数据计算与微单元脚本，一键从赛
 - 建议存在：`paper_output/figures/` 与 `paper_output/data_cleaned/`（用于数据预处理与结果分析配图）
 
 ## 脚本清单（本技能实际会用到的）
-- `scripts/run_all.py`：离线一键全流程入口。
-  - 何时用：用户要求“一键完成/自动跑完全流程”。
+- `scripts/run_all.py`：可选稳定执行器。
+  - 何时用：quickstart、安装验证、调试，或用户明确要求自动执行已确认流程。
   - 做什么：先跑 `problem-doc-model-selector/scripts/analyze_problem.py` 生成 `problem_analysis.json` → 再跑 `modeling-paper-rubric-and-model-selector/scripts/build_model_route.py` 生成模型路线与评分点契约 → 再生成数据/图表证据链契约并做清洗与可视化 → 再跑 QA 生成动态 `paper_output/tasks.json` → 再离线生成微单元 → 再合并成 `paper_output/final_paper.md` 和 `paper_output/final_paper.docx`。
 
 ## 前置约定
@@ -91,7 +99,7 @@ description: "串联赛题解析、数据计算与微单元脚本，一键从赛
 
 ## 工作流程（对应 workflow_full 分步）
 
-### 当前实现：离线一键流程（已落地）
+### 当前实现：可选稳定执行器流程（已落地）
 1. **赛题结构化分析**:
    - 调用 `problem-doc-model-selector/scripts/analyze_problem.py`，生成 `paper_output/step1/problem_analysis.json`。
    - 将每一问的任务类型、推荐模型、验证计划和建议图表固化为后续 skill 可读取的数据契约。

@@ -1,8 +1,8 @@
 interface:
   display_name: "Paper Workflow Orchestrator"
-  short_description: "一键编排数学建模论文流水线"
+  short_description: "MathModel Skill 总入口，负责路由数学建模论文 workflow"
   brand_color: "#1D4ED8"
-  default_prompt: "Use $paper-workflow-orchestrator to run the full MathModel paper generation workflow."
+  default_prompt: "Use $paper-workflow-orchestrator as the entrypoint for the MathModel Skill workflow. Read its SKILL.md first, then route to the next skill for problem analysis, model selection, data, QA, writing, and final checks."
 
 policy:
   allow_implicit_invocation: true

@@ -9,7 +9,8 @@ description: "按常见评分点生成建模论文结构与写作清单，并根
 - 上游输入：优先读取 `paper_output/step1/problem_analysis.json`。
 - 必须输出：`paper_output/plan/model_route.json`、`rubric_alignment.json`、`scoring_strategy.md`。
 - 下游交接：`quality-assurance-auditor` 读取模型路线生成 `tasks.json`；`paper-micro-unit-generator` 通过 `tasks.json` 使用模型、验证和评分字段。
-- 失败回退：若 `problem_analysis.json` 缺失，先运行 `problem-doc-model-selector`；一键流程中本步骤失败时，QA 应回退到 `problem_analysis.json`。
+- 推荐下一步：若需要外部数据，进入 `authoritative-data-harvester`；否则进入 `data-cleaning-and-visualization`。完整论文目标应回到 `paper-workflow-orchestrator` 判断后续阶段。
+- 失败回退：若 `problem_analysis.json` 缺失，先运行 `problem-doc-model-selector`；完整 workflow 中本步骤失败时，QA 应回退到 `problem_analysis.json`。
 
 ## 目标
 把“能拿分”的写作结构与“贴题可落地”的模型选型融合成一套可复用流程，输出：
@@ -194,7 +195,7 @@ python .claude/skills/modeling-paper-rubric-and-model-selector/scripts/build_mod
 
 ## 前后衔接
 - 前置：无（拿到题面就能用）。
-- 后续：`problem-doc-model-selector`（更细的逐问解析）或 `paper-workflow-orchestrator`（一键跑到论文草稿）。
+- 后续：`problem-doc-model-selector`（更细的逐问解析）或回到 `paper-workflow-orchestrator` 继续论文 workflow。
 
 ## 约束（必须遵守）
 
@@ -202,4 +203,4 @@ python .claude/skills/modeling-paper-rubric-and-model-selector/scripts/build_mod
   - **完成规划后**，必须调用 `context-memory-keeper`，将“论文大纲结构”、“核心评分点”更新到 `memoryskill.md`。
 - 本技能必须输出“评分点 → 证据 → 论文位置”的映射清单；后续产文时必须能逐条落到具体章节/图表/表格，否则视为未对齐。
 - 若输出中要求“数据预处理/可视化证据”，后续必须调用 `data-cleaning-and-visualization` 产出 `paper_output/figures/`，否则该评分点缺证据。
-- 若用户目标是“论文生产完整”，本技能结束后必须明确下一步：进入 `problem-doc-model-selector` 做逐问解析，或直接进入 `paper-workflow-orchestrator` 一键生成。
+- 若用户目标是“论文生产完整”，本技能结束后必须明确下一步：进入数据/图表阶段，或回到 `paper-workflow-orchestrator` 继续完整 workflow。

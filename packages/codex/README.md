@@ -54,7 +54,7 @@ examples/quickstart/problem_files/ -> your-mathmodel-project/problem_files/
 使用 paper-workflow-orchestrator，开始生成数学建模论文。
 ```
 
-Codex 应读取 `skills/paper-workflow-orchestrator/SKILL.md`，再按流程调用其他 skill。
+Codex 应先读取 `skills/paper-workflow-orchestrator/SKILL.md`。这是 MathModel Skill 的总入口，负责判断当前阶段并路由到其他 skill；用户不需要手动选择从哪个 skill 开始。
 
 如果只是验证安装，也可以手动运行随 skill 附带的辅助脚本：
 

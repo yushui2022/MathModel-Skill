@@ -37,6 +37,16 @@ MathModel Skill 是一套面向数学建模比赛的完整 skill 工作流，把
 
 详细安装步骤见 [Agent 安装指南](docs/agent-install-guide.md)。
 
+## 不知道从哪个 Skill 开始？
+
+不用让用户选择 8 个 skill。把赛题和附件放进 `problem_files/` 后，直接对 Agent 说：
+
+```text
+开始生成数学建模论文
+```
+
+三端入口文件和 skill 元数据都会指向 `paper-workflow-orchestrator`。它是 MathModel Skill 的总入口，负责判断当前阶段，并路由到题意解析、模型路线、数据图表、QA、微单元生成等子 skill。
+
 ## 3 分钟跑通示例
 
 仓库内置了一个最小示例：

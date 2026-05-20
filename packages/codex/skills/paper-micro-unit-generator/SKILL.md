@@ -9,6 +9,7 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
 - 上游输入：必须读取 `paper_output/tasks.json`；可参考 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json` 与 `paper_output/figure_index.json`。
 - 必须输出：`paper_output/micro_units/*.txt`、`paper_output/generate_log.json`、`paper_output/final_paper.md`、`paper_output/ref_check.md` 与 `paper_output/final_paper.docx`。
 - 下游交接：合并后的 `final_paper.md` 和 `final_paper.docx` 是论文草稿交付物；最终把关可再次调用 `quality-assurance-auditor`。
+- 推荐下一步：合并完成后进入 `quality-assurance-auditor` 做最终一致性检查；完整论文目标应回到 `paper-workflow-orchestrator` 汇总产物。
 - 失败回退：若 `tasks.json` 缺失，先运行 `quality-assurance-auditor`；若图表文件尚未生成，正文只能引用计划中的图表路径并在 `ref_check.md` 标记待补。
 
 ## 目标
@@ -52,7 +53,7 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
 ## 前后衔接
 - 前置：`quality-assurance-auditor`（先生成 `paper_output/tasks.json`）。
 - 后续：一般不再需要其他产文技能；若要全局一致性把关，可再跑一次 `quality-assurance-auditor`。
-- 若想一键跑到论文草稿：直接调用 `paper-workflow-orchestrator`。
+- 若想继续到完整论文草稿：回到 `paper-workflow-orchestrator`。
 
 ## 约束（必须遵守）
 

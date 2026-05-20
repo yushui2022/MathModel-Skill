@@ -10,6 +10,16 @@
 赛题解析 -> 模型选择 -> 数据获取 -> 数据与图表计划 -> 数据清洗与可视化 -> QA 门禁 -> 微单元生成 -> 合并 Word
 ```
 
+## Start Rule
+
+任何数学建模论文任务都先读取总控 skill：
+
+```text
+.claude/skills/paper-workflow-orchestrator/SKILL.md
+```
+
+包括用户只说“开始生成”“帮我做这个题”“分析赛题”“使用 MathModel Skill”或不知道该用哪个 skill 的情况。不要直接从数据清洗、微单元生成或 QA 开始；先让 `paper-workflow-orchestrator` 判断当前阶段，再路由到其他 skill。
+
 ## 原生 Skill 目录
 
 Claude Code skill 包位于：
@@ -60,9 +70,9 @@ paper_output/figure_index.json
 paper_output/ref_check.md
 ```
 
-## 一键运行
+## 可选验证命令
 
-在项目根目录运行：
+普通使用时不需要用户手动运行脚本；Agent 应先读取总控 skill。若只是验证安装、跑 quickstart 或调试，可在项目根目录运行：
 
 ```bash
 python .claude/skills/paper-workflow-orchestrator/scripts/run_all.py

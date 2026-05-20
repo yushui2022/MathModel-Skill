@@ -9,6 +9,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 - 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json` 与 `paper_output/figure_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
 - 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在。
 - 下游交接：`paper-micro-unit-generator` 只应在 `tasks.json` 存在后生成正文；任务中必须保留模型路线、验证计划、图表建议和评分点字段。
+- 推荐下一步：正文生成前通过后进入 `paper-micro-unit-generator`；若已经生成 `final_paper.md` 或 `final_paper.docx`，则执行最终一致性检查并回到 `paper-workflow-orchestrator` 汇总。
 - 失败回退：若 `problem_files/` 为空应阻塞；若模型路线缺失则用题意分析生成任务；若题意分析也缺失才使用通用任务模板。
 
 ## 目标
@@ -110,7 +111,7 @@ python .claude/skills/quality-assurance-auditor/scripts/pipeline.py
 
 ## 前后衔接
 - 常作为全局门禁：建议在“生成正文/合并全文”之前先跑一次。
-- 后续通常接：`paper-micro-unit-generator`（生成微单元与合并）或 `paper-workflow-orchestrator`（一键全流程）。
+- 后续通常接：`paper-micro-unit-generator`（生成微单元与合并）或回到 `paper-workflow-orchestrator` 继续完整 workflow。
 
 ## 约束（必须遵守）
 

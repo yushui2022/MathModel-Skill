@@ -57,6 +57,8 @@ Claude Code 应优先读取：
 .claude/skills/paper-workflow-orchestrator/SKILL.md
 ```
 
+这是 MathModel Skill 的总入口，负责判断当前阶段并路由到其他 skill；用户不需要手动选择从哪个 skill 开始。
+
 如果只是验证安装，也可以手动运行随 skill 附带的辅助脚本：
 
 ```bash
