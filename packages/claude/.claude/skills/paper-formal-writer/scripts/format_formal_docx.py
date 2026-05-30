@@ -1,3 +1,4 @@
+import argparse
 import csv
 import json
 import re
@@ -22,8 +23,13 @@ FALLBACK_SOURCE_FILE = OUTPUT_DIR / "final_paper.md"
 OUTLINE_FILE = OUTPUT_DIR / "plan" / "paper_outline.json"
 FIGURE_INDEX_FILE = OUTPUT_DIR / "figure_index.json"
 TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
-DOCX_FILE = OUTPUT_DIR / "final_paper.docx"
-REPORT_MD = OUTPUT_DIR / "format_check_report.md"
+EVIDENCE_GATE_REPORT = OUTPUT_DIR / "qa" / "evidence_gate_report.json"
+DOCX_FILE_FORMAL = OUTPUT_DIR / "final_paper.docx"
+DOCX_FILE_DRAFT = OUTPUT_DIR / "final_paper_draft.docx"
+REPORT_MD_FORMAL = OUTPUT_DIR / "format_check_report.md"
+REPORT_MD_DRAFT = OUTPUT_DIR / "format_draft_report.md"
+DOCX_FILE = DOCX_FILE_FORMAL
+REPORT_MD = REPORT_MD_FORMAL
 
 
 def configure_utf8_stdio() -> None:
@@ -450,8 +456,46 @@ def write_report(stats: dict[str, int], source: Path, outline: Any) -> None:
     REPORT_MD.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
 
 
+def check_evidence_gate() -> tuple[bool, str]:
+    """Return (passed, reason). passed=True only when report exists and status==PASS."""
+    if not EVIDENCE_GATE_REPORT.exists():
+        return False, f"未找到证据门禁报告：{rel(EVIDENCE_GATE_REPORT)}。请先运行 quality-assurance-auditor/scripts/evidence_gate.py。"
+    try:
+        data = json.loads(EVIDENCE_GATE_REPORT.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return False, f"证据门禁报告无法解析：{type(exc).__name__}: {exc}"
+    status = str(data.get("status") or "").strip().upper()
+    if status != "PASS":
+        return False, f"证据门禁状态为 `{status or 'UNKNOWN'}`，正式 Word 不得生成。请先补齐证据并重跑 evidence_gate.py。"
+    return True, ""
+
+
 def main() -> int:
     configure_utf8_stdio()
+    parser = argparse.ArgumentParser(description="Format the formal paper DOCX from final_paper_source.md.")
+    parser.add_argument(
+        "--allow-draft",
+        action="store_true",
+        help="证据门禁未通过时仍生成草稿 Word（写入 final_paper_draft.docx + format_draft_report.md），不会覆盖正式产物。",
+    )
+    args = parser.parse_args()
+
+    global DOCX_FILE, REPORT_MD
+
+    gate_passed, gate_reason = check_evidence_gate()
+    draft_mode = False
+    if not gate_passed:
+        if not args.allow_draft:
+            print("[FORMAT BLOCKED] 证据门禁未通过，禁止生成正式 final_paper.docx。", file=sys.stderr)
+            print(f"  原因：{gate_reason}", file=sys.stderr)
+            print("  如需先看排版草稿，请加 --allow-draft，会写入 final_paper_draft.docx，不会污染正式产物。", file=sys.stderr)
+            return 2
+        draft_mode = True
+        DOCX_FILE = DOCX_FILE_DRAFT
+        REPORT_MD = REPORT_MD_DRAFT
+        print(f"[DRAFT MODE] 证据门禁未通过：{gate_reason}")
+        print(f"[DRAFT MODE] 将写入草稿 Word：{rel(DOCX_FILE)}（不会覆盖正式 final_paper.docx）")
+
     source = source_path()
     if not source.exists():
         print(f"缺少正式论文 Markdown：{rel(SOURCE_FILE)}", file=sys.stderr)
@@ -469,8 +513,11 @@ def main() -> int:
     DOCX_FILE.parent.mkdir(parents=True, exist_ok=True)
     document.save(DOCX_FILE)
     write_report(stats, source, outline)
-    print(f"正式 Word 已生成：{rel(DOCX_FILE)}")
+    label = "草稿 Word" if draft_mode else "正式 Word"
+    print(f"{label}已生成：{rel(DOCX_FILE)}")
     print(f"格式化报告已生成：{rel(REPORT_MD)}")
+    if draft_mode:
+        print("[DRAFT MODE] 该文件不是最终稿；正式提交前必须先通过证据门禁，再不带 --allow-draft 重跑本脚本。")
     return 0
 
 

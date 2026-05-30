@@ -1,0 +1,3 @@
+# Sandbox runs produce real files (paper_output/*, scenario_* trees).
+# Keep the setup script in version control; ignore the generated artifacts.
+sandbox/
