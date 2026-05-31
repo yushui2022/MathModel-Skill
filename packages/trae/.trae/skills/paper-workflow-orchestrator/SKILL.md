@@ -1,9 +1,31 @@
 ---
 name: "paper-workflow-orchestrator"
-description: "MathModel Skill 的总入口和工作流编排器。Invoke when 用户要开始数学建模论文、分析赛题、生成论文、使用 MathModel Skill，或不知道该调用哪个数学建模 skill；必须先读取本 skill，再按阶段调用其他 skill。"
+description: "MathModel Skill 总入口。触发词：数学建模、生成论文、分析赛题、CUMCM、MathorCup、华数杯、美赛、ICM、MathModel。任何数学建模任务先读本 skill 再路由子 skill。"
 ---
 
 # 论文生成全流程编排器
+
+## 启动门（必须第一步执行）
+
+进入任何后续步骤之前，**必须**用 Bash 运行预检脚本：
+
+```bash
+python .trae/skills/paper-workflow-orchestrator/scripts/preflight_check.py
+```
+
+读取退出码和 `paper_output/preflight_report.json`：
+
+- 退出码非 0 或 `status != "PASS"` → **立刻停止生成任何内容**。把报告中的 `errors` 原文反问用户，等用户修复 `problem_files/` 后重新运行预检；
+- 不允许跳过预检；不允许"先凑合写一稿"；不允许凭印象判断附件状态；
+- 预检通过后，按下方阶段路由表逐步推进。
+
+## Quickstart 用途说明
+
+`scripts/quickstart_run.py` 仅用于安装验证。它产出的占位草稿写入 `paper_output/quickstart/`，并写入名为 `quickstart_draft.docx` 的草稿文件，**不会**通过证据门禁，不得对外宣称为最终稿。
+
+正式赛题任务禁止调用 quickstart。若用户说"先快速看个样子"，先反问："你需要正式稿还是只验证安装？" 不要默认走 quickstart。
+
+`scripts/run_all.py` 是已废弃命令的兼容提示，仅用于保护旧文档/旧脚本调用者，正式流程不再调用。
 
 ## 执行契约
 - 上游输入：`problem_files/` 中的赛题与附件数据；可选读取 `crawled_data/` 中的补充权威数据。

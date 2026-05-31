@@ -129,47 +129,70 @@ def main() -> int:
     if r2.returncode != 0:
         return r2.returncode
 
-    print("=== Step-10 转换为 Word (docx) ===")
+    print("=== Step-10 转换为 Word (docx，写入 quickstart 草稿目录) ===")
+    print("⚠️ Quickstart 不会覆盖 paper_output/final_paper.docx；草稿写到 paper_output/quickstart/。")
 
     direct_docx = root / "paper_output/final_paper_direct.docx"
-    final_docx = root / "paper_output/final_paper.docx"
+    quickstart_dir = root / "paper_output/quickstart"
+    quickstart_dir.mkdir(parents=True, exist_ok=True)
+    draft_docx = quickstart_dir / "quickstart_draft.docx"
 
     if direct_docx.exists():
         import shutil
 
         try:
-            shutil.copy(direct_docx, final_docx)
-            print(f"✅ 已直接生成 Word 文档：{final_docx}")
+            shutil.copy(direct_docx, draft_docx)
+            print(f"✅ 已写入 quickstart 草稿 Word：{draft_docx}")
         except Exception as e:
-            print(f"⚠️ 移动文件失败: {e}")
+            print(f"⚠️ 写入 quickstart 草稿失败: {e}")
     else:
         try:
             run_step(["pandoc", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             md_path = root / "paper_output/final_paper.md"
             if md_path.exists():
-                print("ℹ️ 未检测到直接生成的 Word，尝试使用 Pandoc 转换...")
+                print("ℹ️ 未检测到直接生成的 Word，尝试使用 Pandoc 转换 quickstart 草稿...")
                 run_step(
-                    ["pandoc", str(md_path), "-o", str(final_docx), "--reference-doc=reference.docx"],
+                    ["pandoc", str(md_path), "-o", str(draft_docx), "--reference-doc=reference.docx"],
                     check=False,
                 )
-                if not final_docx.exists():
+                if not draft_docx.exists():
                     run_step(
-                        ["pandoc", str(md_path), "-o", str(final_docx)],
+                        ["pandoc", str(md_path), "-o", str(draft_docx)],
                         check=False,
                     )
-                if final_docx.exists():
-                    print(f"✅ 已通过 Pandoc 生成 Word 文档：{final_docx}")
+                if draft_docx.exists():
+                    print(f"✅ 已通过 Pandoc 生成 quickstart 草稿 Word：{draft_docx}")
                 else:
                     print("⚠️ Word 转换失败：pandoc 执行未生成文件")
             else:
                 print("⚠️ 未找到 Markdown 源文件，跳过转换")
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("⚠️ 未检测到 pandoc 且未安装 python-docx，无法生成 Word 文档。")
+            print("⚠️ 未检测到 pandoc 且未安装 python-docx，无法生成 Word 草稿。")
+
+    print("=== Step-11 迁移正式命名中间产物到 quickstart 目录 ===")
+    import shutil as _shutil
+    _migrations = [
+        (root / "paper_output/final_paper.md", quickstart_dir / "quickstart_draft.md"),
+        (root / "paper_output/final_paper_direct.docx", quickstart_dir / "quickstart_direct.docx"),
+    ]
+    migrated: list[Path] = []
+    for src, dst in _migrations:
+        if src.exists():
+            try:
+                if dst.exists():
+                    dst.unlink()
+                _shutil.move(str(src), str(dst))
+                migrated.append(dst)
+                print(f"   迁移：{src.relative_to(root).as_posix()} -> {dst.relative_to(root).as_posix()}")
+            except Exception as e:
+                print(f"   ⚠️ 迁移 {src} 失败：{e}")
 
     print("✅ Quickstart 验证流程结束。以下文件是验证草稿，不代表正式比赛稿：")
-    print("   - Markdown: paper_output/final_paper.md")
-    if final_docx.exists():
-        print("   - Word:     paper_output/final_paper.docx")
+    if draft_docx.exists():
+        print(f"   - Word 草稿: {draft_docx.relative_to(root).as_posix()}")
+    for path in migrated:
+        print(f"   - {path.relative_to(root).as_posix()}")
+    print("   注意：正式 paper_output/final_paper.docx / final_paper.md 不会被 quickstart 写入；正式稿走 paper-formal-writer 流程。")
 
     return 0
 
