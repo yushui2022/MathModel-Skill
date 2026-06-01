@@ -336,6 +336,26 @@ def evaluate(target_step: str) -> dict[str, Any]:
 
 
 def evaluate_skill(skill_name: str) -> dict[str, Any]:
+    if skill_name == "paper-workflow-orchestrator":
+        status_report = evaluate_status()
+        return {
+            "schema_version": "1.0",
+            "generated_by": "paper-workflow-orchestrator/scripts/workflow_guard.py",
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "mode": "skill",
+            "skill": skill_name,
+            "required_step": "ENTRY",
+            "target_step": status_report.get("target_step", "S0"),
+            "status": "PASS",
+            "handoff": "paper-workflow-orchestrator is the entry router; it must remain startable so it can run preflight and recover the current workflow stage.",
+            "current_step": status_report.get("current_step", ""),
+            "next_step": status_report.get("next_step", "S0"),
+            "recommended_skill": status_report.get("recommended_skill", "paper-workflow-orchestrator"),
+            "next_action": status_report.get("next_action", "Run preflight_check.py before any downstream skill."),
+            "steps": status_report.get("steps", []),
+            "failures": status_report.get("failures", []),
+        }
+
     requirement = SKILL_REQUIREMENTS[skill_name]
     report = evaluate(requirement["required_step"])
     report.update(

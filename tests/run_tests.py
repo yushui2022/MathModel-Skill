@@ -216,6 +216,23 @@ def test_robust_loader_and_workflow_guard() -> None:
     assert_true(report["required_step"] == "S2", "data-cleaning-and-visualization should require S2")
 
 
+def test_orchestrator_guard_allows_fresh_entry() -> None:
+    cwd = SANDBOX / "scenario_orchestrator_entry"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    cwd.mkdir(parents=True)
+
+    result = run([sys.executable, str(WORKFLOW_GUARD), "--skill", "paper-workflow-orchestrator"], cwd)
+    assert_true(result.returncode == 0, f"orchestrator entry guard should not block a fresh project\n{result.stdout}")
+    report = load_json(cwd / "paper_output" / "qa" / "workflow_guard_report.json")
+    assert_true(report["mode"] == "skill", "orchestrator entry report should use mode=skill")
+    assert_true(report["skill"] == "paper-workflow-orchestrator", "report should identify orchestrator skill")
+    assert_true(report["required_step"] == "ENTRY", "orchestrator should be an entrypoint, not require S0 before it can start")
+    assert_true(report["status"] == "PASS", "orchestrator entry guard should allow start")
+    assert_true(report["next_step"] == "S0", "fresh project should recover to S0 preflight")
+    assert_true(report["recommended_skill"] == "paper-workflow-orchestrator", "fresh project should stay in orchestrator")
+
+
 def test_workflow_status_after_code_generation() -> None:
     cwd = SANDBOX / "scenario_status_s4"
     if cwd.exists():
@@ -404,6 +421,7 @@ def main() -> int:
         test_preflight,
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
+        test_orchestrator_guard_allows_fresh_entry,
         test_workflow_status_after_code_generation,
         test_workflow_status_recovery_across_stages,
         test_format_gate,
