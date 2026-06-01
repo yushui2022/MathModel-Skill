@@ -18,6 +18,7 @@ BUILD_RESULT_CONTRACTS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills
 EVIDENCE_GATE = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
 FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
 CHECK_PAPER_FORMAT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_paper_format.py"
+UPDATE_WORKFLOW_MEMORY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "context-memory-keeper" / "scripts" / "update_workflow_memory.py"
 CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
 
 
@@ -279,6 +280,25 @@ def test_workflow_status_recovery_across_stages() -> None:
         assert_workflow_status(cwd, output, current, next_step, skill)
 
 
+def test_workflow_memory_snapshot() -> None:
+    cwd, output = make_preflighted_scenario("scenario_workflow_memory")
+    stage_workflow(output, "S3")
+    assert_workflow_status(cwd, output, "S3", "S4", "model-code-and-result-generator")
+
+    result = run([sys.executable, str(UPDATE_WORKFLOW_MEMORY)], cwd)
+    assert_true(result.returncode == 0, f"workflow memory snapshot should pass after workflow status\n{result.stdout}")
+    snapshot = load_json(output / "context" / "workflow_memory.json")
+    assert_true(snapshot["status"] == "PASS", "workflow memory snapshot should PASS")
+    assert_true(snapshot["workflow"]["current_step"] == "S3", "snapshot should preserve current workflow step")
+    assert_true(snapshot["workflow"]["next_step"] == "S4", "snapshot should preserve next workflow step")
+    assert_true(snapshot["workflow"]["recommended_skill"] == "model-code-and-result-generator", "snapshot should preserve recommended skill")
+    assert_true(snapshot["artifacts"]["input_manifest"]["exists"] is True, "snapshot should record input_manifest artifact")
+    assert_true(snapshot["artifacts"]["load_report"]["exists"] is True, "snapshot should record load_report artifact")
+    memory_md = output / "context" / "workflow_memory.md"
+    assert_true(memory_md.exists(), "workflow_memory.md should be written")
+    assert_true("Workflow Memory Snapshot" in memory_md.read_text(encoding="utf-8"), "memory markdown should be readable")
+
+
 def test_format_gate() -> None:
     cwd = SANDBOX / "scenario_4_suspicious_template"
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
@@ -413,6 +433,8 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
         assert_true("## 全局流程协作约束（长对话防漂移）" in text, f"{skill} should include global workflow contract")
         assert_true(f"workflow_guard.py --skill {skill}" in text, f"{skill} should call workflow guard with its own skill name")
         assert_true("workflow_guard.py --status" in text, f"{skill} should include workflow status recovery command")
+        if skill == "context-memory-keeper":
+            assert_true("update_workflow_memory.py" in text, "context-memory-keeper should document executable workflow memory snapshots")
 
 
 def main() -> int:
@@ -424,6 +446,7 @@ def main() -> int:
         test_orchestrator_guard_allows_fresh_entry,
         test_workflow_status_after_code_generation,
         test_workflow_status_recovery_across_stages,
+        test_workflow_memory_snapshot,
         test_format_gate,
         test_docx_visual_qa,
         test_modeling_run_manifest,

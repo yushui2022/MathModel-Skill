@@ -31,6 +31,16 @@ description: "Manages persistent memory. Invoke to read active context or archiv
 此 Skill 维护双层记忆结构，旨在解决模型上下文遗忘问题，同时保持上下文窗口的整洁。
 
 ## Files Structure
+## Executable Workflow Memory
+- After `workflow_guard.py --status` or after a skill handoff, run:
+  ```bash
+  python .claude/skills/context-memory-keeper/scripts/update_workflow_memory.py
+  ```
+- The script reads `paper_output/qa/workflow_guard_report.json` plus key workflow artifacts and writes:
+  - `paper_output/context/workflow_memory.json`
+  - `paper_output/context/workflow_memory.md`
+- Long conversations and resumed sessions should read `workflow_memory.json` before relying on chat history.
+
 1. **`memoryskill.md` (Active Memory)**:
    - **长期准则**: 用户偏好、角色设定、全局约束 (Read-Only mostly)。
    - **短期工作台**: 当前任务状态、变量、正在进行的步骤、**外部文献/数据索引** (Read-Write frequently)。
