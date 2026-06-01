@@ -13,6 +13,7 @@ QA_DIR = OUTPUT_DIR / "qa"
 MODEL_ROUTE_FILE = OUTPUT_DIR / "plan" / "model_route.json"
 FIGURE_INDEX_FILE = OUTPUT_DIR / "figure_index.json"
 MODEL_RESULTS_FILE = OUTPUT_DIR / "results" / "model_results.json"
+RUN_MANIFEST_FILE = OUTPUT_DIR / "results" / "run_manifest.json"
 METRICS_FILE = OUTPUT_DIR / "results" / "metrics.json"
 CONCLUSIONS_FILE = OUTPUT_DIR / "results" / "conclusions.json"
 TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
@@ -112,6 +113,14 @@ def resolve_artifact(path_text: object) -> Path:
     return BASE_DIR / path
 
 
+def normalized_artifact(path_text: object) -> str:
+    path = resolve_artifact(path_text)
+    try:
+        return path.resolve().relative_to(BASE_DIR.resolve()).as_posix()
+    except Exception:
+        return str(path).replace("\\", "/")
+
+
 def provenance_failures(item: dict[str, Any]) -> list[str]:
     provenance = item.get("execution_provenance")
     if not isinstance(provenance, dict):
@@ -134,6 +143,51 @@ def provenance_failures(item: dict[str, Any]) -> list[str]:
         artifact_path = resolve_artifact(artifact)
         if not artifact_path.exists():
             failures.append(f"输出产物不存在：{artifact}")
+    return failures
+
+
+def run_manifest_failures(item: dict[str, Any], run_manifest: Any) -> list[str]:
+    if not isinstance(run_manifest, dict):
+        return ["缺少或无法读取 run_manifest.json，无法核验建模代码运行记录"]
+    runs = run_manifest.get("runs")
+    if not isinstance(runs, list):
+        return ["run_manifest.json 缺少 runs 列表"]
+
+    provenance = item.get("execution_provenance")
+    if not isinstance(provenance, dict):
+        return ["缺少 execution_provenance，无法匹配 run_manifest"]
+    source_code = normalized_artifact(provenance.get("source_code_path"))
+    qid = str(item.get("question_id") or "").strip()
+    matches = [
+        run for run in runs
+        if isinstance(run, dict) and normalized_artifact(run.get("script")) == source_code
+    ]
+    if not matches:
+        return [f"run_manifest.json 中没有 source_code_path 对应的运行记录：{source_code}"]
+
+    run = matches[-1]
+    failures: list[str] = []
+    if run.get("returncode") not in (0, "0"):
+        failures.append(f"run_manifest 记录 returncode 不是 0：{run.get('returncode')}")
+    run_qids = {str(value) for value in run.get("question_ids", []) or []}
+    if qid and run_qids and qid not in run_qids:
+        failures.append(f"run_manifest 运行记录未包含当前 question_id：{qid}")
+    run_outputs = {
+        normalized_artifact(item.get("path"))
+        for item in run.get("output_artifacts", []) or []
+        if isinstance(item, dict)
+    }
+    for artifact in provenance.get("output_artifacts", []) or []:
+        normalized = normalized_artifact(artifact)
+        if normalized not in run_outputs:
+            failures.append(f"execution_provenance 输出未进入 run_manifest：{normalized}")
+    missing_outputs = [
+        str(item.get("path"))
+        for item in run.get("output_artifacts", []) or []
+        if isinstance(item, dict) and not item.get("exists")
+    ]
+    for artifact in missing_outputs:
+        failures.append(f"run_manifest 记录输出产物不存在：{artifact}")
     return failures
 
 
@@ -166,6 +220,7 @@ def evaluate() -> dict[str, Any]:
     model_route = load_json(MODEL_ROUTE_FILE)
     figure_index = load_json(FIGURE_INDEX_FILE)
     model_results = load_json(MODEL_RESULTS_FILE)
+    run_manifest = load_json(RUN_MANIFEST_FILE)
     metrics = load_json(METRICS_FILE)
     conclusions = load_json(CONCLUSIONS_FILE)
     table_index = load_json(TABLE_INDEX_FILE)
@@ -178,6 +233,7 @@ def evaluate() -> dict[str, Any]:
         (MODEL_ROUTE_FILE, model_route),
         (FIGURE_INDEX_FILE, figure_index),
         (MODEL_RESULTS_FILE, model_results),
+        (RUN_MANIFEST_FILE, run_manifest),
         (METRICS_FILE, metrics),
         (CONCLUSIONS_FILE, conclusions),
         (TABLE_INDEX_FILE, table_index),
@@ -217,6 +273,8 @@ def evaluate() -> dict[str, Any]:
         else:
             for failure in provenance_failures(result):
                 q_failures.append(f"模型结果缺少真实运行来源：{failure}")
+            for failure in run_manifest_failures(result, run_manifest):
+                q_failures.append(f"模型结果运行账本不完整：{failure}")
 
         if not q_metrics:
             q_failures.append("缺少 metrics.json 中的评价指标")

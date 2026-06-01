@@ -17,11 +17,11 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 - 长对话中如果上下文变长、阶段不确定或用户分开调用 skill，先读取 `paper_output/qa/workflow_guard_report.json`、`paper_output/preflight_report.json` 和本 skill 的上游 JSON 契约，再继续。
 
 ## 执行契约
-- 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/` 与 `paper_output/tables/table_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
+- 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/model_results.json`、`paper_output/results/run_manifest.json`、`paper_output/results/metrics.json`、`paper_output/results/conclusions.json` 与 `paper_output/tables/table_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
 - 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在；正式成稿前必须输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`。
 - 下游交接：`paper-micro-unit-generator` 只应在 `tasks.json` 存在后生成正文；任务中必须保留模型路线、验证计划、图表建议、评分点、结果摘要、指标、表格和结论字段。
 - 推荐下一步：正文生成前通过后进入 `paper-micro-unit-generator`；若已经生成 `final_paper.md` 或 `final_paper.docx`，则执行最终一致性检查并回到 `paper-workflow-orchestrator` 汇总。
-- 失败回退：若 `problem_files/` 为空应阻塞；若模型路线缺失则用题意分析生成任务；若题意分析也缺失才使用通用任务模板。
+- 失败回退：若 `problem_files/` 为空应阻塞；若模型路线缺失则用题意分析生成任务；若题意分析也缺失才使用通用任务模板；若正式 evidence gate 缺少 `run_manifest.json` 或运行记录不匹配，必须回退到 `model-code-and-result-generator` 重新运行建模代码。
 
 ## 目标
 - 在论文生成的每一个关键节点插入“强制验收点”，只有审计通过才能进入下一步，防止“字数达标但逻辑错误”或“模型偷换”等隐性偷懒。
@@ -103,7 +103,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 当前 `scripts/pipeline.py` 是基础门禁脚本，负责初始化目录、检查 `problem_files/` 并生成 `paper_output/tasks.json`。
 
-`scripts/evidence_gate.py` 是正式成稿前证据门禁脚本，负责检查每个 `question_id` 是否具备真实模型结果、评价指标、图表或表格证据、结论回扣和任务追踪。official 模式还会检查 `model_results.json` 中每个正式结果的 `execution_provenance`，确认 `source_code_path` 存在、`run_command` 非空、`run_exit_code=0` 且输出产物可追踪；没有真实代码运行来源的结果不得通过。它会输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`。official 模式下未通过会返回非零退出码；quickstart 模式只给 warning。
+`scripts/evidence_gate.py` 是正式成稿前证据门禁脚本，负责检查每个 `question_id` 是否具备真实模型结果、评价指标、图表或表格证据、结论回扣和任务追踪。official 模式还会检查 `model_results.json` 中每个正式结果的 `execution_provenance`，确认 `source_code_path` 存在、`run_command` 非空、`run_exit_code=0` 且输出产物可追踪；同时读取 `paper_output/results/run_manifest.json`，确认结果确实来自统一入口 `run_modeling.py` 的实际运行记录。没有真实代码运行来源或没有 run_manifest 匹配记录的结果不得通过。它会输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`。official 模式下未通过会返回非零退出码；quickstart 模式只给 warning。
 
 `paper-formal-writer/scripts/check_paper_format.py` 是正式成稿后的格式门禁脚本，负责检查 `final_paper_source.md` 是否达到 `18000-25000` 目标、是否有 `1 / 1.1 / 1.1.1` 三级标题、每问是否有建模/算法/结果/检验、图表是否被正文引用、参考文献和附录是否完整。它不替代 `evidence_gate.py`，而是在证据门禁通过后继续阻止低字数、低格式质量的 Word 被称为最终稿。
 

@@ -111,6 +111,7 @@ python .trae/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step
 - 必须存在：`paper_output/plan/rubric_alignment.json`（评分点映射契约）
 - 必须存在：`paper_output/plan/data_plan.json` 与 `visualization_plan.json`（数据与图表证据链契约）
 - 必须存在：`paper_output/figure_index.json`（图表计划索引）
+- 必须存在：`paper_output/results/run_manifest.json`（建模代码运行账本，证明结果来自实际运行）
 - 推荐存在：`paper_output/results/model_results.json`、`metrics.json`、`conclusions.json`（结果证据契约）
 - 推荐存在：`paper_output/tables/table_index.json` 与 `paper_output/tables/`（论文表格证据）
 - 推荐存在：`paper_output/code/README.md` 与 `paper_output/code/*/README.md`（当前赛题代码工作区说明）

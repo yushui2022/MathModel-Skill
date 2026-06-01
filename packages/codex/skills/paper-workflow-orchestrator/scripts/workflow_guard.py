@@ -100,6 +100,13 @@ def status_of(item: Any) -> str:
     return str(item.get("status") or item.get("evidence_status") or "").strip()
 
 
+def normalize_artifact(path_text: object) -> str:
+    path = Path(str(path_text or "").strip())
+    if not path.is_absolute():
+        path = BASE_DIR / path
+    return rel(path)
+
+
 def check_json_file(path: Path, failures: list[str]) -> Any:
     data = load_json(path)
     if data is None:
@@ -198,9 +205,16 @@ def _items(data: Any, key: str) -> list[dict[str, Any]]:
 def check_s5() -> dict[str, Any]:
     failures: list[str] = []
     model_results = check_json_file(OUTPUT_DIR / "results" / "model_results.json", failures)
+    run_manifest = check_json_file(OUTPUT_DIR / "results" / "run_manifest.json", failures)
     metrics = check_json_file(OUTPUT_DIR / "results" / "metrics.json", failures)
     conclusions = check_json_file(OUTPUT_DIR / "results" / "conclusions.json", failures)
     table_index = check_json_file(OUTPUT_DIR / "tables" / "table_index.json", failures)
+    runs = run_manifest.get("runs", []) if isinstance(run_manifest, dict) else []
+    run_scripts = {
+        normalize_artifact(run.get("script"))
+        for run in runs
+        if isinstance(run, dict)
+    }
 
     for item in _items(model_results, "questions"):
         qid = str(item.get("question_id") or "UNKNOWN")
@@ -212,6 +226,8 @@ def check_s5() -> dict[str, Any]:
             failures.append(f"{qid}: 缺少 execution_provenance，无法证明结果来自实际代码运行。")
         elif provenance.get("run_exit_code") not in (0, "0"):
             failures.append(f"{qid}: execution_provenance.run_exit_code 不是 0。")
+        elif normalize_artifact(provenance.get("source_code_path")) not in run_scripts:
+            failures.append(f"{qid}: run_manifest.json 中没有对应 source_code_path 的运行记录。")
 
     for label, data, key in (
         ("metrics", metrics, "items"),

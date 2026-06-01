@@ -13,6 +13,8 @@ SANDBOX = REPO_ROOT / "tests" / "sandbox"
 PREFLIGHT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "preflight_check.py"
 WORKFLOW_GUARD = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "workflow_guard.py"
 ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
+BUILD_RESULT_CONTRACTS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "model-code-and-result-generator" / "scripts" / "build_result_contracts.py"
+EVIDENCE_GATE = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
 FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
 CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
 
@@ -37,6 +39,11 @@ def assert_true(condition: bool, message: str) -> None:
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, data: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def test_preflight() -> None:
@@ -136,6 +143,71 @@ def test_format_gate() -> None:
     assert_true(not (cwd / "paper_output" / "final_paper.docx").exists(), "draft mode must not create formal docx")
 
 
+def test_modeling_run_manifest() -> None:
+    cwd = SANDBOX / "scenario_7_real_data"
+    output = cwd / "paper_output"
+    write_json(
+        output / "plan" / "model_route.json",
+        {"questions": [{"question_id": "Q1", "title": "问题一", "task_type": "预测/回归", "main_model": "线性基线"}]},
+    )
+    write_json(output / "plan" / "data_plan.json", {"datasets": [{"path": "paper_output/data_cleaned/sample_cleaned.csv"}]})
+    write_json(output / "plan" / "visualization_plan.json", {"figures": []})
+    (output / "data_cleaned").mkdir(parents=True, exist_ok=True)
+    (output / "data_cleaned" / "sample_cleaned.csv").write_text("x,y\n1,2\n2,4\n3,6\n4,8\n", encoding="utf-8")
+
+    result = run([sys.executable, str(BUILD_RESULT_CONTRACTS)], cwd)
+    assert_true(result.returncode == 0, f"build_result_contracts should pass\n{result.stdout}")
+    runner = output / "code" / "modeling" / "run_modeling.py"
+    result = run([sys.executable, str(runner)], cwd)
+    assert_true(result.returncode == 0, f"run_modeling should pass\n{result.stdout}")
+
+    manifest = load_json(output / "results" / "run_manifest.json")
+    assert_true(manifest["status"] == "PASS", "run_manifest status should PASS")
+    assert_true(len(manifest["runs"]) >= 1, "run_manifest should contain at least one run")
+    first_run = manifest["runs"][0]
+    assert_true("Q1" in first_run["question_ids"], "run_manifest should link the run to Q1")
+    assert_true(first_run["input_files"], "run_manifest should record hashed input files")
+    assert_true(first_run["output_artifacts"], "run_manifest should record output artifacts")
+
+
+def test_evidence_gate_requires_run_manifest() -> None:
+    cwd = SANDBOX / "scenario_8_missing_run_manifest"
+    output = cwd / "paper_output"
+    (output / "code" / "modeling").mkdir(parents=True, exist_ok=True)
+    (output / "code" / "modeling" / "q1_model.py").write_text("print('computed')\n", encoding="utf-8")
+    (output / "tables").mkdir(parents=True, exist_ok=True)
+    (output / "tables" / "q1_table.csv").write_text("metric,value\nscore,1\n", encoding="utf-8")
+    write_json(output / "plan" / "model_route.json", {"questions": [{"question_id": "Q1", "title": "问题一"}]})
+    write_json(output / "figure_index.json", {"figures": []})
+    write_json(
+        output / "results" / "model_results.json",
+        {
+            "questions": [
+                {
+                    "question_id": "Q1",
+                    "status": "computed",
+                    "evidence_status": "computed",
+                    "execution_provenance": {
+                        "source_code_path": "paper_output/code/modeling/q1_model.py",
+                        "run_command": "python paper_output/code/modeling/q1_model.py",
+                        "run_exit_code": 0,
+                        "output_artifacts": ["paper_output/tables/q1_table.csv"],
+                    },
+                }
+            ]
+        },
+    )
+    write_json(output / "results" / "metrics.json", {"items": [{"question_id": "Q1", "status": "computed", "metric_name": "score", "value": 1}]})
+    write_json(output / "results" / "conclusions.json", {"items": [{"question_id": "Q1", "status": "computed", "conclusion_text": "结论可回扣原题。"}]})
+    write_json(output / "tables" / "table_index.json", {"tables": [{"question_id": "Q1", "status": "computed", "table_id": "t1", "path": "paper_output/tables/q1_table.csv"}]})
+    write_json(output / "tasks.json", [{"question_id": "Q1", "task": "verify"}])
+
+    result = run([sys.executable, str(EVIDENCE_GATE)], cwd)
+    assert_true(result.returncode == 1, "evidence_gate should fail without run_manifest.json")
+    report = load_json(output / "qa" / "evidence_gate_report.json")
+    assert_true(any("run_manifest" in item for item in report["failures"]), "evidence gate failures should mention run_manifest")
+
+
 def test_skill_docs_have_workflow_guard_contract() -> None:
     expected = {
         "authoritative-data-harvester",
@@ -162,6 +234,8 @@ def main() -> int:
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
         test_format_gate,
+        test_modeling_run_manifest,
+        test_evidence_gate_requires_run_manifest,
         test_skill_docs_have_workflow_guard_contract,
     ]
     for test in tests:
