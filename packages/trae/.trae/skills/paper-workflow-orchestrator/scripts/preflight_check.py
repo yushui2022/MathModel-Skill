@@ -63,6 +63,13 @@ def list_problem_files(root: Path) -> list[Path]:
     return sorted(p for p in pf.rglob("*") if p.is_file())
 
 
+def rel_path(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except Exception:
+        return path.as_posix()
+
+
 def is_suspicious_name(name: str) -> bool:
     lowered = name.lower()
     return any(hint in lowered for hint in SUSPICIOUS_NAME_HINTS)
@@ -360,6 +367,106 @@ def classify_and_inspect(files: list[Path]) -> tuple[list[dict], list[dict], lis
     return doc_candidates, data_candidates, suspicious
 
 
+def _by_resolved_path(items: list[dict]) -> dict[Path, dict]:
+    result: dict[Path, dict] = {}
+    for item in items:
+        try:
+            result[Path(str(item.get("path", ""))).resolve()] = item
+        except Exception:
+            continue
+    return result
+
+
+def build_input_manifest(
+    root: Path,
+    files: list[Path],
+    doc_candidates: list[dict],
+    data_candidates: list[dict],
+    suspicious: list[str],
+) -> dict[str, Any]:
+    doc_by_path = _by_resolved_path(doc_candidates)
+    data_by_path = _by_resolved_path(data_candidates)
+    suspicious_set = {Path(item).resolve() for item in suspicious}
+    entries: list[dict[str, Any]] = []
+
+    for path in files:
+        resolved = path.resolve()
+        ext = path.suffix.lower()
+        info = doc_by_path.get(resolved) or data_by_path.get(resolved) or {}
+        warnings = list(info.get("warnings", []) or [])
+        errors = list(info.get("errors", []) or [])
+        role = "unsupported"
+        confidence = 0.2
+        usable_for_modeling = False
+        requires_user_confirmation = False
+
+        if resolved in suspicious_set:
+            role = "result_template"
+            confidence = 0.95
+            warnings.append("文件名疑似结果提交模板，不可当作原始建模数据。")
+        elif ext in {".pdf", ".docx", ".md", ".txt"}:
+            role = "problem_statement" if info.get("extractable") else "problem_statement_unreadable"
+            confidence = 0.85 if info.get("extractable") else 0.55
+            requires_user_confirmation = not bool(info.get("extractable"))
+        elif ext in LEGACY_DOC_EXTS:
+            role = "problem_statement_unreadable"
+            confidence = 0.75
+            requires_user_confirmation = True
+        elif ext in DATA_EXTS:
+            role = "raw_data" if info.get("readable") else "raw_data_unreadable"
+            confidence = 0.8 if info.get("readable") else 0.45
+            usable_for_modeling = bool(info.get("readable"))
+            requires_user_confirmation = not bool(info.get("readable"))
+        else:
+            warnings.append("不属于当前自动识别的题面或数据格式，需要人工确认用途。")
+            requires_user_confirmation = True
+
+        entry: dict[str, Any] = {
+            "path": rel_path(path, root),
+            "ext": ext,
+            "role": role,
+            "role_confidence": confidence,
+            "usable_for_modeling": usable_for_modeling,
+            "requires_user_confirmation": requires_user_confirmation,
+            "warnings": warnings,
+            "errors": errors,
+        }
+        for key in (
+            "extractable",
+            "char_count",
+            "paragraphs",
+            "readable",
+            "sheets",
+            "encoding",
+            "sep",
+            "sample_cols",
+            "top_level",
+        ):
+            if key in info:
+                entry[key] = info[key]
+        entries.append(entry)
+
+    role_counts: dict[str, int] = {}
+    for entry in entries:
+        role_counts[entry["role"]] = role_counts.get(entry["role"], 0) + 1
+
+    return {
+        "schema_version": "1.0",
+        "generated_by": "paper-workflow-orchestrator/scripts/preflight_check.py",
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "root": root.as_posix(),
+        "entries": entries,
+        "summary": {
+            "file_count": len(entries),
+            "role_counts": role_counts,
+            "problem_statement_count": role_counts.get("problem_statement", 0),
+            "raw_data_count": role_counts.get("raw_data", 0),
+            "result_template_count": role_counts.get("result_template", 0),
+            "requires_user_confirmation": any(item["requires_user_confirmation"] for item in entries),
+        },
+    }
+
+
 def collect_dep_status(doc_candidates: list[dict], data_candidates: list[dict]) -> dict[str, Any]:
     needed: set[str] = set()
     for info in doc_candidates:
@@ -433,6 +540,7 @@ def evaluate(root: Path) -> dict[str, Any]:
             "以免误导 Agent 认为流程已完成。"
         )
 
+    input_manifest = build_input_manifest(root, files, doc_candidates, data_candidates, suspicious)
     status = "PASS" if not errors else "FAIL"
     return {
         "schema_version": "1.0",
@@ -450,6 +558,11 @@ def evaluate(root: Path) -> dict[str, Any]:
         },
         "deps": deps,
         "stale_output": {"final_paper_docx_exists": stale},
+        "input_manifest": {
+            "path": "paper_output/input_manifest.json",
+            "summary": input_manifest["summary"],
+        },
+        "_input_manifest_payload": input_manifest,
         "errors": errors,
         "warnings": warnings,
     }
@@ -458,6 +571,12 @@ def evaluate(root: Path) -> dict[str, Any]:
 def write_report(report: dict[str, Any], root: Path) -> Path:
     out_dir = root / "paper_output"
     out_dir.mkdir(parents=True, exist_ok=True)
+    manifest = report.pop("_input_manifest_payload", None)
+    if isinstance(manifest, dict):
+        (out_dir / "input_manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
     out_file = out_dir / "preflight_report.json"
     out_file.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return out_file

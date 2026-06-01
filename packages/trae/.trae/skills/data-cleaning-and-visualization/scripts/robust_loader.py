@@ -13,6 +13,7 @@ from typing import Any
 BASE_DIR = Path.cwd().resolve()
 OUTPUT_DIR = BASE_DIR / "paper_output"
 REPORT_FILE = OUTPUT_DIR / "data_cleaned" / "load_report.json"
+INPUT_MANIFEST_FILE = OUTPUT_DIR / "input_manifest.json"
 
 DATA_EXTS = {".xlsx", ".xls", ".csv", ".tsv", ".json"}
 PDF_EXTS = {".pdf"}
@@ -241,6 +242,49 @@ def iter_input_files(input_dirs: list[str]) -> list[Path]:
     return sorted(files, key=lambda item: item.as_posix().lower())
 
 
+def load_input_manifest() -> dict[str, Any] | None:
+    if not INPUT_MANIFEST_FILE.exists():
+        return None
+    try:
+        data = json.loads(INPUT_MANIFEST_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def resolve_manifest_path(path_text: str) -> Path:
+    path = Path(str(path_text or ""))
+    if path.is_absolute():
+        return path
+    return BASE_DIR / path
+
+
+def iter_manifest_raw_data(manifest: dict[str, Any]) -> tuple[list[Path], list[dict[str, Any]]]:
+    files: list[Path] = []
+    skipped: list[dict[str, Any]] = []
+    entries = manifest.get("entries") if isinstance(manifest, dict) else []
+    if not isinstance(entries, list):
+        return files, skipped
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        path_text = str(entry.get("path") or "")
+        role = str(entry.get("role") or "")
+        usable = bool(entry.get("usable_for_modeling"))
+        path = resolve_manifest_path(path_text)
+        if role == "raw_data" and usable:
+            files.append(path)
+        else:
+            skipped.append(
+                {
+                    "path": path_text,
+                    "role": role,
+                    "reason": "not_raw_modeling_data" if role != "raw_data" else "not_usable_for_modeling",
+                }
+            )
+    return sorted(files, key=lambda item: item.as_posix().lower()), skipped
+
+
 def inspect_file(path: Path) -> dict[str, Any] | None:
     ext = path.suffix.lower()
     if ext == ".xlsx":
@@ -256,12 +300,26 @@ def inspect_file(path: Path) -> dict[str, Any] | None:
     return None
 
 
-def evaluate(input_dirs: list[str]) -> dict[str, Any]:
-    files = iter_input_files(input_dirs)
+def evaluate(input_dirs: list[str], use_manifest: bool = True) -> dict[str, Any]:
+    input_manifest = load_input_manifest() if use_manifest else None
+    skipped_files: list[dict[str, Any]] = []
+    if input_manifest:
+        files, skipped_files = iter_manifest_raw_data(input_manifest)
+    else:
+        files = iter_input_files(input_dirs)
     data_files: list[dict[str, Any]] = []
     pdf_diagnostics: list[dict[str, Any]] = []
     warnings: list[str] = []
     errors: list[str] = []
+
+    if use_manifest and input_manifest is None and INPUT_MANIFEST_FILE.exists():
+        warnings.append("input_manifest.json 存在但无法解析，已回退为扫描 input_dirs。")
+    if input_manifest:
+        warnings.extend(
+            f"{item['path']}: 跳过 role={item['role']}（{item['reason']}）。"
+            for item in skipped_files
+            if item.get("role") in {"result_template", "problem_statement", "problem_statement_unreadable"}
+        )
 
     for path in files:
         info = inspect_file(path)
@@ -288,6 +346,9 @@ def evaluate(input_dirs: list[str]) -> dict[str, Any]:
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "status": "PASS" if not errors else "FAIL",
         "input_dirs": input_dirs,
+        "input_manifest_used": bool(input_manifest),
+        "input_manifest": rel(INPUT_MANIFEST_FILE) if input_manifest else "",
+        "skipped_files": skipped_files,
         "data_files": data_files,
         "pdf_diagnostics": pdf_diagnostics,
         "summary": {
@@ -312,7 +373,7 @@ def main() -> int:
     parser.add_argument("--input-dir", action="append", dest="input_dirs", default=None, help="Input directory to scan. Can be repeated.")
     args = parser.parse_args()
     input_dirs = args.input_dirs or ["problem_files", "crawled_data"]
-    report = evaluate(input_dirs)
+    report = evaluate(input_dirs, use_manifest=args.input_dirs is None)
     write_report(report)
     print(f"load report: {rel(REPORT_FILE)}")
     if report["status"] == "PASS":

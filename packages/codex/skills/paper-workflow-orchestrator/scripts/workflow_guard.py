@@ -133,8 +133,16 @@ def question_ids(model_route: Any) -> list[str]:
 def check_s0() -> dict[str, Any]:
     failures: list[str] = []
     report = check_json_file(OUTPUT_DIR / "preflight_report.json", failures)
+    manifest = check_json_file(OUTPUT_DIR / "input_manifest.json", failures)
     if isinstance(report, dict) and str(report.get("status") or "").upper() != "PASS":
         failures.append("preflight_report.json status 不是 PASS。")
+    if isinstance(manifest, dict):
+        entries = manifest.get("entries")
+        if not isinstance(entries, list):
+            failures.append("input_manifest.json 缺少 entries 列表。")
+        summary = manifest.get("summary") if isinstance(manifest.get("summary"), dict) else {}
+        if summary.get("problem_statement_count", 0) < 1:
+            failures.append("input_manifest.json 中没有可解析题面文件。")
     return {"step": "S0", "name": "准入预检", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 
@@ -162,6 +170,8 @@ def check_s3() -> dict[str, Any]:
     load_report = check_json_file(OUTPUT_DIR / "data_cleaned" / "load_report.json", failures)
     if isinstance(load_report, dict) and str(load_report.get("status") or "").upper() == "FAIL":
         failures.append("data_cleaned/load_report.json status 为 FAIL。")
+    if isinstance(load_report, dict) and not load_report.get("input_manifest_used"):
+        failures.append("data_cleaned/load_report.json 未使用 input_manifest.json，附件角色可能未被统一约束。")
     return {"step": "S3", "name": "数据与图表计划", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 

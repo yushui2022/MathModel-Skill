@@ -86,6 +86,11 @@ def main() -> int:
     pf = make_scenario("scenario_6_no_pypdf")
     (pf / "题目.pdf").write_bytes(MINIMAL_PDF_BYTES)
 
+    # 7: real problem statement + real raw CSV data.
+    pf = make_scenario("scenario_7_real_data")
+    (pf / "题目.txt").write_text("题面正文", encoding="utf-8")
+    (pf / "附件1.csv").write_text("city,value\nA,1\nB,2\n", encoding="utf-8")
+
     # Format-gate fixtures: use scenario_4 because preflight passes there.
     fmt_root = SANDBOX / "scenario_4_suspicious_template" / "paper_output"
     fmt_root.mkdir(parents=True, exist_ok=True)

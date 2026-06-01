@@ -46,6 +46,7 @@ def test_preflight() -> None:
         ("scenario_3_broken_xlsx", 1, "FAIL"),
         ("scenario_4_suspicious_template", 0, "PASS"),
         ("scenario_5_stale_output", 0, "PASS"),
+        ("scenario_7_real_data", 0, "PASS"),
     ]
     for name, expected_code, expected_status in cases:
         cwd = SANDBOX / name
@@ -53,6 +54,15 @@ def test_preflight() -> None:
         assert_true(result.returncode == expected_code, f"{name}: expected exit {expected_code}, got {result.returncode}\n{result.stdout}")
         report = load_json(cwd / "paper_output" / "preflight_report.json")
         assert_true(report["status"] == expected_status, f"{name}: expected {expected_status}, got {report['status']}")
+        assert_true((cwd / "paper_output" / "input_manifest.json").exists(), f"{name}: input_manifest.json should be written")
+
+    manifest = load_json(SANDBOX / "scenario_4_suspicious_template" / "paper_output" / "input_manifest.json")
+    result_templates = [item for item in manifest["entries"] if item["role"] == "result_template"]
+    assert_true(len(result_templates) == 1, "scenario_4 should classify result1.xlsx as result_template")
+    assert_true(result_templates[0]["usable_for_modeling"] is False, "result template must not be usable for modeling")
+    assert_true(manifest["summary"]["raw_data_count"] == 0, "scenario_4 should not count result template as raw data")
+    manifest = load_json(SANDBOX / "scenario_7_real_data" / "paper_output" / "input_manifest.json")
+    assert_true(manifest["summary"]["raw_data_count"] == 1, "scenario_7 should classify csv as raw_data")
 
 
 def test_missing_pypdf() -> None:
@@ -85,7 +95,16 @@ def test_robust_loader_and_workflow_guard() -> None:
     assert_true(result.returncode == 0, f"robust_loader should pass\n{result.stdout}")
     report = load_json(cwd / "paper_output" / "data_cleaned" / "load_report.json")
     assert_true(report["status"] == "PASS", "load_report should PASS")
-    assert_true(report["summary"]["readable_data_file_count"] >= 1, "load_report should find readable data")
+    assert_true(report["input_manifest_used"] is True, "robust_loader should consume input_manifest.json")
+    assert_true(report["summary"]["readable_data_file_count"] == 0, "result template should not be treated as readable raw data")
+    assert_true(any(item["role"] == "result_template" for item in report["skipped_files"]), "result template should be skipped by robust_loader")
+
+    raw_cwd = SANDBOX / "scenario_7_real_data"
+    result = run([sys.executable, str(ROBUST_LOADER)], raw_cwd)
+    assert_true(result.returncode == 0, f"robust_loader should pass for real raw data\n{result.stdout}")
+    raw_report = load_json(raw_cwd / "paper_output" / "data_cleaned" / "load_report.json")
+    assert_true(raw_report["input_manifest_used"] is True, "real raw data load_report should consume input_manifest.json")
+    assert_true(raw_report["summary"]["readable_data_file_count"] == 1, "raw CSV should count as readable data")
 
     result = run([sys.executable, str(WORKFLOW_GUARD), "--step", "S0"], cwd)
     assert_true(result.returncode == 0, f"workflow S0 should pass after preflight\n{result.stdout}")
