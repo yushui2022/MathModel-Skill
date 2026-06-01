@@ -14,6 +14,7 @@ PREFLIGHT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-wo
 WORKFLOW_GUARD = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "workflow_guard.py"
 ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
 FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
+CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
 
 
 def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -91,6 +92,18 @@ def test_robust_loader_and_workflow_guard() -> None:
     result = run([sys.executable, str(WORKFLOW_GUARD), "--step", "S1"], cwd)
     assert_true(result.returncode == 1, "workflow S1 should fail because problem_analysis.json is absent")
 
+    result = run([sys.executable, str(WORKFLOW_GUARD), "--skill", "problem-doc-model-selector"], cwd)
+    assert_true(result.returncode == 0, f"problem-doc-model-selector should be allowed after S0\n{result.stdout}")
+    report = load_json(cwd / "paper_output" / "qa" / "workflow_guard_report.json")
+    assert_true(report["skill"] == "problem-doc-model-selector", "skill guard report should record skill name")
+    assert_true(report["required_step"] == "S0", "problem-doc-model-selector should require S0")
+
+    result = run([sys.executable, str(WORKFLOW_GUARD), "--skill", "data-cleaning-and-visualization"], cwd)
+    assert_true(result.returncode == 1, "data-cleaning-and-visualization should be blocked before S2")
+    report = load_json(cwd / "paper_output" / "qa" / "workflow_guard_report.json")
+    assert_true(report["skill"] == "data-cleaning-and-visualization", "blocked skill report should record skill name")
+    assert_true(report["required_step"] == "S2", "data-cleaning-and-visualization should require S2")
+
 
 def test_format_gate() -> None:
     cwd = SANDBOX / "scenario_4_suspicious_template"
@@ -104,6 +117,25 @@ def test_format_gate() -> None:
     assert_true(not (cwd / "paper_output" / "final_paper.docx").exists(), "draft mode must not create formal docx")
 
 
+def test_skill_docs_have_workflow_guard_contract() -> None:
+    expected = {
+        "authoritative-data-harvester",
+        "context-memory-keeper",
+        "data-cleaning-and-visualization",
+        "model-code-and-result-generator",
+        "modeling-paper-rubric-and-model-selector",
+        "paper-formal-writer",
+        "paper-micro-unit-generator",
+        "paper-workflow-orchestrator",
+        "problem-doc-model-selector",
+        "quality-assurance-auditor",
+    }
+    for skill in sorted(expected):
+        text = (CLAUDE_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+        assert_true("## 全局流程协作约束（长对话防漂移）" in text, f"{skill} should include global workflow contract")
+        assert_true(f"workflow_guard.py --skill {skill}" in text, f"{skill} should call workflow guard with its own skill name")
+
+
 def main() -> int:
     setup_sandbox.main()
     tests = [
@@ -111,6 +143,7 @@ def main() -> int:
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
         test_format_gate,
+        test_skill_docs_have_workflow_guard_contract,
     ]
     for test in tests:
         test()

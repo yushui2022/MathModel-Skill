@@ -26,6 +26,49 @@ BAD_RESULT_STATUSES = {
 
 STEP_ORDER = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]
 
+SKILL_REQUIREMENTS = {
+    "paper-workflow-orchestrator": {
+        "required_step": "S0",
+        "handoff": "总入口只负责判定阶段和路由；预检未通过时不得进入任何子 skill。",
+    },
+    "problem-doc-model-selector": {
+        "required_step": "S0",
+        "handoff": "预检通过后才能审题，输出 problem_analysis.json 后回到 orchestrator。",
+    },
+    "modeling-paper-rubric-and-model-selector": {
+        "required_step": "S1",
+        "handoff": "题意结构化完成后才能生成 model_route/rubric_alignment。",
+    },
+    "authoritative-data-harvester": {
+        "required_step": "S1",
+        "handoff": "外部数据检索必须围绕已解析的题意和子问题进行，检索结果回填 crawled_data/ 或 data_plan。",
+    },
+    "data-cleaning-and-visualization": {
+        "required_step": "S2",
+        "handoff": "模型路线和评分点明确后才能清洗数据、规划图表和生成 load_report。",
+    },
+    "model-code-and-result-generator": {
+        "required_step": "S3",
+        "handoff": "数据/图表计划和 load_report 通过后才能生成或运行建模代码。",
+    },
+    "quality-assurance-auditor": {
+        "required_step": "S5",
+        "handoff": "结果证据具备后才能做 evidence gate；失败时回退补齐结果、表格、图表或结论。",
+    },
+    "paper-micro-unit-generator": {
+        "required_step": "S5",
+        "handoff": "微单元只能作为局部写作/兜底素材，不能替代正式 evidence gate 和 formal writer。",
+    },
+    "paper-formal-writer": {
+        "required_step": "S6",
+        "handoff": "证据门禁 PASS 后才能进入正式成稿；未 PASS 时只能生成草稿或待写清单。",
+    },
+    "context-memory-keeper": {
+        "required_step": "S0",
+        "handoff": "记忆更新必须记录当前 workflow 阶段、已完成产物、阻塞项和下一步，不得改变阶段顺序。",
+    },
+}
+
 
 def configure_utf8_stdio() -> None:
     for stream in (sys.stdout, sys.stderr):
@@ -227,6 +270,24 @@ def evaluate(target_step: str) -> dict[str, Any]:
     }
 
 
+def evaluate_skill(skill_name: str) -> dict[str, Any]:
+    requirement = SKILL_REQUIREMENTS[skill_name]
+    report = evaluate(requirement["required_step"])
+    report.update(
+        {
+            "mode": "skill",
+            "skill": skill_name,
+            "required_step": requirement["required_step"],
+            "handoff": requirement["handoff"],
+        }
+    )
+    if report["status"] == "PASS":
+        report["next_action"] = f"允许启动 {skill_name}；完成后必须回到 paper-workflow-orchestrator 判断下一步。"
+    else:
+        report["next_action"] = f"禁止启动 {skill_name}；先补齐 {requirement['required_step']} 及之前的失败项。"
+    return report
+
+
 def write_reports(report: dict[str, Any]) -> None:
     REPORT_JSON.parent.mkdir(parents=True, exist_ok=True)
     REPORT_JSON.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -236,9 +297,17 @@ def write_reports(report: dict[str, Any]) -> None:
         f"- Target step: `{report['target_step']}`",
         f"- Status: `{report['status']}`",
         f"- Generated at: `{report['generated_at']}`",
-        "",
-        "## Steps",
     ]
+    if report.get("skill"):
+        lines.extend(
+            [
+                f"- Skill: `{report['skill']}`",
+                f"- Required step: `{report['required_step']}`",
+                f"- Handoff: {report['handoff']}",
+                f"- Next action: {report['next_action']}",
+            ]
+        )
+    lines.extend(["", "## Steps"])
     for item in report["steps"]:
         lines.append(f"- {item['step']} {item['name']}: `{item['status']}`")
         for failure in item["failures"]:
@@ -249,15 +318,20 @@ def write_reports(report: dict[str, Any]) -> None:
 def main() -> int:
     configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Check MathModel S0-S8 workflow state.")
-    parser.add_argument("--step", choices=STEP_ORDER, required=True, help="Check all workflow requirements up to this step.")
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--step", choices=STEP_ORDER, help="Check all workflow requirements up to this step.")
+    target.add_argument("--skill", choices=sorted(SKILL_REQUIREMENTS), help="Check whether this skill may start in the current workflow state.")
     args = parser.parse_args()
-    report = evaluate(args.step)
+    report = evaluate_skill(args.skill) if args.skill else evaluate(args.step)
     write_reports(report)
     print(f"workflow guard report: {rel(REPORT_JSON)}")
+    label = args.skill or args.step
     if report["status"] == "PASS":
-        print(f"[WORKFLOW PASS] {args.step}")
+        print(f"[WORKFLOW PASS] {label}")
         return 0
-    print(f"[WORKFLOW FAIL] {args.step}")
+    print(f"[WORKFLOW FAIL] {label}")
+    if report.get("next_action"):
+        print(f" - {report['next_action']}")
     for failure in report["failures"][:12]:
         print(f" - {failure}")
     if len(report["failures"]) > 12:

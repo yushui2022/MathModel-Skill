@@ -1,9 +1,20 @@
-﻿---
+---
 name: "model-code-and-result-generator"
 description: "根据 model_route.json、数据计划和清洗数据，为数学建模论文生成结果证据契约和 q1/q2/q3 建模代码脚手架。Invoke when 需要把模型输出、评价指标、结构化结论、论文表格和当前赛题专用建模代码沉淀到 paper_output/results/、paper_output/tables/ 和 paper_output/code/modeling/，供 QA 与正文生成读取。"
 ---
 
 # 建模代码与结果证据生成器
+
+## 全局流程协作约束（长对话防漂移）
+
+- 本 skill 不得作为孤立入口。用户要求完整论文、生成 Word、继续流程或不确定阶段时，先回到 `paper-workflow-orchestrator` 判断当前 S0-S8 阶段。
+- 启动或继续本 skill 的正式任务前，必须运行：
+  ```bash
+  python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --skill model-code-and-result-generator
+  ```
+- 如果输出 `[WORKFLOW FAIL]` 或报告 `status != "PASS"`，停止本 skill，按 `paper_output/qa/workflow_guard_report.json` 的失败项回补前置阶段，不得凭记忆继续。
+- 本 skill 只写入自己契约范围内的 `paper_output/` 产物；完成后必须回到 `paper-workflow-orchestrator` 判断下一步，并用 `context-memory-keeper` 记录已完成产物、阻塞项和下一步。
+- 长对话中如果上下文变长、阶段不确定或用户分开调用 skill，先读取 `paper_output/qa/workflow_guard_report.json`、`paper_output/preflight_report.json` 和本 skill 的上游 JSON 契约，再继续。
 
 ## 目标
 

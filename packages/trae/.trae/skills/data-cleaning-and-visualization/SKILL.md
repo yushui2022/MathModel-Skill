@@ -1,9 +1,20 @@
-﻿---
+---
 name: "data-cleaning-and-visualization"
 description: "自动清洗赛题或爬取的数据（处理缺失/异常/格式），并生成可视化图表。Invoke when 用户需要处理原始数据、清洗数据或生成数据分析图表。"
 ---
 
 # 数据清洗与可视化 (Data Cleaning and Visualization)
+
+## 全局流程协作约束（长对话防漂移）
+
+- 本 skill 不得作为孤立入口。用户要求完整论文、生成 Word、继续流程或不确定阶段时，先回到 `paper-workflow-orchestrator` 判断当前 S0-S8 阶段。
+- 启动或继续本 skill 的正式任务前，必须运行：
+  ```bash
+  python .trae/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --skill data-cleaning-and-visualization
+  ```
+- 如果输出 `[WORKFLOW FAIL]` 或报告 `status != "PASS"`，停止本 skill，按 `paper_output/qa/workflow_guard_report.json` 的失败项回补前置阶段，不得凭记忆继续。
+- 本 skill 只写入自己契约范围内的 `paper_output/` 产物；完成后必须回到 `paper-workflow-orchestrator` 判断下一步，并用 `context-memory-keeper` 记录已完成产物、阻塞项和下一步。
+- 长对话中如果上下文变长、阶段不确定或用户分开调用 skill，先读取 `paper_output/qa/workflow_guard_report.json`、`paper_output/preflight_report.json` 和本 skill 的上游 JSON 契约，再继续。
 
 ## 执行契约
 - 上游输入：优先读取 `paper_output/step1/problem_analysis.json` 与 `paper_output/plan/model_route.json`，并扫描 `problem_files/` 与 `crawled_data/` 中的数据文件。

@@ -5,6 +5,17 @@ description: "国赛数学建模正式论文范式、outline、Word 排版和格
 
 # 正式论文范式写作器
 
+## 全局流程协作约束（长对话防漂移）
+
+- 本 skill 不得作为孤立入口。用户要求完整论文、生成 Word、继续流程或不确定阶段时，先回到 `paper-workflow-orchestrator` 判断当前 S0-S8 阶段。
+- 启动或继续本 skill 的正式任务前，必须运行：
+  ```bash
+  python .claude/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --skill paper-formal-writer
+  ```
+- 如果输出 `[WORKFLOW FAIL]` 或报告 `status != "PASS"`，停止本 skill，按 `paper_output/qa/workflow_guard_report.json` 的失败项回补前置阶段，不得凭记忆继续。
+- 本 skill 只写入自己契约范围内的 `paper_output/` 产物；完成后必须回到 `paper-workflow-orchestrator` 判断下一步，并用 `context-memory-keeper` 记录已完成产物、阻塞项和下一步。
+- 长对话中如果上下文变长、阶段不确定或用户分开调用 skill，先读取 `paper_output/qa/workflow_guard_report.json`、`paper_output/preflight_report.json` 和本 skill 的上游 JSON 契约，再继续。
+
 ## 执行契约
 - 上游输入：必须优先读取 `paper_output/plan/model_route.json`、`paper_output/results/`、`paper_output/tables/table_index.json`、`paper_output/figure_index.json` 和证据门禁报告。
 - 核心输出：`paper_output/plan/paper_outline.json`、`paper_output/final_paper_source.md`、`paper_output/final_paper.docx`、`paper_output/format_check_report.md`。
