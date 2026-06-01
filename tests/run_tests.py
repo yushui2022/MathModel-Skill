@@ -140,6 +140,39 @@ def test_robust_loader_and_workflow_guard() -> None:
     assert_true(report["required_step"] == "S2", "data-cleaning-and-visualization should require S2")
 
 
+def test_workflow_status_after_code_generation() -> None:
+    cwd = SANDBOX / "scenario_status_s4"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    problem_files = cwd / "problem_files"
+    problem_files.mkdir(parents=True)
+    (problem_files / "problem.md").write_text("Build a reproducible baseline model for question one.\n", encoding="utf-8")
+    (problem_files / "data.csv").write_text("x,y\n1,2\n2,4\n3,6\n", encoding="utf-8")
+    output = cwd / "paper_output"
+    result = run([sys.executable, str(PREFLIGHT)], cwd)
+    assert_true(result.returncode == 0, f"preflight should pass before staged workflow status test\n{result.stdout}")
+
+    write_json(output / "step1" / "problem_analysis.json", {"questions": [{"question_id": "Q1", "title": "question one"}]})
+    write_json(output / "plan" / "model_route.json", {"questions": [{"question_id": "Q1", "title": "question one", "main_model": "baseline"}]})
+    write_json(output / "plan" / "rubric_alignment.json", {"status": "PASS", "items": [{"question_id": "Q1"}]})
+    (output / "plan" / "scoring_strategy.md").write_text("score by reproducible modeling evidence\n", encoding="utf-8")
+    write_json(output / "plan" / "data_plan.json", {"datasets": [{"path": "paper_output/data_cleaned/sample_cleaned.csv"}]})
+    write_json(output / "plan" / "visualization_plan.json", {"figures": []})
+    write_json(output / "figure_index.json", {"figures": []})
+    write_json(output / "data_cleaned" / "load_report.json", {"status": "PASS", "input_manifest_used": True, "summary": {"readable_data_file_count": 1}})
+    (output / "code" / "modeling").mkdir(parents=True, exist_ok=True)
+    (output / "code" / "modeling" / "q1_model.py").write_text("print('model ready')\n", encoding="utf-8")
+    (output / "code" / "modeling" / "run_modeling.py").write_text("print('runner ready')\n", encoding="utf-8")
+
+    result = run([sys.executable, str(WORKFLOW_GUARD), "--status"], cwd)
+    assert_true(result.returncode == 0, f"workflow status should stay diagnostic at S5 gap\n{result.stdout}")
+    report = load_json(output / "qa" / "workflow_guard_report.json")
+    assert_true(report["current_step"] == "S4", f"expected current_step S4, got {report['current_step']}")
+    assert_true(report["next_step"] == "S5", f"expected next_step S5, got {report['next_step']}")
+    assert_true(report["recommended_skill"] == "model-code-and-result-generator", "S5 recovery should route back to model-code-and-result-generator")
+    assert_true(any("run_manifest" in failure or "model_results" in failure for failure in report["failures"]), "S5 failures should mention missing executed results")
+
+
 def test_format_gate() -> None:
     cwd = SANDBOX / "scenario_4_suspicious_template"
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
@@ -282,6 +315,7 @@ def main() -> int:
         test_preflight,
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
+        test_workflow_status_after_code_generation,
         test_format_gate,
         test_docx_visual_qa,
         test_modeling_run_manifest,
