@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -137,23 +138,44 @@ def check_docx_structure(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {"exists": False}
     try:
+        if not zipfile.is_zipfile(path):
+            return {"exists": True, "error": "DOCX is not a valid zip package"}
         doc = Document(str(path))
         headings = [
             paragraph.text
             for paragraph in doc.paragraphs
             if paragraph.style and paragraph.style.name.startswith("Heading") and paragraph.text.strip()
         ]
+        text_parts = [paragraph.text.strip() for paragraph in doc.paragraphs if paragraph.text.strip()]
+        docx_text = "\n".join(text_parts)
         image_count = 0
         for rel in doc.part.rels.values():
             if "image" in rel.reltype:
                 image_count += 1
+        empty_table_count = 0
+        table_cell_count = 0
+        for table in doc.tables:
+            has_text = False
+            for row in table.rows:
+                for cell in row.cells:
+                    table_cell_count += 1
+                    if cell.text.strip():
+                        has_text = True
+            if not has_text:
+                empty_table_count += 1
         return {
             "exists": True,
+            "package_ok": True,
             "paragraph_count": len(doc.paragraphs),
             "table_count": len(doc.tables),
+            "table_cell_count": table_cell_count,
+            "empty_table_count": empty_table_count,
             "image_count": image_count,
+            "inline_shape_count": len(doc.inline_shapes),
             "heading_count": len(headings),
             "sample_headings": headings[:12],
+            "nonspace_text_chars": len(re.sub(r"\s+", "", docx_text)),
+            "text_preview": docx_text[:240],
         }
     except Exception as exc:
         return {"exists": True, "error": str(exc)}
@@ -195,6 +217,49 @@ def visual_qa_failures(
         failures.append("table_index.json 有表格计划，但 Word 中没有表格。")
     elif docx_table_count < table_count:
         warnings.append(f"Word 表格数量少于 table_index.json：{docx_table_count} < {table_count}")
+
+    return failures, warnings
+
+
+def strict_visual_qa_failures(
+    docx_structure: dict[str, Any],
+    source_heading_count: int,
+    source_content_chars: int,
+    figure_count: int,
+    table_count: int,
+) -> tuple[list[str], list[str]]:
+    failures, warnings = visual_qa_failures(docx_structure, source_heading_count, figure_count, table_count)
+    if not docx_structure.get("exists") or docx_structure.get("error"):
+        return failures, warnings
+
+    heading_count = int(docx_structure.get("heading_count") or 0)
+    docx_table_count = int(docx_structure.get("table_count") or 0)
+    empty_table_count = int(docx_structure.get("empty_table_count") or 0)
+    image_rel_count = int(docx_structure.get("image_count") or 0)
+    inline_shape_count = int(docx_structure.get("inline_shape_count") or 0)
+    docx_text_chars = int(docx_structure.get("nonspace_text_chars") or 0)
+
+    if docx_text_chars < 200:
+        failures.append(f"DOCX text payload is too small: {docx_text_chars} < 200")
+    elif source_content_chars >= 1000 and docx_text_chars < max(200, source_content_chars // 3):
+        failures.append(f"DOCX text payload is much smaller than source markdown: {docx_text_chars} < {source_content_chars // 3}")
+    elif source_content_chars >= 1000 and docx_text_chars < source_content_chars // 2:
+        warnings.append(f"DOCX text payload is smaller than source markdown: {docx_text_chars} < {source_content_chars // 2}")
+
+    if source_heading_count > 0 and heading_count == 0:
+        failures.append("No Word heading styles were detected while markdown headings exist")
+
+    if figure_count > 0 and inline_shape_count == 0:
+        failures.append(f"figure_index has figures but DOCX has no inline images: expected {figure_count}")
+    elif inline_shape_count < figure_count:
+        warnings.append(f"DOCX inline image count is lower than figure_index: {inline_shape_count} < {figure_count}")
+    if image_rel_count > inline_shape_count:
+        warnings.append(f"DOCX has image relationships not used as inline shapes: rels={image_rel_count}, inline={inline_shape_count}")
+
+    if table_count > 0 and docx_table_count == 0:
+        failures.append(f"table_index has tables but DOCX has no tables: expected {table_count}")
+    if empty_table_count > 0:
+        failures.append(f"DOCX contains empty tables: {empty_table_count}")
 
     return failures, warnings
 
@@ -283,7 +348,7 @@ def evaluate() -> dict[str, Any]:
         failures.append(f"Word 文件无法读取：{docx_structure['error']}")
 
     source_heading_count = markdown_heading_count(text)
-    visual_failures, visual_warnings = visual_qa_failures(docx_structure, source_heading_count, len(figures), len(tables))
+    visual_failures, visual_warnings = strict_visual_qa_failures(docx_structure, source_heading_count, counts["content"], len(figures), len(tables))
     failures.extend(visual_failures)
     warnings.extend(visual_warnings)
 

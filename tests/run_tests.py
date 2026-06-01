@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data
 BUILD_RESULT_CONTRACTS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "model-code-and-result-generator" / "scripts" / "build_result_contracts.py"
 EVIDENCE_GATE = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
 FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
+CHECK_PAPER_FORMAT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_paper_format.py"
 CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
 
 
@@ -150,6 +152,45 @@ def test_format_gate() -> None:
     assert_true(not (cwd / "paper_output" / "final_paper.docx").exists(), "draft mode must not create formal docx")
 
 
+def test_docx_visual_qa() -> None:
+    from docx import Document
+
+    cwd = SANDBOX / "scenario_docx_visual_qa"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    output = cwd / "paper_output"
+    output.mkdir(parents=True)
+
+    source = "\n".join(
+        [
+            "# 摘要",
+            "# 1 问题重述",
+            "# 2 问题分析",
+            "# 5.1 问题一模型",
+            "analysiscontent" * 160,
+        ]
+    )
+    (output / "final_paper_source.md").write_text(source, encoding="utf-8")
+    write_json(output / "plan" / "paper_outline.json", {"target_words": {"min": 10, "max": 5000}, "questions": []})
+    write_json(output / "figure_index.json", {"figures": [{"figure_id": "fig1", "title": "figure one", "path": "paper_output/figures/fig1.png"}]})
+    write_json(output / "tables" / "table_index.json", {"tables": [{"table_id": "tab1", "title": "table one", "path": "paper_output/tables/tab1.csv"}]})
+
+    doc = Document()
+    doc.add_paragraph("too short body only")
+    doc.save(output / "final_paper.docx")
+
+    result = run([sys.executable, str(CHECK_PAPER_FORMAT)], cwd)
+    assert_true(result.returncode == 1, f"format check should fail weak DOCX visual QA\n{result.stdout}")
+    report = load_json(output / "format_check_report.json")
+    assert_true(report["docx_structure"]["package_ok"] is True, "DOCX package should be readable")
+    assert_true(report["docx_structure"]["nonspace_text_chars"] > 0, "DOCX text payload should be measured")
+    failures = "\n".join(report["visual_qa"]["failures"])
+    assert_true("DOCX text payload is too small" in failures, "visual QA should fail tiny DOCX text payload")
+    assert_true("No Word heading styles" in failures, "visual QA should fail missing Word heading styles")
+    assert_true("figure_index has figures but DOCX has no inline images" in failures, "visual QA should fail missing indexed figures")
+    assert_true("table_index has tables but DOCX has no tables" in failures, "visual QA should fail missing indexed tables")
+
+
 def test_modeling_run_manifest() -> None:
     cwd = SANDBOX / "scenario_7_real_data"
     output = cwd / "paper_output"
@@ -242,6 +283,7 @@ def main() -> int:
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
         test_format_gate,
+        test_docx_visual_qa,
         test_modeling_run_manifest,
         test_evidence_gate_requires_run_manifest,
         test_skill_docs_have_workflow_guard_contract,
