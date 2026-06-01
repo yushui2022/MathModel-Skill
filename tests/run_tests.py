@@ -14,6 +14,8 @@ PREFLIGHT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-wo
 WORKFLOW_GUARD = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "workflow_guard.py"
 ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
 FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
+FORMAT_LATEX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_latex.py"
+CHECK_LATEX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_latex_format.py"
 
 
 def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -104,6 +106,38 @@ def test_format_gate() -> None:
     assert_true(not (cwd / "paper_output" / "final_paper.docx").exists(), "draft mode must not create formal docx")
 
 
+def test_latex_gate_export_and_check() -> None:
+    cwd = SANDBOX / "scenario_4_suspicious_template"
+    output_dir = cwd / "paper_output"
+    gate_dir = output_dir / "qa"
+
+    result = run([sys.executable, str(FORMAT_LATEX)], cwd)
+    assert_true(result.returncode != 0, "formal LaTeX should block without evidence gate")
+    assert_true(not (output_dir / "final_paper.tex").exists(), "formal LaTeX should not be created without gate")
+
+    result = run([sys.executable, str(FORMAT_LATEX), "--allow-draft"], cwd)
+    assert_true(result.returncode == 0, f"draft LaTeX export should pass\n{result.stdout}")
+    assert_true((output_dir / "final_paper_draft.tex").exists(), "draft LaTeX should be created")
+    assert_true(not (output_dir / "final_paper.tex").exists(), "draft LaTeX must not create formal final_paper.tex")
+
+    result = run([sys.executable, str(CHECK_LATEX), "--draft"], cwd)
+    assert_true(result.returncode == 0, f"draft LaTeX check should pass\n{result.stdout}")
+    draft_check_report = load_json(output_dir / "latex_check_report.json")
+    assert_true(draft_check_report["status"] == "PASS", "draft LaTeX check report should PASS")
+
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    (gate_dir / "evidence_gate_report.json").write_text(json.dumps({"status": "PASS"}), encoding="utf-8")
+    result = run([sys.executable, str(FORMAT_LATEX)], cwd)
+    assert_true(result.returncode == 0, f"formal LaTeX export should pass after gate\n{result.stdout}")
+    assert_true((output_dir / "final_paper.tex").exists(), "formal final_paper.tex should be created after gate")
+    assert_true((output_dir / "latex_build_report.json").exists(), "formal LaTeX export report should be created")
+
+    result = run([sys.executable, str(CHECK_LATEX)], cwd)
+    assert_true(result.returncode == 0, f"formal LaTeX check should pass\n{result.stdout}")
+    formal_check_report = load_json(output_dir / "latex_check_report.json")
+    assert_true(formal_check_report["status"] == "PASS", "formal LaTeX check report should PASS")
+
+
 def main() -> int:
     setup_sandbox.main()
     tests = [
@@ -111,6 +145,7 @@ def main() -> int:
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
         test_format_gate,
+        test_latex_gate_export_and_check,
     ]
     for test in tests:
         test()

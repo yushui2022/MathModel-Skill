@@ -1,4 +1,4 @@
-﻿---
+---
 name: "paper-workflow-orchestrator"
 description: "MathModel Skill 总入口。触发词：数学建模、生成论文、分析赛题、CUMCM、MathorCup、华数杯、美赛、ICM、MathModel。任何数学建模任务先读本 skill 再路由子 skill。"
 ---
@@ -39,7 +39,7 @@ python .trae/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step
 
 ## 执行契约
 - 上游输入：`problem_files/` 中的赛题与附件数据；可选读取 `crawled_data/` 中的补充权威数据。
-- 必须输出：`paper_output/OUTPUT_LAYOUT.md`、`problem_analysis.json`、`model_route.json`、`rubric_alignment.json`、`scoring_strategy.md`、数据/图表计划、结果证据、证据门禁报告、`paper_outline.json`、`final_paper_source.md`、`final_paper.docx` 与格式检查报告。
+- 必须输出：`paper_output/OUTPUT_LAYOUT.md`、`problem_analysis.json`、`model_route.json`、`rubric_alignment.json`、`scoring_strategy.md`、数据/图表计划、结果证据、证据门禁报告、`paper_outline.json`、`final_paper_source.md`、`final_paper.docx` 与格式检查报告；本 `Latex` 分支可选输出 `paper_output/final_paper.tex` / `final_paper.pdf`。
 - 下游交接：本技能是总入口，负责判断当前阶段并路由到其他 skill；用户不知道从哪个 skill 开始时优先调用它。
 - 失败回退：`problem_files/` 为空时阻塞；模型路线、数据计划或图表生成失败时打印 warning 并继续，让 QA 按可用契约回退。
 
@@ -67,6 +67,7 @@ python .trae/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step
 | 需要生成模型结果、评价指标、结论和表格证据 | `model-code-and-result-generator` |
 | 进入正文生成前，需要任务清单和门禁检查 | `quality-assurance-auditor` |
 | 证据门禁通过，需要正式成稿、规范格式、Word 排版 | `paper-formal-writer` |
+| 证据门禁通过，需要 LaTeX / PDF 版本 | `paper-formal-writer` 的 `format_formal_latex.py` |
 | 需要微单元提示词资产、局部扩写或低能力模型兜底草稿 | `paper-micro-unit-generator` |
 | 已有 `final_paper_source.md` 或 `final_paper.docx`，需要最终把关 | `quality-assurance-auditor` + `paper-formal-writer` |
 
@@ -90,6 +91,7 @@ python .trae/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step
 - **必须通过：`quality-assurance-auditor/scripts/evidence_gate.py` 的 official 模式**
 - **必须通过：`paper-formal-writer/scripts/check_paper_format.py` 的正式格式门禁**
 - 必须存在：`paper_output/final_paper.docx`，但只有证据门禁和格式门禁都通过后才能称为正式稿。
+- LaTeX 分支可选存在：`paper_output/final_paper.tex`；如果本机有 `xelatex`，可选生成 `paper_output/final_paper.pdf`。LaTeX 输出同样不能绕过证据门禁。
 - 必须存在：`paper_output/OUTPUT_LAYOUT.md`（当前项目输出位置说明）
 - 必须存在：`paper_output/plan/paper_outline.json`（正式论文大纲契约）
 - 必须存在：`paper_output/final_paper_source.md`（Agent 全局写作的正式 Markdown 源稿）
