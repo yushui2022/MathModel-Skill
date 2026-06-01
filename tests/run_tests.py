@@ -115,6 +115,13 @@ def test_robust_loader_and_workflow_guard() -> None:
 
     result = run([sys.executable, str(WORKFLOW_GUARD), "--step", "S0"], cwd)
     assert_true(result.returncode == 0, f"workflow S0 should pass after preflight\n{result.stdout}")
+    result = run([sys.executable, str(WORKFLOW_GUARD), "--status"], cwd)
+    assert_true(result.returncode == 0, f"workflow status should be diagnostic\n{result.stdout}")
+    report = load_json(cwd / "paper_output" / "qa" / "workflow_guard_report.json")
+    assert_true(report["mode"] == "status", "status report should record mode=status")
+    assert_true(report["current_step"] == "S0", "status recovery should identify S0 as deepest completed step")
+    assert_true(report["next_step"] == "S1", "status recovery should recommend S1 next")
+    assert_true(report["recommended_skill"] == "problem-doc-model-selector", "status recovery should recommend problem-doc-model-selector")
     result = run([sys.executable, str(WORKFLOW_GUARD), "--step", "S1"], cwd)
     assert_true(result.returncode == 1, "workflow S1 should fail because problem_analysis.json is absent")
 
@@ -225,6 +232,7 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
         text = (CLAUDE_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
         assert_true("## 全局流程协作约束（长对话防漂移）" in text, f"{skill} should include global workflow contract")
         assert_true(f"workflow_guard.py --skill {skill}" in text, f"{skill} should call workflow guard with its own skill name")
+        assert_true("workflow_guard.py --status" in text, f"{skill} should include workflow status recovery command")
 
 
 def main() -> int:

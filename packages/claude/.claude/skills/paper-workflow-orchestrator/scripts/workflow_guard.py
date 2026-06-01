@@ -26,6 +26,45 @@ BAD_RESULT_STATUSES = {
 
 STEP_ORDER = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]
 
+STEP_RECOVERY = {
+    "S0": {
+        "recommended_skill": "paper-workflow-orchestrator",
+        "action": "运行 preflight_check.py，生成 preflight_report.json 与 input_manifest.json。",
+    },
+    "S1": {
+        "recommended_skill": "problem-doc-model-selector",
+        "action": "解析题面并生成 paper_output/step1/problem_analysis.json。",
+    },
+    "S2": {
+        "recommended_skill": "modeling-paper-rubric-and-model-selector",
+        "action": "生成 model_route.json、rubric_alignment.json 与 scoring_strategy.md。",
+    },
+    "S3": {
+        "recommended_skill": "data-cleaning-and-visualization",
+        "action": "基于 input_manifest 与模型路线生成 data_plan、visualization_plan、figure_index 与 load_report。",
+    },
+    "S4": {
+        "recommended_skill": "model-code-and-result-generator",
+        "action": "生成 paper_output/code/modeling/ 下的 q*_model.py 与 run_modeling.py。",
+    },
+    "S5": {
+        "recommended_skill": "model-code-and-result-generator",
+        "action": "实际运行 run_modeling.py，生成 model_results、metrics、conclusions、table_index 与 run_manifest。",
+    },
+    "S6": {
+        "recommended_skill": "quality-assurance-auditor",
+        "action": "运行 evidence_gate.py --mode official，未通过则回补结果证据。",
+    },
+    "S7": {
+        "recommended_skill": "paper-formal-writer",
+        "action": "证据门禁通过后生成 paper_outline、final_paper_source.md 与 final_paper.docx。",
+    },
+    "S8": {
+        "recommended_skill": "paper-formal-writer",
+        "action": "运行 check_paper_format.py 并修复格式门禁失败项。",
+    },
+}
+
 SKILL_REQUIREMENTS = {
     "paper-workflow-orchestrator": {
         "required_step": "S0",
@@ -314,6 +353,52 @@ def evaluate_skill(skill_name: str) -> dict[str, Any]:
     return report
 
 
+def evaluate_status() -> dict[str, Any]:
+    deepest_passed = ""
+    first_blocked = ""
+    first_report: dict[str, Any] | None = None
+    for step in STEP_ORDER:
+        report = evaluate(step)
+        if report["status"] == "PASS":
+            deepest_passed = step
+            continue
+        first_blocked = step
+        first_report = report
+        break
+
+    if not first_blocked:
+        return {
+            "schema_version": "1.0",
+            "generated_by": "paper-workflow-orchestrator/scripts/workflow_guard.py",
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "mode": "status",
+            "target_step": "S8",
+            "status": "COMPLETE",
+            "current_step": "S8",
+            "next_step": "",
+            "recommended_skill": "",
+            "next_action": "S0-S8 全部通过；可以进行最终一致性复核或交付。",
+            "steps": [CHECKERS[step]() for step in STEP_ORDER],
+            "failures": [],
+        }
+
+    guidance = STEP_RECOVERY[first_blocked]
+    return {
+        "schema_version": "1.0",
+        "generated_by": "paper-workflow-orchestrator/scripts/workflow_guard.py",
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "mode": "status",
+        "target_step": first_blocked,
+        "status": "INCOMPLETE",
+        "current_step": deepest_passed,
+        "next_step": first_blocked,
+        "recommended_skill": guidance["recommended_skill"],
+        "next_action": guidance["action"],
+        "steps": first_report["steps"] if first_report else [],
+        "failures": first_report["failures"] if first_report else [],
+    }
+
+
 def write_reports(report: dict[str, Any]) -> None:
     REPORT_JSON.parent.mkdir(parents=True, exist_ok=True)
     REPORT_JSON.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -333,6 +418,15 @@ def write_reports(report: dict[str, Any]) -> None:
                 f"- Next action: {report['next_action']}",
             ]
         )
+    if report.get("mode") == "status":
+        lines.extend(
+            [
+                f"- Current step: `{report.get('current_step', '')}`",
+                f"- Next step: `{report.get('next_step', '')}`",
+                f"- Recommended skill: `{report.get('recommended_skill', '')}`",
+                f"- Next action: {report.get('next_action', '')}",
+            ]
+        )
     lines.extend(["", "## Steps"])
     for item in report["steps"]:
         lines.append(f"- {item['step']} {item['name']}: `{item['status']}`")
@@ -347,11 +441,21 @@ def main() -> int:
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--step", choices=STEP_ORDER, help="Check all workflow requirements up to this step.")
     target.add_argument("--skill", choices=sorted(SKILL_REQUIREMENTS), help="Check whether this skill may start in the current workflow state.")
+    target.add_argument("--status", action="store_true", help="Recover current workflow stage and recommend the next skill/action.")
     args = parser.parse_args()
-    report = evaluate_skill(args.skill) if args.skill else evaluate(args.step)
+    if args.status:
+        report = evaluate_status()
+    elif args.skill:
+        report = evaluate_skill(args.skill)
+    else:
+        report = evaluate(args.step)
     write_reports(report)
     print(f"workflow guard report: {rel(REPORT_JSON)}")
-    label = args.skill or args.step
+    label = "status" if args.status else (args.skill or args.step)
+    if args.status:
+        print(f"[WORKFLOW STATUS] current={report.get('current_step') or 'NONE'} next={report.get('next_step') or 'DONE'} skill={report.get('recommended_skill') or '-'}")
+        print(f" - {report.get('next_action', '')}")
+        return 0
     if report["status"] == "PASS":
         print(f"[WORKFLOW PASS] {label}")
         return 0
