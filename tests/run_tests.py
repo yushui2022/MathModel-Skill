@@ -301,6 +301,19 @@ def test_workflow_memory_snapshot() -> None:
     assert_true("Workflow Memory Snapshot" in memory_md.read_text(encoding="utf-8"), "memory markdown should be readable")
 
 
+def test_workflow_status_complete_after_s8() -> None:
+    cwd, output = make_preflighted_scenario("scenario_status_complete")
+    stage_workflow(output, "S8")
+    result = run([sys.executable, str(WORKFLOW_GUARD), "--status"], cwd)
+    assert_true(result.returncode == 0, f"workflow status should be diagnostic at completion\n{result.stdout}")
+    report = load_json(output / "qa" / "workflow_guard_report.json")
+    assert_true(report["status"] == "COMPLETE", f"expected COMPLETE status, got {report['status']}")
+    assert_true(report["current_step"] == "S8", f"expected current_step S8, got {report['current_step']}")
+    assert_true(report["next_step"] == "", "complete workflow should not recommend another step")
+    assert_true(report["recommended_skill"] == "", "complete workflow should not recommend another skill")
+    assert_true(report["failures"] == [], "complete workflow should have no failures")
+
+
 def test_format_gate() -> None:
     cwd = SANDBOX / "scenario_4_suspicious_template"
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
@@ -478,6 +491,7 @@ def main() -> int:
         test_workflow_status_after_code_generation,
         test_workflow_status_recovery_across_stages,
         test_workflow_memory_snapshot,
+        test_workflow_status_complete_after_s8,
         test_format_gate,
         test_docx_visual_qa,
         test_modeling_run_manifest,
