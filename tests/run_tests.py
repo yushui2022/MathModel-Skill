@@ -20,6 +20,8 @@ FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-
 CHECK_PAPER_FORMAT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_paper_format.py"
 UPDATE_WORKFLOW_MEMORY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "context-memory-keeper" / "scripts" / "update_workflow_memory.py"
 CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
+CODEX_SKILLS = REPO_ROOT / "packages" / "codex" / "skills"
+TRAE_SKILLS = REPO_ROOT / "packages" / "trae" / ".trae" / "skills"
 
 
 def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -437,6 +439,35 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
         assert_true("update_workflow_memory.py" in text, f"{skill} should update workflow memory snapshots after handoff")
 
 
+def test_platform_packages_stay_synced() -> None:
+    for claude_skill in sorted(CLAUDE_SKILLS.glob("*/SKILL.md")):
+        skill = claude_skill.parent.name
+        claude_text = claude_skill.read_text(encoding="utf-8")
+        codex_text = (CODEX_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+        trae_text = (TRAE_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+        assert_true(codex_text == claude_text.replace(".claude/skills", "skills"), f"codex SKILL.md drift: {skill}")
+        assert_true(trae_text == claude_text.replace(".claude/skills", ".trae/skills"), f"trae SKILL.md drift: {skill}")
+
+    script_paths = [
+        ("context-memory-keeper", "scripts/update_workflow_memory.py"),
+        ("data-cleaning-and-visualization", "scripts/robust_loader.py"),
+        ("model-code-and-result-generator", "scripts/build_result_contracts.py"),
+        ("paper-formal-writer", "scripts/check_paper_format.py"),
+        ("paper-formal-writer", "scripts/format_formal_docx.py"),
+        ("paper-workflow-orchestrator", "scripts/preflight_check.py"),
+        ("paper-workflow-orchestrator", "scripts/workflow_guard.py"),
+        ("quality-assurance-auditor", "scripts/evidence_gate.py"),
+    ]
+    for skill, rel_script in script_paths:
+        claude_bytes = (CLAUDE_SKILLS / skill / rel_script).read_bytes()
+        codex_path = CODEX_SKILLS / skill / rel_script
+        trae_path = TRAE_SKILLS / skill / rel_script
+        assert_true(codex_path.exists(), f"codex missing script: {skill}/{rel_script}")
+        assert_true(trae_path.exists(), f"trae missing script: {skill}/{rel_script}")
+        assert_true(codex_path.read_bytes() == claude_bytes, f"codex script drift: {skill}/{rel_script}")
+        assert_true(trae_path.read_bytes() == claude_bytes, f"trae script drift: {skill}/{rel_script}")
+
+
 def main() -> int:
     setup_sandbox.main()
     tests = [
@@ -452,6 +483,7 @@ def main() -> int:
         test_modeling_run_manifest,
         test_evidence_gate_requires_run_manifest,
         test_skill_docs_have_workflow_guard_contract,
+        test_platform_packages_stay_synced,
     ]
     for test in tests:
         test()
