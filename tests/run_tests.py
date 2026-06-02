@@ -618,6 +618,16 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
         assert_true("update_workflow_memory.py" in text, f"{skill} should update workflow memory snapshots after handoff")
 
 
+def test_skill_docs_are_readable() -> None:
+    bad_fragments = ["??", "\ufffd", "杩", "缂", "鏂", "閫", "寤", "妯", "璇", "棰"]
+    for root in (CLAUDE_SKILLS, CODEX_SKILLS, TRAE_SKILLS):
+        for skill_doc in sorted(root.glob("*/SKILL.md")):
+            text = skill_doc.read_text(encoding="utf-8")
+            rel = skill_doc.relative_to(REPO_ROOT).as_posix()
+            for fragment in bad_fragments:
+                assert_true(fragment not in text, f"{rel} contains unreadable fragment: {fragment}")
+
+
 def test_platform_packages_stay_synced() -> None:
     for claude_skill in sorted(CLAUDE_SKILLS.glob("*/SKILL.md")):
         skill = claude_skill.parent.name
@@ -678,6 +688,7 @@ def main() -> int:
         test_evidence_gate_passes_for_computed_run,
         test_evidence_gate_requires_run_manifest,
         test_skill_docs_have_workflow_guard_contract,
+        test_skill_docs_are_readable,
         test_platform_packages_stay_synced,
     ]
     for test in tests:
