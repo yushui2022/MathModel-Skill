@@ -15,7 +15,7 @@
 
 </div>
 
-MathModel Skill 是一套面向数学建模比赛的 Agent-native skill 工作流，不是黑盒一键论文生成器。它把常见流程固化为可复用的 Agent 原生能力，让 Codex、Claude Code、Trae 知道先读什么、代码写到哪里、结果如何沉淀、正文如何引用证据。
+MathModel Skill 是一套面向数学建模比赛的 Agent-native skill 工作流，不是黑盒一键论文生成器。由于注意力机制的限制，一键生成固然很爽，但很难稳定完成真正达到省一水平的文章；因此我们对 skill 进行了系统优化，发布 v2.0.0 版本。安装好 skill 以后，用户只需傻瓜式输入“继续”，skill 会引导 coding agent 按流程完成论文生成。它把常见流程固化为可复用的 Agent 原生能力，让 Codex、Claude Code、Trae 知道先读什么、代码写到哪里、结果如何沉淀、正文如何引用证据。
 
 ```text
 读题 -> 拆题 -> 模型路线 -> 判断附件性质 -> 生成/修改赛题专用代码 -> 运行代码 -> 真实图表/表格/结果 -> 证据门禁 -> 正式 outline -> Agent 全局写作 -> Word 排版 -> 格式门禁 -> 最终 QA
