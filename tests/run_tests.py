@@ -392,6 +392,78 @@ def test_modeling_run_manifest() -> None:
     assert_true(first_run["output_artifacts"], "run_manifest should record output artifacts")
 
 
+def test_evidence_gate_passes_for_computed_run() -> None:
+    cwd = SANDBOX / "scenario_9_computed_run"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    output = cwd / "paper_output"
+    output.mkdir(parents=True)
+    write_json(output / "plan" / "model_route.json", {"questions": [{"question_id": "Q1", "title": "question one", "task_type": "baseline", "main_model": "computed baseline"}]})
+    write_json(output / "plan" / "data_plan.json", {"datasets": [{"path": "paper_output/data_cleaned/sample_cleaned.csv"}]})
+    write_json(output / "plan" / "visualization_plan.json", {"figures": []})
+    write_json(output / "figure_index.json", {"figures": []})
+    (output / "data_cleaned").mkdir(parents=True, exist_ok=True)
+    (output / "data_cleaned" / "sample_cleaned.csv").write_text("x,y\n1,2\n2,4\n3,6\n", encoding="utf-8")
+
+    result = run([sys.executable, str(BUILD_RESULT_CONTRACTS)], cwd)
+    assert_true(result.returncode == 0, f"build_result_contracts should create runner\n{result.stdout}")
+    q1_model = output / "code" / "modeling" / "q1_model.py"
+    q1_model.write_text(
+        """
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+OUTPUT = PROJECT_ROOT / "paper_output"
+(OUTPUT / "results").mkdir(parents=True, exist_ok=True)
+(OUTPUT / "tables").mkdir(parents=True, exist_ok=True)
+(OUTPUT / "tables" / "q1_table.csv").write_text("metric,value\\nscore,1.0\\n", encoding="utf-8")
+
+provenance = {
+    "source_code_path": "paper_output/code/modeling/q1_model.py",
+    "run_command": "python paper_output/code/modeling/q1_model.py",
+    "run_exit_code": 0,
+    "output_artifacts": ["paper_output/tables/q1_table.csv"],
+}
+(OUTPUT / "results" / "model_results.json").write_text(json.dumps({
+    "questions": [{
+        "question_id": "Q1",
+        "status": "computed",
+        "evidence_status": "computed",
+        "result_summary": "computed result from q1_model.py",
+        "execution_provenance": provenance,
+    }]
+}, ensure_ascii=False, indent=2), encoding="utf-8")
+(OUTPUT / "results" / "metrics.json").write_text(json.dumps({
+    "items": [{"question_id": "Q1", "status": "computed", "metric_name": "score", "value": 1.0}]
+}, ensure_ascii=False, indent=2), encoding="utf-8")
+(OUTPUT / "results" / "conclusions.json").write_text(json.dumps({
+    "items": [{"question_id": "Q1", "status": "computed", "conclusion_text": "computed conclusion answers Q1"}]
+}, ensure_ascii=False, indent=2), encoding="utf-8")
+(OUTPUT / "tables" / "table_index.json").write_text(json.dumps({
+    "tables": [{"question_id": "Q1", "status": "computed", "table_id": "t1", "path": "paper_output/tables/q1_table.csv"}]
+}, ensure_ascii=False, indent=2), encoding="utf-8")
+(OUTPUT / "tasks.json").write_text(json.dumps([{"question_id": "Q1", "task": "computed"}], ensure_ascii=False, indent=2), encoding="utf-8")
+print("computed Q1")
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    runner = output / "code" / "modeling" / "run_modeling.py"
+    result = run([sys.executable, str(runner)], cwd)
+    assert_true(result.returncode == 0, f"run_modeling should pass for computed model\n{result.stdout}")
+    manifest = load_json(output / "results" / "run_manifest.json")
+    assert_true(manifest["status"] == "PASS", "computed run_manifest should PASS")
+    assert_true(manifest["runs"][0]["output_artifacts"][0]["exists"] is True, "run_manifest should confirm output artifact exists")
+
+    result = run([sys.executable, str(EVIDENCE_GATE)], cwd)
+    assert_true(result.returncode == 0, f"evidence gate should pass for computed run\n{result.stdout}")
+    gate_report = load_json(output / "qa" / "evidence_gate_report.json")
+    assert_true(gate_report["status"] == "PASS", "computed evidence gate should PASS")
+
+
 def test_evidence_gate_requires_run_manifest() -> None:
     cwd = SANDBOX / "scenario_8_missing_run_manifest"
     output = cwd / "paper_output"
@@ -495,6 +567,7 @@ def main() -> int:
         test_format_gate,
         test_docx_visual_qa,
         test_modeling_run_manifest,
+        test_evidence_gate_passes_for_computed_run,
         test_evidence_gate_requires_run_manifest,
         test_skill_docs_have_workflow_guard_contract,
         test_platform_packages_stay_synced,
