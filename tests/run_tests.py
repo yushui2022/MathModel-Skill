@@ -357,6 +357,69 @@ def test_format_formal_docx_after_evidence_gate() -> None:
     assert_true(not (output / "final_paper_draft.docx").exists(), "formal mode should not create draft docx")
 
 
+def test_check_paper_format_passes_complete_docx() -> None:
+    cwd = SANDBOX / "scenario_format_check_pass"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    output = cwd / "paper_output"
+    output.mkdir(parents=True)
+    write_json(output / "qa" / "evidence_gate_report.json", {"status": "PASS", "failures": []})
+    write_json(output / "plan" / "paper_outline.json", {"target_words": {"min": 100, "max": 5000}, "questions": [{"question_id": "Q1"}]})
+    write_json(output / "figure_index.json", {"figures": []})
+    write_json(output / "tables" / "table_index.json", {"tables": []})
+    source = "\n".join(
+        [
+            "# 论文题目",
+            "# 摘要",
+            "本文围绕 Q1 建立可复现实验流程，给出数据处理、模型建立、求解算法、结果分析与检验结论。",
+            "# 关键词",
+            "数学建模；可复现；证据门禁",
+            "# 1 问题重述",
+            "Q1 要求根据输入数据建立模型并解释结果。本文明确变量、目标和约束。",
+            "# 2 问题分析",
+            "问题需要先识别数据字段，再构建可解释模型，并使用结果回扣原问题。",
+            "# 3 模型假设",
+            "假设数据记录可靠，样本之间满足独立观测要求，异常值已在清洗阶段处理。",
+            "# 4 符号说明",
+            "设 x 为解释变量，y 为目标变量，f(x) 为模型预测函数。",
+            "# 5 模型的建立与求解",
+            "本章给出 Q1 的建模、变量定义、算法、结果与检验。",
+            "# 5.1 Q1 模型建立与求解",
+            "Q1 使用可解释基线模型进行求解，并记录运行证据。",
+            "# 5.1.1 建模思路",
+            "先根据数据字段构造特征，再建立目标函数，最后输出可复核结果。",
+            "# 5.1.2 变量定义与公式推导",
+            "变量 x 表示输入特征，变量 y 表示目标结果，模型形式为 y=f(x)。",
+            "# 5.1.3 求解算法",
+            "Step 1 读取清洗后的数据。Step 2 构造特征矩阵。Step 3 计算模型结果。Step 4 保存证据文件。",
+            "# 5.1.4 结果分析",
+            "模型结果能够回答 Q1，并且所有输出均来自实际运行的代码。",
+            "# 5.1.5 模型检验或灵敏度分析",
+            "通过改变输入扰动检查结果稳定性，结果变化保持在可解释范围内。",
+            "# 6 模型检验",
+            "检验包括运行记录、输出表格、指标文件和结论文件的一致性检查。",
+            "# 7 模型评价",
+            "模型具有可解释、可复现和便于扩展的优点，局限是依赖输入数据质量。",
+            "# 8 参考文献",
+            "[1] 数学建模方法参考资料。",
+            "[2] 数据分析方法参考资料。",
+            "[3] 可复现实验方法参考资料。",
+            "# 附录",
+            "附录给出主要代码路径和运行证据说明。",
+        ]
+    )
+    (output / "final_paper_source.md").write_text(source, encoding="utf-8")
+
+    result = run([sys.executable, str(FORMAT_DOCX)], cwd)
+    assert_true(result.returncode == 0, f"formal docx generation should pass\n{result.stdout}")
+    result = run([sys.executable, str(CHECK_PAPER_FORMAT)], cwd)
+    assert_true(result.returncode == 0, f"format check should PASS for complete docx\n{result.stdout}")
+    report = load_json(output / "format_check_report.json")
+    assert_true(report["status"] == "PASS", "complete format report should PASS")
+    assert_true(report["visual_qa"]["status"] == "PASS", "complete docx visual QA should PASS")
+    assert_true(report["docx_structure"]["heading_count"] > 0, "complete docx should contain heading styles")
+
+
 def test_docx_visual_qa() -> None:
     from docx import Document
 
@@ -597,6 +660,7 @@ def main() -> int:
         test_workflow_status_complete_after_s8,
         test_format_gate,
         test_format_formal_docx_after_evidence_gate,
+        test_check_paper_format_passes_complete_docx,
         test_docx_visual_qa,
         test_modeling_run_manifest,
         test_evidence_gate_passes_for_computed_run,
