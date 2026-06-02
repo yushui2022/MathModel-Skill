@@ -1,6 +1,8 @@
-"""Deprecated migration shim for run_all (codex package).
+"""Deprecated migration shim for run_all.
 
-See claude package docstring; this script only prints a migration hint.
+This script no longer executes any pipeline. It only prints a migration hint so
+old docs / old shell aliases do not silently re-run a pipeline that should be
+gated by preflight_check.py and the orchestrator skill.
 """
 from __future__ import annotations
 

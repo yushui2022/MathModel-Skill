@@ -23,7 +23,7 @@ def run_step(args, **kwargs):
 
 def main() -> int:
     configure_utf8_stdio()
-    root = Path(__file__).resolve().parents[4]
+    root = Path.cwd().resolve()
     os.chdir(root)
 
     print("=== MathModel Skill Quickstart / Smoke Test ===")

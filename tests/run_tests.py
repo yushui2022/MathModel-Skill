@@ -627,24 +627,36 @@ def test_platform_packages_stay_synced() -> None:
         assert_true(codex_text == claude_text.replace(".claude/skills", "skills"), f"codex SKILL.md drift: {skill}")
         assert_true(trae_text == claude_text.replace(".claude/skills", ".trae/skills"), f"trae SKILL.md drift: {skill}")
 
-    script_paths = [
-        ("context-memory-keeper", "scripts/update_workflow_memory.py"),
-        ("data-cleaning-and-visualization", "scripts/robust_loader.py"),
-        ("model-code-and-result-generator", "scripts/build_result_contracts.py"),
-        ("paper-formal-writer", "scripts/check_paper_format.py"),
-        ("paper-formal-writer", "scripts/format_formal_docx.py"),
-        ("paper-workflow-orchestrator", "scripts/preflight_check.py"),
-        ("paper-workflow-orchestrator", "scripts/workflow_guard.py"),
-        ("quality-assurance-auditor", "scripts/evidence_gate.py"),
-    ]
-    for skill, rel_script in script_paths:
-        claude_bytes = (CLAUDE_SKILLS / skill / rel_script).read_bytes()
-        codex_path = CODEX_SKILLS / skill / rel_script
-        trae_path = TRAE_SKILLS / skill / rel_script
-        assert_true(codex_path.exists(), f"codex missing script: {skill}/{rel_script}")
-        assert_true(trae_path.exists(), f"trae missing script: {skill}/{rel_script}")
-        assert_true(codex_path.read_bytes() == claude_bytes, f"codex script drift: {skill}/{rel_script}")
-        assert_true(trae_path.read_bytes() == claude_bytes, f"trae script drift: {skill}/{rel_script}")
+    def tracked_payload_files(root: Path) -> set[Path]:
+        result = set()
+        for path in root.rglob("*"):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(root)
+            if "__pycache__" in rel.parts or "agents" in rel.parts or rel.name == "SKILL.md":
+                continue
+            result.add(rel)
+        return result
+
+    claude_payloads = tracked_payload_files(CLAUDE_SKILLS)
+    assert_true(tracked_payload_files(CODEX_SKILLS) == claude_payloads, "codex payload file set should match claude")
+    assert_true(tracked_payload_files(TRAE_SKILLS) == claude_payloads, "trae payload file set should match claude")
+
+    for rel in sorted(claude_payloads):
+        claude_path = CLAUDE_SKILLS / rel
+        codex_path = CODEX_SKILLS / rel
+        trae_path = TRAE_SKILLS / rel
+        try:
+            claude_text = claude_path.read_text(encoding="utf-8-sig")
+            codex_text = codex_path.read_text(encoding="utf-8-sig")
+            trae_text = trae_path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            claude_bytes = claude_path.read_bytes()
+            assert_true(codex_path.read_bytes() == claude_bytes, f"codex binary payload drift: {rel}")
+            assert_true(trae_path.read_bytes() == claude_bytes, f"trae binary payload drift: {rel}")
+            continue
+        assert_true(codex_text == claude_text.replace(".claude/skills", "skills"), f"codex payload drift: {rel}")
+        assert_true(trae_text == claude_text.replace(".claude/skills", ".trae/skills"), f"trae payload drift: {rel}")
 
 
 def main() -> int:
