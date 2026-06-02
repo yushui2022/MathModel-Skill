@@ -19,12 +19,12 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
   python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --status
   ```
   再读取 `paper_output/qa/workflow_guard_report.json`、`paper_output/preflight_report.json`、`paper_output/input_manifest.json`、`paper_output/results/run_manifest.json` 和本 skill 的上游 JSON 契约，按报告里的 `recommended_skill` 与 `next_action` 继续。
-- ?? `paper_output/context/workflow_memory.json` ?????????????? `current_step`?`next_step`?`recommended_skill`????????????????????
-- ? skill ???????????? `paper-workflow-orchestrator` ?? `workflow_guard.py --status`?????
+- 继续流程前，必须把 `paper_output/context/workflow_memory.json` 视为长期断点记录；若其中的 `current_step`、`next_step`、`recommended_skill` 与 `workflow_guard.py --status` 不一致，以 guard 报告为准。
+- 每次完成本 skill 的产物后，先回到 `paper-workflow-orchestrator` 或运行 `workflow_guard.py --status`，再更新 workflow memory：
   ```bash
   python skills/context-memory-keeper/scripts/update_workflow_memory.py
   ```
-  ?? `paper_output/context/workflow_memory.json` / `.md`?????????????
+  更新后读取 `paper_output/context/workflow_memory.json` / `.md`，确认下一步和推荐 skill 已记录。
 
 ## 执行契约
 - 上游输入：必须读取 `paper_output/tasks.json`；可参考 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/` 与 `paper_output/tables/table_index.json`。

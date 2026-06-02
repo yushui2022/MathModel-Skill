@@ -841,6 +841,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -863,6 +864,24 @@ RESULTS_DIR = OUTPUT_DIR / "results"
 DATA_CLEANED_DIR = OUTPUT_DIR / "data_cleaned"
 MODEL_RESULTS_FILE = RESULTS_DIR / "model_results.json"
 RUN_MANIFEST_FILE = RESULTS_DIR / "run_manifest.json"
+
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
+def safe_print(text: object = "", *, end: str = "\n") -> None:
+    message = str(text)
+    try:
+        print(message, end=end)
+    except UnicodeEncodeError:
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        safe = message.encode(encoding, errors="replace").decode(encoding, errors="replace")
+        print(safe, end=end)
 
 
 def now() -> str:
@@ -964,20 +983,24 @@ def write_run_manifest(runs: list[dict[str, object]]) -> None:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     scripts = sorted(path for path in THIS_DIR.glob("q*_model.py") if path.name[:1].lower() == "q")
     if not scripts:
-        print("No q*_model.py scripts found.")
+        safe_print("No q*_model.py scripts found.")
         write_run_manifest([])
         return 0
     failures = 0
     runs: list[dict[str, object]] = []
     for script in scripts:
-        print(f"=== Running {script.name} ===")
+        safe_print(f"=== Running {script.name} ===")
         started_at = now()
         command = [sys.executable, str(script)]
+        env = dict(os.environ)
+        env["PYTHONIOENCODING"] = "utf-8"
         result = subprocess.run(
             command,
             cwd=str(THIS_DIR),
+            env=env,
             text=True,
             encoding="utf-8",
             errors="replace",
@@ -986,10 +1009,10 @@ def main() -> int:
             check=False,
         )
         if result.stdout:
-            print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+            safe_print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
         if result.returncode != 0:
             failures += 1
-            print(f"[warning] {script.name} exited with code {result.returncode}")
+            safe_print(f"[warning] {script.name} exited with code {result.returncode}")
         qids, artifacts = provenance_for_script(script)
         runs.append(
             {
@@ -1007,11 +1030,11 @@ def main() -> int:
             }
         )
     write_run_manifest(runs)
-    print(f"Run manifest written: {RUN_MANIFEST_FILE}")
+    safe_print(f"Run manifest written: {RUN_MANIFEST_FILE}")
     if failures:
-        print(f"Completed with {failures} failed modeling script(s).")
+        safe_print(f"Completed with {failures} failed modeling script(s).")
         return 1
-    print("All modeling scaffold scripts completed.")
+    safe_print("All modeling scaffold scripts completed.")
     return 0
 
 
