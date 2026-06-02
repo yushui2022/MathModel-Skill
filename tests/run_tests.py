@@ -326,6 +326,37 @@ def test_format_gate() -> None:
     assert_true(not (cwd / "paper_output" / "final_paper.docx").exists(), "draft mode must not create formal docx")
 
 
+def test_format_formal_docx_after_evidence_gate() -> None:
+    cwd = SANDBOX / "scenario_format_formal_gate_pass"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    output = cwd / "paper_output"
+    output.mkdir(parents=True)
+    write_json(output / "qa" / "evidence_gate_report.json", {"status": "PASS", "failures": []})
+    (output / "final_paper_source.md").write_text(
+        "\n".join(
+            [
+                "# Title",
+                "",
+                "# 摘要",
+                "This is a formal gated draft generated after evidence gate pass.",
+                "",
+                "# 1 问题重述",
+                "Problem restatement.",
+                "",
+                "# 5.1 问题一模型",
+                "Model section.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = run([sys.executable, str(FORMAT_DOCX)], cwd)
+    assert_true(result.returncode == 0, f"formal docx should be generated after evidence gate PASS\n{result.stdout}")
+    assert_true((output / "final_paper.docx").exists(), "formal final_paper.docx should be created after gate PASS")
+    assert_true(not (output / "final_paper_draft.docx").exists(), "formal mode should not create draft docx")
+
+
 def test_docx_visual_qa() -> None:
     from docx import Document
 
@@ -565,6 +596,7 @@ def main() -> int:
         test_workflow_memory_snapshot,
         test_workflow_status_complete_after_s8,
         test_format_gate,
+        test_format_formal_docx_after_evidence_gate,
         test_docx_visual_qa,
         test_modeling_run_manifest,
         test_evidence_gate_passes_for_computed_run,
