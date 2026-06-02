@@ -19,6 +19,12 @@ description: "基于微单元模板与脚本批量生成并合并论文内容。
   python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --status
   ```
   再读取 `paper_output/qa/workflow_guard_report.json`、`paper_output/preflight_report.json`、`paper_output/input_manifest.json`、`paper_output/results/run_manifest.json` 和本 skill 的上游 JSON 契约，按报告里的 `recommended_skill` 与 `next_action` 继续。
+- ?? `paper_output/context/workflow_memory.json` ?????????????? `current_step`?`next_step`?`recommended_skill`????????????????????
+- ? skill ???????????? `paper-workflow-orchestrator` ?? `workflow_guard.py --status`?????
+  ```bash
+  python skills/context-memory-keeper/scripts/update_workflow_memory.py
+  ```
+  ?? `paper_output/context/workflow_memory.json` / `.md`?????????????
 
 ## 执行契约
 - 上游输入：必须读取 `paper_output/tasks.json`；可参考 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/` 与 `paper_output/tables/table_index.json`。

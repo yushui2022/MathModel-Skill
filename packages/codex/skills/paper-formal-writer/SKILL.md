@@ -19,6 +19,12 @@ description: "国赛数学建模正式论文范式、outline、Word 排版和格
   python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --status
   ```
   再读取 `paper_output/qa/workflow_guard_report.json`、`paper_output/preflight_report.json`、`paper_output/input_manifest.json`、`paper_output/results/run_manifest.json` 和本 skill 的上游 JSON 契约，按报告里的 `recommended_skill` 与 `next_action` 继续。
+- ?? `paper_output/context/workflow_memory.json` ?????????????? `current_step`?`next_step`?`recommended_skill`????????????????????
+- ? skill ???????????? `paper-workflow-orchestrator` ?? `workflow_guard.py --status`?????
+  ```bash
+  python skills/context-memory-keeper/scripts/update_workflow_memory.py
+  ```
+  ?? `paper_output/context/workflow_memory.json` / `.md`?????????????
 
 ## 执行契约
 - 上游输入：必须优先读取 `paper_output/plan/model_route.json`、`paper_output/results/`、`paper_output/tables/table_index.json`、`paper_output/figure_index.json` 和证据门禁报告。

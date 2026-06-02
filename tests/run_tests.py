@@ -433,8 +433,8 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
         assert_true("## 全局流程协作约束（长对话防漂移）" in text, f"{skill} should include global workflow contract")
         assert_true(f"workflow_guard.py --skill {skill}" in text, f"{skill} should call workflow guard with its own skill name")
         assert_true("workflow_guard.py --status" in text, f"{skill} should include workflow status recovery command")
-        if skill == "context-memory-keeper":
-            assert_true("update_workflow_memory.py" in text, "context-memory-keeper should document executable workflow memory snapshots")
+        assert_true("paper_output/context/workflow_memory.json" in text, f"{skill} should read workflow memory snapshots")
+        assert_true("update_workflow_memory.py" in text, f"{skill} should update workflow memory snapshots after handoff")
 
 
 def main() -> int:
