@@ -11,8 +11,6 @@ import setup_sandbox
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SANDBOX = REPO_ROOT / "tests" / "sandbox"
-PREFLIGHT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "preflight_check.py"
-WORKFLOW_GUARD = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "workflow_guard.py"
 ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
 BUILD_RESULT_CONTRACTS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "model-code-and-result-generator" / "scripts" / "build_result_contracts.py"
 EVIDENCE_GATE = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
@@ -22,6 +20,15 @@ UPDATE_WORKFLOW_MEMORY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills
 CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
 CODEX_SKILLS = REPO_ROOT / "packages" / "codex" / "skills"
 TRAE_SKILLS = REPO_ROOT / "packages" / "trae" / ".trae" / "skills"
+CLAUDE_ORCHESTRATOR_SCRIPTS = CLAUDE_SKILLS / "paper-workflow-orchestrator" / "scripts"
+CODEX_ORCHESTRATOR_SCRIPTS = CODEX_SKILLS / "paper-workflow-orchestrator" / "scripts"
+TRAE_ORCHESTRATOR_SCRIPTS = TRAE_SKILLS / "paper-workflow-orchestrator" / "scripts"
+PREFLIGHT = CLAUDE_ORCHESTRATOR_SCRIPTS / "preflight_check.py"
+WORKFLOW_GUARD = CLAUDE_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
+CODEX_PREFLIGHT = CODEX_ORCHESTRATOR_SCRIPTS / "preflight_check.py"
+CODEX_WORKFLOW_GUARD = CODEX_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
+TRAE_PREFLIGHT = TRAE_ORCHESTRATOR_SCRIPTS / "preflight_check.py"
+TRAE_WORKFLOW_GUARD = TRAE_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
 
 
 def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -51,7 +58,7 @@ def write_json(path: Path, data: object) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def make_preflighted_scenario(name: str) -> tuple[Path, Path]:
+def make_problem_scenario(name: str) -> Path:
     cwd = SANDBOX / name
     if cwd.exists():
         shutil.rmtree(cwd)
@@ -59,6 +66,11 @@ def make_preflighted_scenario(name: str) -> tuple[Path, Path]:
     problem_files.mkdir(parents=True)
     (problem_files / "problem.md").write_text("Build a reproducible baseline model for question one.\n", encoding="utf-8")
     (problem_files / "data.csv").write_text("x,y\n1,2\n2,4\n3,6\n", encoding="utf-8")
+    return cwd
+
+
+def make_preflighted_scenario(name: str) -> tuple[Path, Path]:
+    cwd = make_problem_scenario(name)
     result = run([sys.executable, str(PREFLIGHT)], cwd)
     assert_true(result.returncode == 0, f"{name}: preflight should pass\n{result.stdout}")
     return cwd, cwd / "paper_output"
@@ -234,6 +246,39 @@ def test_orchestrator_guard_allows_fresh_entry() -> None:
     assert_true(report["status"] == "PASS", "orchestrator entry guard should allow start")
     assert_true(report["next_step"] == "S0", "fresh project should recover to S0 preflight")
     assert_true(report["recommended_skill"] == "paper-workflow-orchestrator", "fresh project should stay in orchestrator")
+
+
+def assert_platform_orchestrator_smoke(name: str, preflight_script: Path, workflow_guard_script: Path) -> None:
+    cwd = make_problem_scenario(name)
+    output = cwd / "paper_output"
+
+    result = run([sys.executable, str(preflight_script)], cwd)
+    assert_true(result.returncode == 0, f"{name}: preflight should pass\n{result.stdout}")
+    preflight_report = load_json(output / "preflight_report.json")
+    input_manifest = load_json(output / "input_manifest.json")
+    assert_true(preflight_report["status"] == "PASS", f"{name}: preflight_report.json should PASS")
+    assert_true(input_manifest["summary"]["raw_data_count"] == 1, f"{name}: input_manifest should count one raw data file")
+
+    result = run([sys.executable, str(workflow_guard_script), "--status"], cwd)
+    assert_true(result.returncode == 0, f"{name}: workflow status should be diagnostic\n{result.stdout}")
+    report = load_json(output / "qa" / "workflow_guard_report.json")
+    assert_true(report["current_step"] == "S0", f"{name}: expected current_step S0, got {report['current_step']}")
+    assert_true(report["next_step"] == "S1", f"{name}: expected next_step S1, got {report['next_step']}")
+    assert_true(report["recommended_skill"] == "problem-doc-model-selector", f"{name}: expected problem-doc-model-selector next")
+
+    result = run([sys.executable, str(workflow_guard_script), "--skill", "problem-doc-model-selector"], cwd)
+    assert_true(result.returncode == 0, f"{name}: problem-doc-model-selector should be allowed after S0\n{result.stdout}")
+    report = load_json(output / "qa" / "workflow_guard_report.json")
+    assert_true(report["status"] == "PASS", f"{name}: skill guard should PASS after preflight")
+    assert_true(report["required_step"] == "S0", f"{name}: skill guard should require S0")
+
+
+def test_codex_package_smoke() -> None:
+    assert_platform_orchestrator_smoke("scenario_codex_package_smoke", CODEX_PREFLIGHT, CODEX_WORKFLOW_GUARD)
+
+
+def test_trae_package_smoke() -> None:
+    assert_platform_orchestrator_smoke("scenario_trae_package_smoke", TRAE_PREFLIGHT, TRAE_WORKFLOW_GUARD)
 
 
 def test_workflow_status_after_code_generation() -> None:
@@ -676,6 +721,8 @@ def main() -> int:
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
         test_orchestrator_guard_allows_fresh_entry,
+        test_codex_package_smoke,
+        test_trae_package_smoke,
         test_workflow_status_after_code_generation,
         test_workflow_status_recovery_across_stages,
         test_workflow_memory_snapshot,
