@@ -3,19 +3,26 @@
 
 # MathModel Skill Lite
 
-### 面向较弱模型和短上下文的单入口数学建模 Skill
+### 面向普通模型、较旧模型和短上下文的单入口数学建模 Skill
 
 #### 支持 Codex、Claude Code 和 Trae
 
 </div>
 
-这是 MathModel Skill 的 **Lite 分支**。本分支只包含 Lite，不包含 Standard 的总控、正式论文、证据门禁或其他协作 Skills。用户下载本分支或 Lite 发布包后，只会发现一个入口：`mathmodel-lite`。
+这是 MathModel Skill 的 **Lite 分支**，推荐普通模型、较旧模型、上下文较短或工具调用稳定性一般的模型使用。本分支只包含 Lite，不包含 Standard 的总控、正式论文、证据门禁或其他协作 Skills。用户下载本分支或 Lite 发布包后，只会发现一个入口：`mathmodel-lite`。
 
-Standard 完整版位于默认分支 `master`。不要把两个分支或两个版本的 ZIP 解压到同一个比赛项目。
+## 版本选择
+
+| 你的模型 | 推荐版本 | 分支 |
+|---|---|---|
+| 强模型、长上下文、复杂工具调用稳定，需要正式竞赛论文 | Standard | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
+| 普通模型、较旧模型、上下文较短，希望流程简单稳定 | **Lite（当前分支）** | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
+
+Standard 完整版位于默认分支 `master`。Lite 不是让普通模型强行执行 Standard 的全部复杂步骤，而是用固定六步降低上下文和决策负担。不要把两个分支或两个版本的 ZIP 解压到同一个比赛项目。
 
 ## 为什么有 Lite
 
-Standard 适合能力较强的模型和正式比赛交付，但多 Skill 路由、长上下文和复杂契约可能让较旧模型承担过高负担。Lite 将流程压缩为一个 Skill、三个确定性脚本和固定六步，同时保留最重要的真实性底线：
+Standard 推荐强模型和正式比赛交付使用，但多 Skill 路由、长上下文和复杂契约可能让普通模型或较旧模型承担过高负担。Lite 将流程压缩为一个 Skill、三个确定性脚本和固定六步，同时保留最重要的真实性底线：
 
 - 记录输入文件大小和 SHA-256。
 - 必须真实运行一个 `model.py`。
