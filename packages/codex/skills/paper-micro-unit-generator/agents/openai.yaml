@@ -1,8 +1,0 @@
-interface:
-  display_name: "Paper Micro Unit Generator"
-  short_description: "按微单元生成并合并论文"
-  brand_color: "#16A34A"
-  default_prompt: "Use $paper-micro-unit-generator to generate and merge the modeling paper micro-units."
-
-policy:
-  allow_implicit_invocation: true

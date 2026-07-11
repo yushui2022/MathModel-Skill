@@ -22,6 +22,7 @@ EXCLUDED_DIRS = {
     "problem_files",
     "crawled_data",
     "paper_output",
+    "paper_output_lite",
 }
 EXCLUDED_FILES = {
     "data_requirements.json",
@@ -44,44 +45,38 @@ class PackageSpec:
 
 COMMON_DOCS = (
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
-    (REPO_ROOT / "docs" / "starter-prompts.md", Path("docs/starter-prompts.md")),
-    (REPO_ROOT / "docs" / "agent-native-workflow.md", Path("docs/agent-native-workflow.md")),
-    (REPO_ROOT / "docs" / "cumcm-paper-standard.md", Path("docs/cumcm-paper-standard.md")),
-    (REPO_ROOT / "docs" / "formal-paper-authoring.md", Path("docs/formal-paper-authoring.md")),
-    (REPO_ROOT / "docs" / "generated-demo-workflow.md", Path("docs/generated-demo-workflow.md")),
-    (REPO_ROOT / "docs" / "prompt-assets.md", Path("docs/prompt-assets.md")),
-    (REPO_ROOT / "docs" / "output-layout.md", Path("docs/output-layout.md")),
-    (REPO_ROOT / "docs" / "workflow-contracts.md", Path("docs/workflow-contracts.md")),
+    (REPO_ROOT / "docs" / "lite-workflow.md", Path("docs/lite-workflow.md")),
+    (REPO_ROOT / "docs" / "lite-starter-prompt.md", Path("docs/lite-starter-prompt.md")),
 )
 
 
 PACKAGE_SPECS = (
     PackageSpec(
-        name="Trae",
-        archive_name="MathModel-Skill-Trae.zip",
+        name="Lite Trae",
+        archive_name="MathModel-Skill-Lite-Trae.zip",
         roots=((REPO_ROOT / "packages" / "trae" / ".trae", Path(".trae")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "trae" / "README.md", Path("README-MathModel-Skill.md")),
+            (REPO_ROOT / "packages" / "trae" / "README.md", Path("README-MathModel-Skill-Lite.md")),
             *COMMON_DOCS,
         ),
     ),
     PackageSpec(
-        name="Claude Code",
-        archive_name="MathModel-Skill-Claude-Code.zip",
+        name="Lite Claude Code",
+        archive_name="MathModel-Skill-Lite-Claude-Code.zip",
         roots=((REPO_ROOT / "packages" / "claude" / ".claude", Path(".claude")),),
         extra_files=(
             (REPO_ROOT / "packages" / "claude" / "CLAUDE.md", Path("CLAUDE.md")),
-            (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill.md")),
+            (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill-Lite.md")),
             *COMMON_DOCS,
         ),
     ),
     PackageSpec(
-        name="Codex",
-        archive_name="MathModel-Skill-Codex.zip",
+        name="Lite Codex",
+        archive_name="MathModel-Skill-Lite-Codex.zip",
         roots=((REPO_ROOT / "packages" / "codex" / "skills", Path("skills")),),
         extra_files=(
             (REPO_ROOT / "packages" / "codex" / "AGENTS.md", Path("AGENTS.md")),
-            (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill.md")),
+            (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill-Lite.md")),
             *COMMON_DOCS,
         ),
     ),

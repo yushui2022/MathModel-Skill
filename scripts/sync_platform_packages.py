@@ -5,10 +5,14 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SOURCE_ROOT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
-TARGETS = (
-    (REPO_ROOT / "packages" / "codex" / "skills", ".claude/skills", "skills"),
-    (REPO_ROOT / "packages" / "trae" / ".trae" / "skills", ".claude/skills", ".trae/skills"),
+SYNC_GROUPS = (
+    (
+        REPO_ROOT / "packages" / "claude" / ".claude" / "skills",
+        (
+            (REPO_ROOT / "packages" / "codex" / "skills", ".claude/skills", "skills"),
+            (REPO_ROOT / "packages" / "trae" / ".trae" / "skills", ".claude/skills", ".trae/skills"),
+        ),
+    ),
 )
 SKIP_PARTS = {"__pycache__", "agents"}
 
@@ -42,8 +46,14 @@ def normalized_existing_bytes(path: Path) -> bytes:
         return data
 
 
-def sync_target(target_root: Path, source_prefix: str, target_prefix: str, check: bool) -> list[str]:
-    source_files = payload_files(SOURCE_ROOT)
+def sync_target(
+    source_root: Path,
+    target_root: Path,
+    source_prefix: str,
+    target_prefix: str,
+    check: bool,
+) -> list[str]:
+    source_files = payload_files(source_root)
     target_files = payload_files(target_root) if target_root.exists() else {}
     failures: list[str] = []
 
@@ -79,12 +89,12 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="Report drift without modifying files.")
     args = parser.parse_args()
 
-    if not SOURCE_ROOT.exists():
-        raise FileNotFoundError(f"Missing canonical skill root: {SOURCE_ROOT}")
-
     failures: list[str] = []
-    for target_root, source_prefix, target_prefix in TARGETS:
-        failures.extend(sync_target(target_root, source_prefix, target_prefix, args.check))
+    for source_root, targets in SYNC_GROUPS:
+        if not source_root.exists():
+            raise FileNotFoundError(f"Missing canonical skill root: {source_root}")
+        for target_root, source_prefix, target_prefix in targets:
+            failures.extend(sync_target(source_root, target_root, source_prefix, target_prefix, args.check))
 
     if failures:
         for failure in failures:

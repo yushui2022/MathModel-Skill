@@ -1,4 +1,4 @@
-name: CI
+name: Lite CI
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  verify-standard-skill:
+  verify-lite-skill:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -28,8 +28,8 @@ jobs:
       - name: Check platform synchronization
         run: python scripts/sync_platform_packages.py --check
 
-      - name: Run test suite
-        run: python tests/run_tests.py
+      - name: Run Lite test suite
+        run: python tests/run_lite_tests.py
 
       - name: Build deterministic release archives
         run: python scripts/build_release_packages.py --output-dir tests/sandbox/ci-release

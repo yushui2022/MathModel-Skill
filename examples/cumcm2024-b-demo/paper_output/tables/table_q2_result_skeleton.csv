@@ -1,4 +1,0 @@
-﻿table_title,question_id,main_model,evidence_status,note
-分类结果表,Q2,随机森林、梯度提升或代价敏感学习,needs_real_modeling,真实数值需要由当前赛题专用建模代码补齐。
-混淆矩阵表,Q2,随机森林、梯度提升或代价敏感学习,needs_real_modeling,真实数值需要由当前赛题专用建模代码补齐。
-特征重要性表,Q2,随机森林、梯度提升或代价敏感学习,needs_real_modeling,真实数值需要由当前赛题专用建模代码补齐。
