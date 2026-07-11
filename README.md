@@ -1,9 +1,9 @@
 <div align="center">
   <img src="./assets/mathe-skill-logo.svg" alt="MathModel Skill logo" width="132" height="132" />
 
-# MathModel Skill
+# MathModel Skill Standard
 
-### Agent-native 数学建模工作流 Skill 包
+### 面向强模型与正式竞赛交付的完整数学建模工作流
 
 #### 为 Trae、Claude Code、Codex 设计的完整数学建模工作流
 
@@ -14,6 +14,17 @@
 [![Output](https://img.shields.io/badge/output-docx%20%2B%20markdown-16a34a)](#输出目录)
 
 </div>
+
+这是 MathModel Skill 的 **Standard 默认分支**，推荐能力较强、上下文充足、复杂推理和工具调用稳定的模型使用。Standard 提供 10 个协作 Skills、完整 S0-S8 流程、可追溯建模结果、原生 Word 公式、证据门禁和正式格式门禁。
+
+## 版本选择
+
+| 你的模型 | 推荐版本 | 分支 |
+|---|---|---|
+| 强模型、长上下文、复杂工具调用稳定，需要正式竞赛论文 | **Standard（当前默认分支）** | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
+| 普通模型、较旧模型、上下文较短，希望流程简单稳定 | Lite | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
+
+普通模型不建议强行执行 Standard 的全部多 Skill 流程，容易产生上下文负担、跳步或入口混淆；请直接使用 `lite` 分支。一个比赛项目只安装一个版本，不要把 Standard 和 Lite 的 ZIP 解压到同一目录。
 
 MathModel Skill 是一套面向数学建模比赛的 Agent-native skill 工作流，不是黑盒一键论文生成器。受长上下文注意力衰减影响，单次一键生成很难稳定产出具备省一竞争力的完整论文。因此，v2.1.0 将论文生产升级为可恢复、可校验、可继续且可验证新鲜度的 workflow。安装好 skill 后，用户只需输入“继续”，coding agent 会在 preflight、workflow guard、证据门禁和格式门禁的引导下，逐步完成读题、建模、运行代码、生成结果、撰写正文和 Word 成稿。它把常见流程固化为可复用的 Agent 原生能力，让 Codex、Claude Code、Trae 知道先读什么、代码写到哪里、结果如何沉淀、正文如何引用证据，并用 SHA-256 防止输入、代码或结果变化后继续使用旧报告。
 
