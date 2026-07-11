@@ -20,6 +20,7 @@ Design notes (per Codex review v2):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from datetime import datetime
@@ -68,6 +69,16 @@ def rel_path(path: Path, root: Path) -> str:
         return path.resolve().relative_to(root.resolve()).as_posix()
     except Exception:
         return path.as_posix()
+
+
+def sha256_file(path: Path) -> str:
+    if not path.exists() or not path.is_file():
+        return ""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def is_suspicious_name(name: str) -> bool:
@@ -424,6 +435,8 @@ def build_input_manifest(
         entry: dict[str, Any] = {
             "path": rel_path(path, root),
             "ext": ext,
+            "bytes": path.stat().st_size,
+            "sha256": sha256_file(path),
             "role": role,
             "role_confidence": confidence,
             "usable_for_modeling": usable_for_modeling,

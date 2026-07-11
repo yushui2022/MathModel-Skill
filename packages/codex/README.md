@@ -107,4 +107,4 @@ paper_output/figures/
 - 适配只改变平台路径和平台称呼，不改变工作流设计。
 - 每个 skill 都是完整文件夹，保留脚本和参考材料。
 - `model-code-and-result-generator` 会生成结果证据契约和 `q*_model.py` 建模代码脚手架，不承诺自动解决所有赛题建模。
-- `paper-formal-writer` 负责 CUMCM 正式论文范式、`1 / 1.1 / 1.1.1` 标题、`18000-25000` 字数检查、Word 排版和格式门禁。
+- `paper-formal-writer` 负责 CUMCM 正式论文范式、`1 / 1.1 / 1.1.1` 标题、动态篇幅、可编辑 Word OMML 公式、正文引文、Word 排版和 required render 格式门禁。

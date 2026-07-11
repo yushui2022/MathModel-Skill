@@ -103,5 +103,5 @@ paper_output/figures/
 - Trae 包是当前 canonical skill source 的原版复制。
 - 本包按完整 skill 文件夹分发，包含 `SKILL.md`、`scripts/`、`references/` 和 memory 文件。
 - `model-code-and-result-generator` 是结果证据辅助 skill，用于生成结果、指标、结论、表格契约和 `q*_model.py` 建模代码脚手架；它不是万能自动建模系统。
-- `paper-formal-writer` 负责 CUMCM 正式论文范式、`1 / 1.1 / 1.1.1` 标题、`18000-25000` 字数检查、Word 排版和格式门禁。
+- `paper-formal-writer` 负责 CUMCM 正式论文范式、`1 / 1.1 / 1.1.1` 标题、动态篇幅、可编辑 Word OMML 公式、正文引文、Word 排版和 required render 格式门禁。
 - `context-memory-keeper` 是辅助记忆 skill，不计入 8 个论文生产核心 skill。

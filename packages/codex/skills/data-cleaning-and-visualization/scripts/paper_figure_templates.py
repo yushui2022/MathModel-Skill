@@ -426,7 +426,7 @@ def plot_generic_line(df: pd.DataFrame, spec: dict[str, Any], output_path: Path)
     return save_figure(fig, output_path)
 
 
-def plot_empty(title: str, message: str, output_path: Path) -> str:
+def plot_empty(title: str, message: str, output_path: Path) -> dict[str, Any]:
     fig, ax = plt.subplots(figsize=(8.0, 4.5))
     ax.axis("off")
     ax.text(0.02, 0.72, title, fontsize=15, fontweight="bold", color="#111827", transform=ax.transAxes)
@@ -440,7 +440,11 @@ def plot_empty(title: str, message: str, output_path: Path) -> str:
         color=PALETTE["orange"],
         transform=ax.transAxes,
     )
-    return save_figure(fig, output_path)
+    return {
+        "path": save_figure(fig, output_path),
+        "placeholder": True,
+        "message": message,
+    }
 
 
 def infer_template(spec: dict[str, Any]) -> str:
@@ -472,26 +476,40 @@ def plot_figure_spec(df: pd.DataFrame, spec: dict[str, Any], output_path: Path) 
     template = infer_template(spec)
     try:
         if template == "prediction_comparison":
-            path = plot_prediction_comparison(df, spec, output_path)
+            plotted = plot_prediction_comparison(df, spec, output_path)
         elif template == "residual_distribution":
-            path = plot_residual_distribution(df, spec, output_path)
+            plotted = plot_residual_distribution(df, spec, output_path)
         elif template == "sensitivity_curve":
-            path = plot_sensitivity_curve(df, spec, output_path)
+            plotted = plot_sensitivity_curve(df, spec, output_path)
         elif template == "model_comparison":
-            path = plot_model_comparison(df, spec, output_path)
+            plotted = plot_model_comparison(df, spec, output_path)
         elif template == "weight_bar":
-            path = plot_weight_bar(df, spec, output_path)
+            plotted = plot_weight_bar(df, spec, output_path)
         elif template == "score_ranking":
-            path = plot_score_ranking(df, spec, output_path)
+            plotted = plot_score_ranking(df, spec, output_path)
         elif template == "heatmap":
-            path = plot_heatmap(df, spec, output_path)
+            plotted = plot_heatmap(df, spec, output_path)
         elif template == "scatter":
-            path = plot_scatter(df, spec, output_path)
+            plotted = plot_scatter(df, spec, output_path)
         elif template == "bar":
-            path = plot_model_comparison(df, spec, output_path)
+            plotted = plot_model_comparison(df, spec, output_path)
         else:
-            path = plot_generic_line(df, spec, output_path)
-        return {"ok": True, "path": path, "template": template, "message": ""}
+            plotted = plot_generic_line(df, spec, output_path)
+        if isinstance(plotted, dict) and plotted.get("placeholder"):
+            return {
+                "ok": False,
+                "path": plotted.get("path", ""),
+                "template": template,
+                "placeholder": True,
+                "message": str(plotted.get("message") or "placeholder figure"),
+            }
+        return {"ok": True, "path": plotted, "template": template, "placeholder": False, "message": ""}
     except Exception as exc:
         fallback = plot_empty(sanitize_text(spec.get("title"), "图表模板"), str(exc), output_path)
-        return {"ok": False, "path": fallback, "template": template, "message": str(exc)}
+        return {
+            "ok": False,
+            "path": fallback.get("path", ""),
+            "template": template,
+            "placeholder": True,
+            "message": str(exc),
+        }

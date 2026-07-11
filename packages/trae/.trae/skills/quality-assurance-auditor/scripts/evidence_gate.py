@@ -1,5 +1,7 @@
 import argparse
+import hashlib
 import json
+import math
 import os
 import sys
 from datetime import datetime
@@ -121,6 +123,46 @@ def normalized_artifact(path_text: object) -> str:
         return str(path).replace("\\", "/")
 
 
+def sha256_file(path: Path) -> str:
+    if not path.exists() or not path.is_file():
+        return ""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def recorded_file_failures(entry: dict[str, Any], label: str) -> list[str]:
+    path_text = entry.get("path")
+    if not str(path_text or "").strip():
+        return [f"{label} 缺少 path"]
+    path = resolve_artifact(path_text)
+    failures: list[str] = []
+    if not path.exists() or not path.is_file():
+        return [f"{label} 文件不存在：{normalized_artifact(path_text)}"]
+    if path.stat().st_size <= 0:
+        failures.append(f"{label} 文件为空：{normalized_artifact(path_text)}")
+    recorded_size = entry.get("bytes")
+    if recorded_size not in (None, ""):
+        try:
+            if int(recorded_size) != path.stat().st_size:
+                failures.append(
+                    f"{label} 大小已变化：{normalized_artifact(path_text)} "
+                    f"({recorded_size} -> {path.stat().st_size})"
+                )
+        except (TypeError, ValueError):
+            failures.append(f"{label} bytes 字段无效：{recorded_size}")
+    recorded_hash = str(entry.get("sha256") or "").strip().lower()
+    if not recorded_hash:
+        failures.append(f"{label} 缺少 sha256：{normalized_artifact(path_text)}")
+    else:
+        current_hash = sha256_file(path)
+        if current_hash != recorded_hash:
+            failures.append(f"{label} 内容哈希已变化：{normalized_artifact(path_text)}")
+    return failures
+
+
 def provenance_failures(item: dict[str, Any]) -> list[str]:
     provenance = item.get("execution_provenance")
     if not isinstance(provenance, dict):
@@ -132,6 +174,9 @@ def provenance_failures(item: dict[str, Any]) -> list[str]:
         failures.append("execution_provenance.source_code_path 为空")
     elif not source_code.exists():
         failures.append(f"source_code_path 不存在：{source_code}")
+    elif provenance.get("source_code_sha256"):
+        if sha256_file(source_code) != str(provenance.get("source_code_sha256") or "").lower():
+            failures.append(f"source_code_path 内容已变化：{normalized_artifact(provenance.get('source_code_path'))}")
 
     if provenance.get("run_exit_code") not in (0, "0"):
         failures.append(f"run_exit_code 不是 0：{provenance.get('run_exit_code')}")
@@ -152,6 +197,8 @@ def run_manifest_failures(item: dict[str, Any], run_manifest: Any) -> list[str]:
     runs = run_manifest.get("runs")
     if not isinstance(runs, list):
         return ["run_manifest.json 缺少 runs 列表"]
+    if str(run_manifest.get("status") or "").upper() != "PASS":
+        return [f"run_manifest.json status 不是 PASS：{run_manifest.get('status')}"]
 
     provenance = item.get("execution_provenance")
     if not isinstance(provenance, dict):
@@ -169,6 +216,15 @@ def run_manifest_failures(item: dict[str, Any], run_manifest: Any) -> list[str]:
     failures: list[str] = []
     if run.get("returncode") not in (0, "0"):
         failures.append(f"run_manifest 记录 returncode 不是 0：{run.get('returncode')}")
+    script_path = resolve_artifact(run.get("script"))
+    if not script_path.exists():
+        failures.append(f"run_manifest 记录的脚本不存在：{normalized_artifact(run.get('script'))}")
+    else:
+        script_hash = str(run.get("script_sha256") or "").strip().lower()
+        if not script_hash:
+            failures.append("run_manifest 运行记录缺少 script_sha256")
+        elif sha256_file(script_path) != script_hash:
+            failures.append(f"建模脚本在运行后已变化：{normalized_artifact(run.get('script'))}")
     run_qids = {str(value) for value in run.get("question_ids", []) or []}
     if qid and run_qids and qid not in run_qids:
         failures.append(f"run_manifest 运行记录未包含当前 question_id：{qid}")
@@ -188,6 +244,12 @@ def run_manifest_failures(item: dict[str, Any], run_manifest: Any) -> list[str]:
     ]
     for artifact in missing_outputs:
         failures.append(f"run_manifest 记录输出产物不存在：{artifact}")
+    for entry in run.get("input_files", []) or []:
+        if isinstance(entry, dict):
+            failures.extend(recorded_file_failures(entry, "运行输入"))
+    for entry in run.get("output_artifacts", []) or []:
+        if isinstance(entry, dict):
+            failures.extend(recorded_file_failures(entry, "运行输出"))
     return failures
 
 
@@ -201,6 +263,45 @@ def has_bad_status(items: list[dict[str, Any]]) -> bool:
 
 def conclusion_text_exists(items: list[dict[str, Any]]) -> bool:
     return any(str(item.get("conclusion_text") or "").strip() for item in items)
+
+
+def metric_value_failures(items: list[dict[str, Any]]) -> list[str]:
+    failures: list[str] = []
+    for item in items:
+        name = str(item.get("metric_name") or item.get("metric_role") or "<unnamed>")
+        value = item.get("value")
+        if value is None or value == "":
+            failures.append(f"指标 {name} 缺少有效 value")
+        elif isinstance(value, float) and not math.isfinite(value):
+            failures.append(f"指标 {name} 不是有限数值：{value}")
+    return failures
+
+
+def indexed_artifact_failures(item: dict[str, Any], kind: str) -> list[str]:
+    artifact_id = str(item.get("figure_id") or item.get("table_id") or "<unknown>")
+    status = status_of(item)
+    failures: list[str] = []
+    if status in BAD_STATUSES:
+        failures.append(f"{kind} {artifact_id} 状态不可作为正式证据：{status}")
+    if item.get("placeholder") is True:
+        failures.append(f"{kind} {artifact_id} 是占位产物")
+    if item.get("ok") is False:
+        failures.append(f"{kind} {artifact_id} 生成状态为失败")
+    if item.get("exists") is False:
+        failures.append(f"{kind} {artifact_id} 索引明确标记 exists=false")
+    message = str(item.get("message") or "").strip().lower()
+    if any(token in message for token in ("placeholder", "占位", "missing", "not readable", "无法", "缺少")):
+        failures.append(f"{kind} {artifact_id} 包含失败/占位信息：{item.get('message')}")
+    path_text = item.get("path") or item.get("expected_path")
+    if not str(path_text or "").strip():
+        failures.append(f"{kind} {artifact_id} 缺少 path")
+    else:
+        path = resolve_artifact(path_text)
+        if not path.exists() or not path.is_file():
+            failures.append(f"{kind} {artifact_id} 文件不存在：{normalized_artifact(path_text)}")
+        elif path.stat().st_size <= 0:
+            failures.append(f"{kind} {artifact_id} 文件为空：{normalized_artifact(path_text)}")
+    return failures
 
 
 def task_items(data: Any) -> dict[str, list[dict[str, Any]]]:
@@ -271,6 +372,8 @@ def evaluate() -> dict[str, Any]:
         elif status_of(result) in BAD_STATUSES:
             q_failures.append(f"模型结果状态仍不可作为正式证据：{status_of(result)}")
         else:
+            if not str(result.get("result_summary") or "").strip():
+                q_failures.append("模型结果缺少 result_summary")
             for failure in provenance_failures(result):
                 q_failures.append(f"模型结果缺少真实运行来源：{failure}")
             for failure in run_manifest_failures(result, run_manifest):
@@ -280,6 +383,8 @@ def evaluate() -> dict[str, Any]:
             q_failures.append("缺少 metrics.json 中的评价指标")
         elif has_bad_status(q_metrics):
             q_failures.append("评价指标仍包含草稿、模板或待补状态")
+        else:
+            q_failures.extend(metric_value_failures(q_metrics))
 
         if not q_conclusions or not conclusion_text_exists(q_conclusions):
             q_failures.append("缺少 conclusions.json 中可回扣原题的结论文本")
@@ -288,8 +393,12 @@ def evaluate() -> dict[str, Any]:
 
         if not q_figures and not q_tables:
             q_failures.append("缺少图表或表格证据")
+        for figure in q_figures:
+            q_failures.extend(indexed_artifact_failures(figure, "图片"))
         if q_tables and has_bad_status(q_tables):
             q_failures.append("表格证据仍包含草稿、模板或待补状态")
+        for table in q_tables:
+            q_failures.extend(indexed_artifact_failures(table, "表格"))
 
         if not q_tasks:
             q_warnings.append("tasks.json 中没有对应问题任务，正式写作时需补齐任务追踪")
@@ -321,6 +430,20 @@ def evaluate() -> dict[str, Any]:
         "failures": failures,
         "warnings": warnings,
         "questions": question_reports,
+        "input_hashes": {
+            normalized_artifact(path): sha256_file(path)
+            for path in (
+                MODEL_ROUTE_FILE,
+                FIGURE_INDEX_FILE,
+                MODEL_RESULTS_FILE,
+                RUN_MANIFEST_FILE,
+                METRICS_FILE,
+                CONCLUSIONS_FILE,
+                TABLE_INDEX_FILE,
+                TASKS_FILE,
+            )
+            if path.exists()
+        },
     }
 
 

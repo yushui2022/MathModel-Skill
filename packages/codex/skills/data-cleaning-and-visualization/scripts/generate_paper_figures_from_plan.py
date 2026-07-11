@@ -56,7 +56,15 @@ def resolve_path(value: Any) -> Path | None:
     return path if path.is_absolute() else BASE_DIR / path
 
 
-def index_item(spec: dict[str, Any], exists: bool, message: str = "", template: str = "") -> dict[str, Any]:
+def index_item(
+    spec: dict[str, Any],
+    exists: bool,
+    message: str = "",
+    template: str = "",
+    *,
+    ok: bool = False,
+    placeholder: bool = False,
+) -> dict[str, Any]:
     output_path = str(spec.get("output_path") or "").replace("\\", "/")
     return {
         "figure_id": spec.get("figure_id"),
@@ -65,6 +73,9 @@ def index_item(spec: dict[str, Any], exists: bool, message: str = "", template: 
         "question_id": spec.get("question_id"),
         "planned": True,
         "exists": exists,
+        "ok": ok,
+        "placeholder": placeholder,
+        "status": "computed" if ok and exists and not placeholder else "placeholder",
         "used_in": spec.get("paper_usage"),
         "chart_type": spec.get("chart_type"),
         "template": template,
@@ -92,6 +103,8 @@ def generate_one(spec: dict[str, Any]) -> dict[str, Any]:
         bool(Path(result.get("path", "")).exists()),
         str(result.get("message") or ""),
         str(result.get("template") or ""),
+        ok=bool(result.get("ok")),
+        placeholder=bool(result.get("placeholder")),
     )
 
 

@@ -28,7 +28,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 ## 执行契约
 - 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/model_results.json`、`paper_output/results/run_manifest.json`、`paper_output/results/metrics.json`、`paper_output/results/conclusions.json` 与 `paper_output/tables/table_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
-- 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在；正式成稿前必须输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`。
+- 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在；正式成稿前必须输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`，机器可读报告必须记录本次审计输入的 SHA-256。
 - 下游交接：`paper-micro-unit-generator` 只应在 `tasks.json` 存在后生成正文；任务中必须保留模型路线、验证计划、图表建议、评分点、结果摘要、指标、表格和结论字段。
 - 推荐下一步：正文生成前通过后进入 `paper-micro-unit-generator`；若已经生成 `final_paper.md` 或 `final_paper.docx`，则执行最终一致性检查并回到 `paper-workflow-orchestrator` 汇总。
 - 失败回退：若 `problem_files/` 为空应阻塞；若模型路线缺失则用题意分析生成任务；若题意分析也缺失才使用通用任务模板；若正式 evidence gate 缺少 `run_manifest.json` 或运行记录不匹配，必须回退到 `model-code-and-result-generator` 重新运行建模代码。
@@ -37,7 +37,7 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 - 在论文生成的每一个关键节点插入“强制验收点”，只有审计通过才能进入下一步，防止“字数达标但逻辑错误”或“模型偷换”等隐性偷懒。
 - 提供可量化的通过/失败判定，并给出具体修改清单，确保最终论文既“厚”又“对”。
 - 明确区分“quickstart 验证草稿”和“正式比赛稿”：脚本跑通不等于论文合格；结果证据仍为骨架时，不得交付最终稿。
-- 明确职责边界：`evidence_gate.py` 只判断真实结果、指标、图表、表格和结论证据是否足够；正式论文结构、字数、三级标题、图表引用和 Word 格式由 `paper-formal-writer/scripts/check_paper_format.py` 判断。两个门禁都通过后，才能称为正式稿。
+- 明确职责边界：`evidence_gate.py` 判断结果是否来自可复核运行、输入与产物是否仍新鲜、指标和图表表格是否可用；`paper-formal-writer/scripts/check_paper_format.py` 判断动态篇幅、三级标题、原生公式、正文引文、图表引用和 Word 渲染质量。两个门禁都通过后，才能称为正式稿。
 
 ## 适用时机
 - 任何一步 skill（赛题解析、模型选型、结构设计、微单元生成）完成后，用户希望确认“这一步真的做对了吗？”
@@ -71,16 +71,20 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
    - 符号表是否出现冲突或双口径（同一符号两种含义）
 4. 评分点对齐度
    - 每个高分点（敏感性分析、对照实验、误差量化）是否在结构或文本中被“可定位”地承诺
-5. 机械重复检测（High Priority）
-   - **允许凑字数**：允许使用“随着…的发展”、“综上所述”等学术连接词来增加篇幅，**不做**Fail判定。
-   - **打击机械复制**：严查**连续段落完全重复**（如同一段话连续出现两次）、**占位符未替换**（如出现“补充说明”字样且内容重复）。若发现这种“乱七八糟”的重复，直接 FAIL。
-   - **结构核查**：对比 `paper_prompt_default.md`，重点检查核心章节是否遗漏，对具体的段落格式可适当放宽。
-
-## 附加产物
-- **Word 导出 (docx)**: 审计通过后，若存在 `final_paper.md`，必须调用转换工具（如 pandoc 或 python-docx）将其转换为 `final_paper.docx`，作为最终交付物。不应只交付 Markdown。
-6. 图表-正文链检测
+5. 内容完整性与反灌水（High Priority）
+   - **禁止凑字数**：复制段落后只替换数字、序号、少量同义词或连接词，均视为机械扩写并直接 FAIL。
+   - **拒绝重复和占位**：连续重复、数字归一化后近重复、模板占位符和“待补结果”痕迹均直接 FAIL。
+   - **结构核查**：对照正式 outline 检查核心章节和每问证据是否完整；不能用空泛背景、重复结论或图表描述堆叠代替模型推导。
+6. 证据与运行新鲜度
+   - `execution_provenance`、`run_manifest.json`、建模脚本、输入文件和输出产物必须相互匹配，记录的 SHA-256 必须等于当前文件。
+   - 计算指标必须非空且为有限值；`None`、空字符串、`NaN`、`Inf` 或缺少 `result_summary` 均直接 FAIL。
+   - 图表或表格只要缺失、空文件、生成失败、标记为 placeholder，或包含失败/占位说明，均不得作为正式证据。
+7. 图表-正文链检测
    - 正文是否出现“见图 3”而图 3 真实存在且编号正确
    - 图表标题与正文描述是否语义一致
+8. 正式交付检查
+   - Word 导出、原生公式、正文引文、三级标题和渲染质量由 `paper-formal-writer` 负责；本 skill 不从 `final_paper.md` 直接拼装正式 Word。
+   - 最终验收必须读取 `format_check_report.json`，确认状态为 PASS、输入哈希仍新鲜且 `render_qa.status=PASS`。
 
 ## 工作流程（可嵌套到任意阶段）
 1. 接收待审计产物与原始赛题
@@ -113,9 +117,9 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 当前 `scripts/pipeline.py` 是基础门禁脚本，负责初始化目录、检查 `problem_files/` 并生成 `paper_output/tasks.json`。
 
-`scripts/evidence_gate.py` 是正式成稿前证据门禁脚本，负责检查每个 `question_id` 是否具备真实模型结果、评价指标、图表或表格证据、结论回扣和任务追踪。official 模式还会检查 `model_results.json` 中每个正式结果的 `execution_provenance`，确认 `source_code_path` 存在、`run_command` 非空、`run_exit_code=0` 且输出产物可追踪；同时读取 `paper_output/results/run_manifest.json`，确认结果确实来自统一入口 `run_modeling.py` 的实际运行记录。没有真实代码运行来源或没有 run_manifest 匹配记录的结果不得通过。它会输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`。official 模式下未通过会返回非零退出码；quickstart 模式只给 warning。
+`scripts/evidence_gate.py` 是正式成稿前证据门禁脚本，负责检查每个 `question_id` 是否具备真实模型结果、有限且非空的评价指标、可读取的图表或表格、结论回扣和任务追踪。official 模式会复核 `execution_provenance` 与 `paper_output/results/run_manifest.json`，比较建模脚本、输入文件和输出产物的当前大小与 SHA-256，拒绝运行后被修改的代码或数据；缺少 `result_summary`、失败/空/占位图表表格、无匹配运行记录也会失败。它会输出 `paper_output/qa/evidence_gate_report.json` 与 `.md`，并在 JSON 的 `input_hashes` 中记录本次门禁输入，供后续格式化和 workflow guard 检查报告是否过期。official 模式未通过会返回非零退出码；quickstart 模式只给 warning。
 
-`paper-formal-writer/scripts/check_paper_format.py` 是正式成稿后的格式门禁脚本，负责检查 `final_paper_source.md` 是否达到 `18000-25000` 目标、是否有 `1 / 1.1 / 1.1.1` 三级标题、每问是否有建模/算法/结果/检验、图表是否被正文引用、参考文献和附录是否完整。它不替代 `evidence_gate.py`，而是在证据门禁通过后继续阻止低字数、低格式质量的 Word 被称为最终稿。
+`paper-formal-writer/scripts/check_paper_format.py` 是正式成稿后的格式门禁脚本。它读取 outline 中按子问题数量生成的动态篇幅目标，检查 `1 / 1.1 / 1.1.1` 三级标题、每问的建模/算法/结果/检验、图表引用、正文引文与参考文献闭环、可编辑 Word OMML 公式、重复段落和内部工程话术。最终交付必须使用 `--render required`，通过 LibreOffice 将 DOCX 转为 PDF 并验证页数和可提取文本；报告同时记录源稿、DOCX、outline、索引和 evidence report 的哈希。它不替代 `evidence_gate.py`，而是在证据门禁通过后阻止内容或版式不合格的 Word 被称为最终稿。
 
 - 若存在 `paper_output/plan/model_route.json`，脚本会优先按模型路线、评分点证据、主模型、验证计划和建议图表动态生成微单元清单。
 - 若存在 `paper_output/plan/data_plan.json`、`visualization_plan.json` 与 `paper_output/figure_index.json`，脚本会做轻量证据链检查：确认图表 ID、输出路径和数据路径可追溯，但不会因为计划图尚未实际生成就阻塞全流程。
@@ -158,5 +162,5 @@ python skills/quality-assurance-auditor/scripts/evidence_gate.py --mode quicksta
 - 本技能是全局门禁：当用户要进入“生成正文/合并全文/交付论文”阶段，必须先通过本技能的目录检查与任务清单生成。
 - 未生成 `paper_output/tasks.json` 时，禁止直接进入 `paper-micro-unit-generator`。
 - 若 `evidence_gate.py` 未通过，禁止把 `final_paper.docx` 称为最终稿；必须回到 `model-code-and-result-generator` 或当前赛题专用代码，补齐真实结果、指标、图表、表格和结论。
-- 若 `paper-formal-writer/scripts/check_paper_format.py` 未通过，禁止把 `final_paper.docx` 称为最终稿；必须回到 `final_paper_source.md` 补齐正文长度、标题结构、图表解释、参考文献或附录代码说明。
+- 若 `paper-formal-writer/scripts/check_paper_format.py --render required` 未通过，禁止把 `final_paper.docx` 称为最终稿；必须回到 `final_paper_source.md` 或格式化阶段修复动态篇幅、标题结构、图表解释、原生公式、正文引文、重复内容、参考文献、附录或渲染问题。
 - 当用户已生成 `paper_output/final_paper.md` 时，建议再次调用本技能做最终一致性把关，确保“每问有结论、图表可定位、引用不断链”。

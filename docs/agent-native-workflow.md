@@ -89,6 +89,8 @@ template
 draft
 ```
 
+门禁还会重新计算建模脚本、输入文件和输出产物的 SHA-256，拒绝运行后被修改的代码或数据；评价指标必须非空且为有限值，图表表格不得缺失、为空、生成失败或标记为 placeholder。`evidence_gate_report.json` 的 `input_hashes` 会供后续格式化和 workflow guard 判断报告是否过期。
+
 ## 正式写作与格式门禁
 
 证据门禁通过后进入 `paper-formal-writer`：
@@ -96,7 +98,7 @@ draft
 ```bash
 python skills/paper-formal-writer/scripts/build_paper_outline.py
 python skills/paper-formal-writer/scripts/format_formal_docx.py
-python skills/paper-formal-writer/scripts/check_paper_format.py
+python skills/paper-formal-writer/scripts/check_paper_format.py --render required
 ```
 
 正式源稿写入：
@@ -105,7 +107,7 @@ python skills/paper-formal-writer/scripts/check_paper_format.py
 paper_output/final_paper_source.md
 ```
 
-格式门禁要求标题采用 `1 / 1.1 / 1.1.1`，正文目标 `18000-25000` 中文字，每问必须有建模、公式、算法、结果、图表解释和检验。格式门禁未通过时，当前 Word 不能称为最终比赛稿。
+格式门禁要求标题采用 `1 / 1.1 / 1.1.1`，篇幅按结构化子问题数量动态计算，每问必须有建模、公式、算法、结果、图表解释和检验。正式 DOCX 的公式必须是可编辑 OMML，正文引文与文末参考文献必须闭环，并通过 `--render required` 的 PDF 渲染检查。格式门禁未通过时，当前 Word 不能称为最终比赛稿。
 
 ## Quickstart 的定位
 

@@ -107,7 +107,7 @@ $env:PYTHONIOENCODING="utf-8"
 - 数据清洗后如果需要正文引用结果，先让 `model-code-and-result-generator` 生成或补齐结果、指标、结论和表格证据契约。
 - 若 `evidence_status` 仍为 `missing`、`needs_real_modeling` 或 `scaffold_result_needs_review`，不得把 Word 称为最终稿；必须先补齐赛题专用代码和真实结果。
 - 证据门禁通过后，进入 `paper-formal-writer`：生成 `paper_outline.json`，由 Agent 全局写 `final_paper_source.md`，再运行 `format_formal_docx.py` 和 `check_paper_format.py`。
-- 若格式门禁未通过，尤其是字数低于 `18000`、缺少 `5.1.1` 三级标题或图表未引用，不得把 Word 称为最终稿。
+- 若格式门禁未通过，尤其是低于 outline 动态篇幅、缺少 `5.1.1` 三级标题、原生公式/正文引文不足、图表未引用或 required render 失败，不得把 Word 称为最终稿。
 - 不要把输出散落到根目录，统一写入 `paper_output/`。
 - 不要把当前赛题专用代码写回 `.claude/skills/`；先读取 skill 脚本作为样板，再在 `paper_output/code/` 下生成适配当前数据的代码。
 - 不要改动 `problem_files/` 中的原始赛题和附件。

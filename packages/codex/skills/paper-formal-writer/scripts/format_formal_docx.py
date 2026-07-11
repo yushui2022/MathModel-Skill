@@ -1,5 +1,6 @@
 import argparse
 import csv
+import hashlib
 import json
 import re
 import sys
@@ -14,6 +15,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
+
+from formula_omml import FormulaConversionError, display_omml, inline_formula_tokens, latex_to_omml, source_formula_tokens
 
 
 BASE_DIR = Path.cwd()
@@ -144,21 +147,99 @@ def configure_document(document: Document) -> None:
         style.paragraph_format.keep_with_next = True
 
 
-def clean_inline_markdown(text: str) -> str:
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def clean_inline_markdown(text: str, *, strip: bool = True) -> str:
     text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
     text = re.sub(r"`([^`]+)`", r"\1", text)
     text = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1", text)
     text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", "", text)
-    return text.strip()
+    return text.strip() if strip else text
 
 
-def add_body_paragraph(document: Document, text: str) -> None:
+def add_inline_content(
+    paragraph,
+    text: str,
+    *,
+    allow_formula_fallback: bool = False,
+    formula_errors: list[str] | None = None,
+    font_name: str = "宋体",
+    font_size: float = 10.5,
+) -> int:
+    native_count = 0
+    cursor = 0
+    tokens = inline_formula_tokens(text)
+    for token in tokens:
+        plain = clean_inline_markdown(text[cursor:token.start], strip=False)
+        if plain:
+            run = paragraph.add_run(plain)
+            apply_run_font(run, font_name, font_size)
+        try:
+            paragraph._p.append(latex_to_omml(token.latex))
+            native_count += 1
+        except FormulaConversionError as exc:
+            if not allow_formula_fallback:
+                raise
+            if formula_errors is not None:
+                formula_errors.append(str(exc))
+            run = paragraph.add_run(f"${token.latex}$")
+            apply_run_font(run, "Cambria Math", font_size)
+        cursor = token.end
+    tail = clean_inline_markdown(text[cursor:], strip=False)
+    if tail:
+        run = paragraph.add_run(tail)
+        apply_run_font(run, font_name, font_size)
+    return native_count
+
+
+def add_body_paragraph(
+    document: Document,
+    text: str,
+    *,
+    allow_formula_fallback: bool = False,
+    formula_errors: list[str] | None = None,
+) -> int:
     paragraph = document.add_paragraph()
     paragraph.paragraph_format.first_line_indent = Cm(0.74)
     paragraph.paragraph_format.line_spacing = 1.35
     paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    run = paragraph.add_run(clean_inline_markdown(text))
-    apply_run_font(run, "宋体", 10.5)
+    return add_inline_content(
+        paragraph,
+        text,
+        allow_formula_fallback=allow_formula_fallback,
+        formula_errors=formula_errors,
+    )
+
+
+def add_display_formula(
+    document: Document,
+    latex: str,
+    *,
+    allow_formula_fallback: bool = False,
+    formula_errors: list[str] | None = None,
+) -> int:
+    paragraph = document.add_paragraph()
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragraph.paragraph_format.first_line_indent = None
+    paragraph.paragraph_format.space_before = Pt(3)
+    paragraph.paragraph_format.space_after = Pt(5)
+    try:
+        paragraph._p.append(display_omml(latex))
+        return 1
+    except FormulaConversionError as exc:
+        if not allow_formula_fallback:
+            raise
+        if formula_errors is not None:
+            formula_errors.append(str(exc))
+        run = paragraph.add_run(latex.strip())
+        apply_run_font(run, "Cambria Math", 10.5)
+        return 0
 
 
 def add_center_paragraph(document: Document, text: str, font_name: str = "宋体", size: float = 10.5, bold: bool = False) -> None:
@@ -190,26 +271,50 @@ def add_code_block(document: Document, code: str) -> None:
     apply_run_font(run, "Consolas", 8.5)
 
 
-def read_csv_rows(path: Path, max_rows: int = 18, max_cols: int = 8) -> list[list[str]]:
+def read_csv_rows(
+    path: Path,
+    max_rows: int = 18,
+    max_cols: int = 8,
+    columns: list[str] | None = None,
+) -> list[list[str]]:
     if not path.exists():
         return []
     encodings = ("utf-8-sig", "utf-8", "gbk")
     for encoding in encodings:
         try:
             with path.open("r", encoding=encoding, newline="") as handle:
-                rows = [[str(cell) for cell in row[:max_cols]] for row in csv.reader(handle)]
+                raw_rows = [[str(cell) for cell in row] for row in csv.reader(handle)]
+            if not raw_rows:
+                return []
+            if columns:
+                header = raw_rows[0]
+                selected = [header.index(column) for column in columns if column in header]
+                if selected:
+                    rows = [[row[index] if index < len(row) else "" for index in selected] for row in raw_rows]
+                else:
+                    rows = [row[:max_cols] for row in raw_rows]
+            else:
+                rows = [row[:max_cols] for row in raw_rows]
             return rows[:max_rows]
         except Exception:
             continue
     return []
 
 
-def add_table_from_rows(document: Document, rows: list[list[str]], caption: str | None = None) -> None:
+def add_table_from_rows(
+    document: Document,
+    rows: list[list[str]],
+    caption: str | None = None,
+    *,
+    allow_formula_fallback: bool = False,
+    formula_errors: list[str] | None = None,
+) -> int:
+    native_count = 0
     if not rows:
         if caption:
             add_center_paragraph(document, caption, bold=True)
         add_body_paragraph(document, "表格数据文件暂不可读取，正式提交前需检查表格索引和源 CSV 文件。")
-        return
+        return native_count
     if caption:
         add_center_paragraph(document, caption, bold=True)
     col_count = max(len(row) for row in rows)
@@ -217,25 +322,47 @@ def add_table_from_rows(document: Document, rows: list[list[str]], caption: str 
     table.alignment = WD_ALIGN_PARAGRAPH.CENTER
     table.autofit = True
     for row_idx, row in enumerate(rows):
+        row_properties = table.rows[row_idx]._tr.get_or_add_trPr()
+        cant_split = OxmlElement("w:cantSplit")
+        row_properties.append(cant_split)
+        if row_idx == 0:
+            repeat_header = OxmlElement("w:tblHeader")
+            repeat_header.set(qn("w:val"), "true")
+            row_properties.append(repeat_header)
         for col_idx in range(col_count):
             cell = table.cell(row_idx, col_idx)
             value = row[col_idx] if col_idx < len(row) else ""
-            cell.text = clean_inline_markdown(value)
+            cell.text = ""
             cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
             set_cell_borders(cell)
             set_cell_margin(cell)
             if row_idx == 0:
                 set_cell_shading(cell, "F2F2F2")
-            for paragraph in cell.paragraphs:
+            for paragraph_index, paragraph in enumerate(cell.paragraphs):
                 paragraph.paragraph_format.first_line_indent = None
                 paragraph.paragraph_format.space_after = Pt(0)
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER if len(value) <= 16 else WD_ALIGN_PARAGRAPH.LEFT
+                if paragraph_index == 0:
+                    native_count += add_inline_content(
+                        paragraph,
+                        value,
+                        allow_formula_fallback=allow_formula_fallback,
+                        formula_errors=formula_errors,
+                        font_size=9,
+                    )
                 for run in paragraph.runs:
                     apply_run_font(run, "宋体", 9, row_idx == 0)
     document.add_paragraph()
+    return native_count
 
 
-def add_markdown_table(document: Document, lines: list[str]) -> None:
+def add_markdown_table(
+    document: Document,
+    lines: list[str],
+    *,
+    allow_formula_fallback: bool = False,
+    formula_errors: list[str] | None = None,
+) -> int:
     rows: list[list[str]] = []
     for line in lines:
         stripped = line.strip()
@@ -243,7 +370,12 @@ def add_markdown_table(document: Document, lines: list[str]) -> None:
             continue
         cells = [cell.strip() for cell in stripped.strip("|").split("|")]
         rows.append(cells)
-    add_table_from_rows(document, rows)
+    return add_table_from_rows(
+        document,
+        rows,
+        allow_formula_fallback=allow_formula_fallback,
+        formula_errors=formula_errors,
+    )
 
 
 def build_table_lookup(table_index: Any) -> dict[str, dict[str, Any]]:
@@ -272,7 +404,19 @@ def add_index_table(document: Document, table_id: str, table_lookup: dict[str, d
     item = table_lookup.get(table_id)
     if not item:
         return False
-    rows = read_csv_rows(resolve_path(str(item.get("path") or "")))
+    if item.get("include_in_paper") is False:
+        return False
+    try:
+        preview_rows = max(2, min(50, int(item.get("preview_rows") or 18)))
+    except (TypeError, ValueError):
+        preview_rows = 18
+    display_columns = item.get("display_columns")
+    columns = [str(value) for value in display_columns] if isinstance(display_columns, list) else None
+    rows = read_csv_rows(
+        resolve_path(str(item.get("path") or "")),
+        max_rows=preview_rows,
+        columns=columns,
+    )
     caption = item.get("caption") or item.get("title") or table_id
     if not str(caption).startswith("表"):
         caption = f"表 {caption}"
@@ -317,8 +461,23 @@ def source_path() -> Path:
     return FALLBACK_SOURCE_FILE
 
 
-def render_markdown(document: Document, text: str, table_lookup: dict[str, dict[str, Any]], figure_lookup: dict[str, dict[str, Any]]) -> dict[str, int]:
-    stats = {"headings": 0, "tables": 0, "figures": 0, "code_blocks": 0}
+def render_markdown(
+    document: Document,
+    text: str,
+    table_lookup: dict[str, dict[str, Any]],
+    figure_lookup: dict[str, dict[str, Any]],
+    *,
+    allow_formula_fallback: bool = False,
+) -> dict[str, Any]:
+    stats: dict[str, Any] = {
+        "headings": 0,
+        "tables": 0,
+        "figures": 0,
+        "code_blocks": 0,
+        "source_formulas": len(source_formula_tokens(text)),
+        "native_math": 0,
+        "formula_fallbacks": [],
+    }
     lines = text.splitlines()
     idx = 0
     in_code = False
@@ -346,9 +505,46 @@ def render_markdown(document: Document, text: str, table_lookup: dict[str, dict[
             idx += 1
             continue
 
+        single_display = re.fullmatch(r"\$\$(.+)\$\$", stripped)
+        bracket_display = re.fullmatch(r"\\\[(.+)\\\]", stripped)
+        if single_display or bracket_display:
+            latex = (single_display or bracket_display).group(1)
+            stats["native_math"] += add_display_formula(
+                document,
+                latex,
+                allow_formula_fallback=allow_formula_fallback,
+                formula_errors=stats["formula_fallbacks"],
+            )
+            idx += 1
+            continue
+
+        if stripped.startswith("$$") and not in_formula:
+            in_formula = True
+            formula_lines = [stripped[2:]] if stripped[2:] else []
+            idx += 1
+            continue
+        if in_formula and stripped.endswith("$$"):
+            before_end = stripped[:-2]
+            if before_end:
+                formula_lines.append(before_end)
+            stats["native_math"] += add_display_formula(
+                document,
+                "\n".join(formula_lines),
+                allow_formula_fallback=allow_formula_fallback,
+                formula_errors=stats["formula_fallbacks"],
+            )
+            formula_lines = []
+            in_formula = False
+            idx += 1
+            continue
         if stripped == "$$":
             if in_formula:
-                add_center_paragraph(document, "\n".join(formula_lines), font_name="Cambria Math", size=10.5)
+                stats["native_math"] += add_display_formula(
+                    document,
+                    "\n".join(formula_lines),
+                    allow_formula_fallback=allow_formula_fallback,
+                    formula_errors=stats["formula_fallbacks"],
+                )
                 formula_lines = []
                 in_formula = False
             else:
@@ -394,7 +590,12 @@ def render_markdown(document: Document, text: str, table_lookup: dict[str, dict[
             while idx < len(lines) and lines[idx].strip().startswith("|") and "|" in lines[idx].strip()[1:]:
                 table_lines.append(lines[idx].strip())
                 idx += 1
-            add_markdown_table(document, table_lines)
+            stats["native_math"] += add_markdown_table(
+                document,
+                table_lines,
+                allow_formula_fallback=allow_formula_fallback,
+                formula_errors=stats["formula_fallbacks"],
+            )
             stats["tables"] += 1
             continue
 
@@ -419,23 +620,38 @@ def render_markdown(document: Document, text: str, table_lookup: dict[str, dict[
             paragraph = document.add_paragraph(style=None)
             paragraph.paragraph_format.left_indent = Cm(0.74)
             paragraph.paragraph_format.first_line_indent = Cm(-0.25)
-            run = paragraph.add_run("• " + clean_inline_markdown(list_item.group(1)))
+            run = paragraph.add_run("• ")
             apply_run_font(run, "宋体", 10.5)
+            stats["native_math"] += add_inline_content(
+                paragraph,
+                list_item.group(1),
+                allow_formula_fallback=allow_formula_fallback,
+                formula_errors=stats["formula_fallbacks"],
+            )
             idx += 1
             continue
 
-        add_body_paragraph(document, stripped)
+        stats["native_math"] += add_body_paragraph(
+            document,
+            stripped,
+            allow_formula_fallback=allow_formula_fallback,
+            formula_errors=stats["formula_fallbacks"],
+        )
         idx += 1
 
     if code_lines:
         add_code_block(document, "\n".join(code_lines))
         stats["code_blocks"] += 1
-    if formula_lines:
+    if in_formula or formula_lines:
+        message = "display formula is not closed with $$"
+        if not allow_formula_fallback:
+            raise FormulaConversionError(message)
+        stats["formula_fallbacks"].append(message)
         add_center_paragraph(document, "\n".join(formula_lines), font_name="Cambria Math", size=10.5)
     return stats
 
 
-def write_report(stats: dict[str, int], source: Path, outline: Any) -> None:
+def write_report(stats: dict[str, Any], source: Path, outline: Any) -> None:
     lines = [
         "# Formal DOCX Formatting Report",
         "",
@@ -449,6 +665,9 @@ def write_report(stats: dict[str, int], source: Path, outline: Any) -> None:
         f"- Tables inserted: `{stats.get('tables', 0)}`",
         f"- Figures inserted: `{stats.get('figures', 0)}`",
         f"- Code blocks: `{stats.get('code_blocks', 0)}`",
+        f"- Source formulas: `{stats.get('source_formulas', 0)}`",
+        f"- Native Word equations: `{stats.get('native_math', 0)}`",
+        f"- Formula text fallbacks: `{len(stats.get('formula_fallbacks', []))}`",
         "- Render QA: `render_skipped`",
         "",
         "LibreOffice 渲染不是本脚本的强依赖；若本机 LibreOffice 可用，可在最终交付前另行渲染 PNG/PDF 做视觉检查。",
@@ -467,6 +686,15 @@ def check_evidence_gate() -> tuple[bool, str]:
     status = str(data.get("status") or "").strip().upper()
     if status != "PASS":
         return False, f"证据门禁状态为 `{status or 'UNKNOWN'}`，正式 Word 不得生成。请先补齐证据并重跑 evidence_gate.py。"
+    input_hashes = data.get("input_hashes")
+    if not isinstance(input_hashes, dict) or not input_hashes:
+        return False, "证据门禁报告缺少 input_hashes，无法证明报告仍对应当前结果。请重跑 evidence_gate.py。"
+    for path_text, expected_hash in input_hashes.items():
+        path = resolve_path(str(path_text))
+        if not path.exists() or not path.is_file():
+            return False, f"证据门禁输入已缺失：{rel(path)}。请重跑 evidence_gate.py。"
+        if sha256_file(path) != str(expected_hash or "").strip().lower():
+            return False, f"证据门禁报告已过期，输入发生变化：{rel(path)}。请重跑 evidence_gate.py。"
     return True, ""
 
 
@@ -505,11 +733,37 @@ def main() -> int:
     table_index = load_json(TABLE_INDEX_FILE)
     figure_index = load_json(FIGURE_INDEX_FILE)
 
+    text = source.read_text(encoding="utf-8")
     document = Document()
     configure_document(document)
-
-    text = source.read_text(encoding="utf-8")
-    stats = render_markdown(document, text, build_table_lookup(table_index), build_figure_lookup(figure_index))
+    try:
+        stats = render_markdown(
+            document,
+            text,
+            build_table_lookup(table_index),
+            build_figure_lookup(figure_index),
+            allow_formula_fallback=draft_mode,
+        )
+    except FormulaConversionError as exc:
+        if not args.allow_draft:
+            print("[FORMAT BLOCKED] LaTeX 公式无法转换为 Word 原生公式。", file=sys.stderr)
+            print(f"  原因：{exc}", file=sys.stderr)
+            print("  修复公式后重跑；如仅需排查草稿，可加 --allow-draft。", file=sys.stderr)
+            return 3
+        draft_mode = True
+        DOCX_FILE = DOCX_FILE_DRAFT
+        REPORT_MD = REPORT_MD_DRAFT
+        document = Document()
+        configure_document(document)
+        stats = render_markdown(
+            document,
+            text,
+            build_table_lookup(table_index),
+            build_figure_lookup(figure_index),
+            allow_formula_fallback=True,
+        )
+        print(f"[DRAFT MODE] 公式转换失败：{exc}")
+        print(f"[DRAFT MODE] 将公式保留为纯文本并写入：{rel(DOCX_FILE)}")
     DOCX_FILE.parent.mkdir(parents=True, exist_ok=True)
     document.save(DOCX_FILE)
     write_report(stats, source, outline)

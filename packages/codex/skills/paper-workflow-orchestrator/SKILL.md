@@ -38,7 +38,7 @@ python skills/paper-workflow-orchestrator/scripts/preflight_check.py
 
 - 退出码非 0 或 `status != "PASS"` → **立刻停止生成任何内容**。把报告中的 `errors` 原文反问用户，等用户修复 `problem_files/` 后重新运行预检；
 - 不允许跳过预检；不允许"先凑合写一稿"；不允许凭印象判断附件状态；
-- 预检通过后，`input_manifest.json` 会固定记录每个附件的角色（题面、原始数据、结果模板、不可解析文件等）；后续 skill 必须读取该 manifest，不得重新凭文件名猜附件用途。
+- 预检通过后，`input_manifest.json` 会固定记录每个附件的角色、字节数和 SHA-256；后续 skill 必须读取该 manifest，不得重新凭文件名猜附件用途，也不得在附件变化后继续使用旧的清洗、建模或门禁报告。
 - 预检通过后，按下方阶段路由表逐步推进。
 
 ## 状态门（每阶段开始前执行）
@@ -61,9 +61,9 @@ python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step S2
 
 ## 执行契约
 - 上游输入：`problem_files/` 中的赛题与附件数据；可选读取 `crawled_data/` 中的补充权威数据。
-- 必须输出：`paper_output/OUTPUT_LAYOUT.md`、`paper_output/input_manifest.json`、`problem_analysis.json`、`model_route.json`、`rubric_alignment.json`、`scoring_strategy.md`、数据/图表计划、结果证据、证据门禁报告、`paper_outline.json`、`final_paper_source.md`、`final_paper.docx` 与格式检查报告。
+- 必须输出：`paper_output/OUTPUT_LAYOUT.md`、`paper_output/input_manifest.json`、`problem_analysis.json`、`model_route.json`、`rubric_alignment.json`、`scoring_strategy.md`、数据/图表计划、`load_report.json`、结果证据、`run_manifest.json`、证据门禁报告、`paper_outline.json`、`final_paper_source.md`、`final_paper.docx` 与机器可读格式检查报告。
 - 下游交接：本技能是总入口，负责判断当前阶段并路由到其他 skill；用户不知道从哪个 skill 开始时优先调用它。
-- 失败回退：`problem_files/` 为空时阻塞；模型路线、数据计划或图表生成失败时打印 warning 并继续，让 QA 按可用契约回退。
+- 失败回退：`problem_files/` 为空时阻塞；正式流程中模型路线、数据读取、代码运行、证据门禁或格式门禁失败时必须回补对应阶段，不得把 warning 当作放行。只有 quickstart 安装验证可以在明确标记草稿的前提下继续。
 
 ## 目标
 - 本技能是正式入口，不是“一键脚本说明书”。正式赛题应由 Agent 先读题、拆题、判断附件性质，再生成或修改当前赛题专用代码，运行真实结果，最后基于完整证据链全局写作。
@@ -105,15 +105,16 @@ python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step S2
 - 当前赛题专用代码必须写入 `paper_output/code/`：数据处理放 `data_processing/`，绘图放 `visualization/`，建模放 `modeling/`，检查放 `qa/`。不要把 `q1_model.py`、绘图脚本或清洗脚本写回 `skills/*/scripts/`。
 - 必须先判断附件性质：原始数据、结果模板、说明文档、参考材料要分开处理。像官方要求填写的 `result*.xlsx` 结果模板，不能被当作原始输入数据机械清洗，也不能据此伪造真实建模结果。
 - 当任一子问题的 `evidence_status` 为 `missing`、`needs_real_modeling` 或 `scaffold_result_needs_review` 时，不得把 Word 称为最终稿；必须先补齐赛题专用代码、真实图表、表格、指标和结论。
-- 若用户分开调用了其他技能，最终仍应回到本技能或按本技能的顺序完成：清洗与出图 → QA 任务清单 → 微单元生成 → 合并。
+- 若用户分开调用了其他技能，最终仍应回到本技能并按正式顺序完成：预检与附件哈希 → 模型路线 → 数据/图表 → 统一入口运行建模代码 → evidence gate → 全局写作 → 原生 Word 公式 → required render 格式门禁。微单元仅作为提示词资产或草稿兜底，不是 Standard 正式成稿主线。
 
 ## 正式交付门禁标准（以此判断是否“论文生产完整”）
 
 - **必须通过：`quality-assurance-auditor/scripts/evidence_gate.py` 的 official 模式**
-- **必须通过：`paper-formal-writer/scripts/check_paper_format.py` 的正式格式门禁**
+- **必须通过：`paper-formal-writer/scripts/check_paper_format.py --render required` 的正式格式门禁**
 - 必须存在：`paper_output/final_paper.docx`，但只有证据门禁和格式门禁都通过后才能称为正式稿。
 - 必须存在：`paper_output/OUTPUT_LAYOUT.md`（当前项目输出位置说明）
 - 必须存在：`paper_output/input_manifest.json`（附件角色分类，防止把结果模板/说明文档误当原始数据）
+- 必须存在：`paper_output/data_cleaned/load_report.json`，且其中 `input_manifest_sha256` 必须匹配当前 manifest。
 - 必须存在：`paper_output/plan/paper_outline.json`（正式论文大纲契约）
 - 必须存在：`paper_output/final_paper_source.md`（Agent 全局写作的正式 Markdown 源稿）
 - 必须存在：`paper_output/step1/problem_analysis.json`（结构化题意分析）
@@ -121,9 +122,11 @@ python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step S2
 - 必须存在：`paper_output/plan/rubric_alignment.json`（评分点映射契约）
 - 必须存在：`paper_output/plan/data_plan.json` 与 `visualization_plan.json`（数据与图表证据链契约）
 - 必须存在：`paper_output/figure_index.json`（图表计划索引）
-- 必须存在：`paper_output/results/run_manifest.json`（建模代码运行账本，证明结果来自实际运行）
-- 推荐存在：`paper_output/results/model_results.json`、`metrics.json`、`conclusions.json`（结果证据契约）
-- 推荐存在：`paper_output/tables/table_index.json` 与 `paper_output/tables/`（论文表格证据）
+- 必须存在：`paper_output/results/run_manifest.json`（建模代码运行账本，记录脚本、输入和输出哈希，证明结果来自实际运行且未被事后修改）
+- 必须存在：`paper_output/results/model_results.json`、`metrics.json`、`conclusions.json`（结果、有限指标和结论证据契约）
+- 必须存在：`paper_output/qa/evidence_gate_report.json`，状态为 PASS，且 `input_hashes` 与当前证据文件一致。
+- 必须存在：`paper_output/format_check_report.json`，状态为 PASS，输入哈希仍新鲜，且 `render_qa.status=PASS`。
+- 必须存在：`paper_output/tables/table_index.json` 与 `paper_output/figure_index.json`；每问至少有可用图或表，缺失、空文件、失败和 placeholder 均不得放行。
 - 推荐存在：`paper_output/code/README.md` 与 `paper_output/code/*/README.md`（当前赛题代码工作区说明）
 - 推荐存在：`paper_output/tasks.json`
 - 推荐存在：`paper_output/ref_check.md`
@@ -195,11 +198,11 @@ python skills/paper-workflow-orchestrator/scripts/workflow_guard.py --step S2
 0. 读取赛题与附件，判断附件是原始数据、结果模板、说明文档还是参考材料。
 1. 生成题意分析、模型路线、评分闭环、数据计划和图表计划。
 2. 在 `paper_output/code/` 中生成或修改当前赛题专用数据处理、建模和绘图代码。
-3. 运行专用代码，产出真实图表、表格、指标、结论，并写回 `paper_output/results/` 与 `paper_output/tables/`。
-4. 运行 `quality-assurance-auditor/scripts/evidence_gate.py`；未通过时继续补证据，不进入正式成稿。
+3. 通过 `paper_output/code/modeling/run_modeling.py` 统一运行专用代码，产出真实图表、表格、指标和结论，并让 `run_manifest.json` 记录脚本、输入与输出哈希。
+4. 运行 `quality-assurance-auditor/scripts/evidence_gate.py`；门禁会重新计算哈希并拒绝空指标、占位产物或过期运行记录，未通过时继续补证据，不进入正式成稿。
 5. 证据门禁通过后，运行 `paper-formal-writer/scripts/build_paper_outline.py` 生成 `paper_output/plan/paper_outline.json`。
 6. Agent 读取 `paper_outline.json`、完整证据链和提示词资产，全局撰写 `paper_output/final_paper_source.md`。
-7. 运行 `paper-formal-writer/scripts/format_formal_docx.py` 生成正式 Word，再运行 `paper-formal-writer/scripts/check_paper_format.py`。
+7. 运行 `paper-formal-writer/scripts/format_formal_docx.py` 生成含可编辑 OMML 公式的正式 Word，再运行 `paper-formal-writer/scripts/check_paper_format.py --render required`。
 8. 证据门禁与格式门禁均通过后，再次调用 `quality-assurance-auditor` 做最终一致性检查。
 
 ### Quickstart 验证流程（不是正式论文生产流程）

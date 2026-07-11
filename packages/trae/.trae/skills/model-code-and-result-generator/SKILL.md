@@ -89,7 +89,12 @@ paper_output/
 - 所有 JSON 包含 `schema_version`、`generated_by`、`generated_at`。
 - 每条结果、指标、结论和表格都应带 `question_id`。
 - 草稿或脚手架结果必须使用 `status` 或 `evidence_status` 标记。
-- 正式结果必须带 `execution_provenance`，包含 `source_code_path`、`run_command`、`run_exit_code` 和 `output_artifacts`；统一入口 `run_modeling.py` 还必须写入 `paper_output/results/run_manifest.json`，记录脚本命令、退出码、输入文件 hash 和输出产物 hash。official evidence gate 会拒绝没有真实代码运行来源或没有 run_manifest 对应运行记录的结果。
+- 正式结果必须带 `execution_provenance`，至少包含 `source_code_path`、`source_code_sha256`、`run_command`、`run_exit_code` 和 `output_artifacts`。
+- 统一入口 `run_modeling.py` 必须在实际执行后写入 `paper_output/results/run_manifest.json`，记录总体 `status`、脚本 hash、`question_ids`、退出码、工作目录、Python 实现/版本/平台，以及每个输入和输出文件的 `path`、`bytes`、`sha256`、`exists`。
+- `run_manifest.json` 不是日志占位符。建模脚本、输入文件或输出产物在运行后发生变化时，必须重新运行模型，不能手改 manifest 或结果 JSON 续签旧证据。
+- `model_results.json` 中正式条目必须有非空 `result_summary`；`metrics.json` 中 `status=computed` 的指标必须有非空、有限的 `value`，不得使用 `null`、`NaN` 或无穷值。
+- `table_index.json` 中正式表格必须指向真实存在且非空的文件；只有索引条目、没有 CSV/XLSX 产物不能作为证据。
+- official evidence gate 会重新计算脚本、输入和输出哈希，并拒绝没有真实代码运行来源、运行账本状态失败、文件被修改或运行记录无法关联 `question_id` 的结果。
 - 正文中引用的表格必须能在 `paper_output/tables/table_index.json` 找到。
 
 ## 使用方式
@@ -106,7 +111,7 @@ python .trae/skills/model-code-and-result-generator/scripts/build_result_contrac
 python paper_output/code/modeling/run_modeling.py
 ```
 
-该入口会写入 `paper_output/results/run_manifest.json`。然后重新运行 QA，让 `paper_output/tasks.json` 读取刷新后的 `model_results.json`、`metrics.json`、`conclusions.json`、`run_manifest.json` 和 `table_index.json`。
+该入口会写入 `paper_output/results/run_manifest.json`。运行后不要再编辑建模脚本或产物；如需修正，修改后重新运行入口。然后重新运行 QA，让 `paper_output/tasks.json` 读取刷新后的 `model_results.json`、`metrics.json`、`conclusions.json`、`run_manifest.json` 和 `table_index.json`。
 
 ## 真实赛题使用原则
 

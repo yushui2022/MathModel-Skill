@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
 from datetime import datetime
@@ -39,6 +40,16 @@ def rel(path: Path) -> str:
         return path.resolve().relative_to(BASE_DIR).as_posix()
     except Exception:
         return str(path).replace("\\", "/")
+
+
+def sha256_file(path: Path) -> str:
+    if not path.exists() or not path.is_file():
+        return ""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def file_entry(path: Path, kind: str) -> dict[str, Any]:
@@ -348,6 +359,7 @@ def evaluate(input_dirs: list[str], use_manifest: bool = True) -> dict[str, Any]
         "input_dirs": input_dirs,
         "input_manifest_used": bool(input_manifest),
         "input_manifest": rel(INPUT_MANIFEST_FILE) if input_manifest else "",
+        "input_manifest_sha256": sha256_file(INPUT_MANIFEST_FILE) if input_manifest else "",
         "skipped_files": skipped_files,
         "data_files": data_files,
         "pdf_diagnostics": pdf_diagnostics,

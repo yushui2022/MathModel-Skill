@@ -8,3 +8,4 @@ pypdf
 openpyxl
 xlrd
 lxml
+latex2mathml

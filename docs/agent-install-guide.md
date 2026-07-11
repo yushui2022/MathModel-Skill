@@ -127,7 +127,9 @@ Codex       -> packages/codex/skills/
 维护者更新 skill 后，在仓库根目录运行：
 
 ```bash
+python scripts/sync_platform_packages.py --check
 python scripts/build_release_packages.py --clean
+python scripts/build_release_packages.py --verify
 ```
 
-脚本会生成 `dist/` 下的三端 zip，并自动排除缓存、赛题输入、运行输出和本地爬取数据。
+Claude skill 目录是 canonical payload；同步检查用于阻止 Codex/Trae 漂移。打包脚本会生成 `dist/` 下的三端确定性 zip，自动排除缓存、赛题输入、运行输出和本地爬取数据，并在每个包中加入 `VERSION` 与逐文件哈希清单 `MATHMODEL_BUILD.json`。最后的 `--verify` 会确认归档与当前源码一致。

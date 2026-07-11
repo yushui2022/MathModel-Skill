@@ -67,7 +67,7 @@ Push-Location examples\cumcm2024-b-demo
 python ..\..\packages\codex\skills\quality-assurance-auditor\scripts\evidence_gate.py
 python ..\..\packages\codex\skills\paper-formal-writer\scripts\build_paper_outline.py
 python ..\..\packages\codex\skills\paper-formal-writer\scripts\format_formal_docx.py
-python ..\..\packages\codex\skills\paper-formal-writer\scripts\check_paper_format.py
+python ..\..\packages\codex\skills\paper-formal-writer\scripts\check_paper_format.py --render required
 Pop-Location
 ```
 
@@ -99,13 +99,13 @@ examples/cumcm2024-b-demo/paper_output/final_paper.docx
 4. 让 Agent 从 `paper-workflow-orchestrator` 开始，不要先跑 quickstart。
 5. 要求 Agent 在 `paper_output/code/` 中生成当前赛题专用代码，并运行得到真实结果。
 6. 先过 `quality-assurance-auditor/scripts/evidence_gate.py`。
-7. 证据门禁通过后，再进入 `paper-formal-writer`：生成 `paper_outline.json`，写 `final_paper_source.md`，生成 `final_paper.docx`，运行 `check_paper_format.py`。
+7. 证据门禁通过后，再进入 `paper-formal-writer`：生成 `paper_outline.json`，写 `final_paper_source.md`，生成含可编辑原生公式的 `final_paper.docx`，运行 `check_paper_format.py --render required`。
 8. 对照 B 题样例检查 Word 是否有正式标题层级、足够正文、图表前后解释、结果表、参考文献和附录代码说明。
 
 推荐启动提示词：
 
 ```text
-请使用 MathModel Skill，从 paper-workflow-orchestrator 开始。不要先跑 quickstart 脚本。请读取赛题和附件，生成模型路线，判断附件是原始数据还是结果模板，在 paper_output/code/ 中生成并运行当前赛题专用代码，产出真实图表、表格、指标和结论。证据门禁通过后，再调用 paper-formal-writer 生成 paper_output/plan/paper_outline.json，基于完整证据链全局撰写 paper_output/final_paper_source.md，并生成 paper_output/final_paper.docx。写作时标题采用 1 / 1.1 / 1.1.1，目标 18000-25000 中文字；证据门禁和格式门禁未同时通过时，不要把 Word 称为最终稿。
+请使用 MathModel Skill，从 paper-workflow-orchestrator 开始。不要先跑 quickstart 脚本。请读取赛题和附件，生成模型路线，判断附件是原始数据还是结果模板，在 paper_output/code/ 中生成并运行当前赛题专用代码，产出真实图表、表格、指标和结论。证据门禁通过后，再调用 paper-formal-writer 生成 paper_output/plan/paper_outline.json，基于完整证据链全局撰写 paper_output/final_paper_source.md，并生成 paper_output/final_paper.docx。写作时标题采用 1 / 1.1 / 1.1.1，篇幅遵循 outline 的动态目标，禁止机械扩写；最终运行 check_paper_format.py --render required。证据门禁和格式门禁未同时通过时，不要把 Word 称为最终稿。
 ```
 
 ## 与 quickstart 的分工

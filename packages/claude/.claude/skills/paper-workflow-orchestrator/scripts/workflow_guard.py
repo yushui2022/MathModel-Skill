@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime
@@ -146,6 +147,46 @@ def normalize_artifact(path_text: object) -> str:
     return rel(path)
 
 
+def resolve_artifact(path_text: object) -> Path:
+    path = Path(str(path_text or "").strip())
+    return path if path.is_absolute() else BASE_DIR / path
+
+
+def sha256_file(path: Path) -> str:
+    if not path.exists() or not path.is_file():
+        return ""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def recorded_file_failures(entry: Any, label: str) -> list[str]:
+    if not isinstance(entry, dict):
+        return [f"{label} 不是对象。"]
+    path_text = entry.get("path")
+    if not str(path_text or "").strip():
+        return [f"{label} 缺少 path。"]
+    path = resolve_artifact(path_text)
+    if not path.exists() or not path.is_file():
+        return [f"{label} 文件不存在：{normalize_artifact(path_text)}"]
+    failures: list[str] = []
+    expected_hash = str(entry.get("sha256") or "").strip().lower()
+    if not expected_hash:
+        failures.append(f"{label} 缺少 sha256：{normalize_artifact(path_text)}")
+    elif sha256_file(path) != expected_hash:
+        failures.append(f"{label} 内容已变化：{normalize_artifact(path_text)}")
+    expected_size = entry.get("bytes")
+    if expected_size not in (None, ""):
+        try:
+            if int(expected_size) != path.stat().st_size:
+                failures.append(f"{label} 大小已变化：{normalize_artifact(path_text)}")
+        except (TypeError, ValueError):
+            failures.append(f"{label} bytes 字段无效：{expected_size}")
+    return failures
+
+
 def check_json_file(path: Path, failures: list[str]) -> Any:
     data = load_json(path)
     if data is None:
@@ -189,6 +230,9 @@ def check_s0() -> dict[str, Any]:
         summary = manifest.get("summary") if isinstance(manifest.get("summary"), dict) else {}
         if summary.get("problem_statement_count", 0) < 1:
             failures.append("input_manifest.json 中没有可解析题面文件。")
+        if isinstance(entries, list):
+            for entry in entries:
+                failures.extend(recorded_file_failures(entry, "输入附件"))
     return {"step": "S0", "name": "准入预检", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 
@@ -218,6 +262,13 @@ def check_s3() -> dict[str, Any]:
         failures.append("data_cleaned/load_report.json status 为 FAIL。")
     if isinstance(load_report, dict) and not load_report.get("input_manifest_used"):
         failures.append("data_cleaned/load_report.json 未使用 input_manifest.json，附件角色可能未被统一约束。")
+    if isinstance(load_report, dict):
+        expected_manifest_hash = str(load_report.get("input_manifest_sha256") or "").strip().lower()
+        manifest_path = OUTPUT_DIR / "input_manifest.json"
+        if not expected_manifest_hash:
+            failures.append("data_cleaned/load_report.json 缺少 input_manifest_sha256。")
+        elif sha256_file(manifest_path) != expected_manifest_hash:
+            failures.append("input_manifest.json 在数据读取后已变化，需重新运行 robust_loader.py。")
     return {"step": "S3", "name": "数据与图表计划", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 
@@ -254,6 +305,23 @@ def check_s5() -> dict[str, Any]:
         for run in runs
         if isinstance(run, dict)
     }
+    if isinstance(run_manifest, dict) and str(run_manifest.get("status") or "").upper() != "PASS":
+        failures.append("run_manifest.json status 不是 PASS。")
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        script_path = resolve_artifact(run.get("script"))
+        script_hash = str(run.get("script_sha256") or "").strip().lower()
+        if not script_path.exists():
+            failures.append(f"run_manifest 建模脚本不存在：{normalize_artifact(run.get('script'))}")
+        elif not script_hash:
+            failures.append(f"run_manifest 建模脚本缺少 hash：{normalize_artifact(run.get('script'))}")
+        elif sha256_file(script_path) != script_hash:
+            failures.append(f"建模脚本在运行后已变化：{normalize_artifact(run.get('script'))}")
+        for entry in run.get("input_files", []) or []:
+            failures.extend(recorded_file_failures(entry, "建模输入"))
+        for entry in run.get("output_artifacts", []) or []:
+            failures.extend(recorded_file_failures(entry, "建模输出"))
 
     for item in _items(model_results, "questions"):
         qid = str(item.get("question_id") or "UNKNOWN")
@@ -287,6 +355,17 @@ def check_s6() -> dict[str, Any]:
     gate = check_json_file(OUTPUT_DIR / "qa" / "evidence_gate_report.json", failures)
     if isinstance(gate, dict) and str(gate.get("status") or "").upper() != "PASS":
         failures.append("evidence_gate_report.json status 不是 PASS。")
+    if isinstance(gate, dict):
+        input_hashes = gate.get("input_hashes")
+        if not isinstance(input_hashes, dict) or not input_hashes:
+            failures.append("evidence_gate_report.json 缺少 input_hashes，无法判断报告是否过期。")
+        else:
+            for path_text, expected_hash in input_hashes.items():
+                path = resolve_artifact(path_text)
+                if not path.exists():
+                    failures.append(f"证据门禁输入已缺失：{normalize_artifact(path_text)}")
+                elif sha256_file(path) != str(expected_hash or "").lower():
+                    failures.append(f"证据门禁报告已过期，输入发生变化：{normalize_artifact(path_text)}")
     return {"step": "S6", "name": "证据门禁", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 
@@ -303,6 +382,17 @@ def check_s8() -> dict[str, Any]:
     report = check_json_file(OUTPUT_DIR / "format_check_report.json", failures)
     if isinstance(report, dict) and str(report.get("status") or "").upper() != "PASS":
         failures.append("format_check_report.json status 不是 PASS。")
+    if isinstance(report, dict):
+        input_hashes = report.get("input_hashes")
+        if not isinstance(input_hashes, dict) or not input_hashes:
+            failures.append("format_check_report.json 缺少 input_hashes，无法判断格式门禁报告是否过期。")
+        else:
+            for path_text, expected_hash in input_hashes.items():
+                path = resolve_artifact(path_text)
+                if not path.exists():
+                    failures.append(f"格式门禁输入已缺失：{normalize_artifact(path_text)}")
+                elif sha256_file(path) != str(expected_hash or "").lower():
+                    failures.append(f"格式门禁报告已过期，输入发生变化：{normalize_artifact(path_text)}")
     return {"step": "S8", "name": "格式门禁", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 

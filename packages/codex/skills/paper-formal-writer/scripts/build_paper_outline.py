@@ -117,10 +117,23 @@ def collect_questions(problem_analysis: Any, model_route: Any, model_results: An
                 "model_reason",
                 "result_summary",
             ):
-                if item.get(field) and not target.get(field):
+                if not item.get(field):
+                    continue
+                if source_name == "model_route" and field in {
+                    "task_type",
+                    "core_goal",
+                    "main_model",
+                    "baseline_model",
+                    "model_reason",
+                }:
                     target[field] = item[field]
-            if item.get("formula_requirements") and not target.get("formula_requirements"):
-                target["formula_requirements"] = item["formula_requirements"]
+                elif source_name == "model_results" and field == "result_summary":
+                    target[field] = item[field]
+                elif not target.get(field):
+                    target[field] = item[field]
+            if item.get("formula_requirements"):
+                if source_name == "model_route" or not target.get("formula_requirements"):
+                    target["formula_requirements"] = item["formula_requirements"]
             target.setdefault("sources", []).append(source_name)
 
     return [by_id[qid] for qid in sorted(by_id, key=natural_q_key)]
@@ -217,7 +230,7 @@ def build_question_section(
         "section_id": section_id,
         "title": f"{question.get('title', qid)}模型的建立与求解",
         "question_id": qid,
-        "target_words": 3000,
+        "target_words": 2200,
         "task_type": question.get("task_type"),
         "core_goal": question.get("core_goal") or question.get("summary"),
         "main_model": question.get("main_model"),
@@ -230,26 +243,26 @@ def build_question_section(
                 "section_id": f"{section_id}.1",
                 "title": "建模思路",
                 "question_id": qid,
-                "target_words": 450,
+                "target_words": 300,
             },
             {
                 "section_id": f"{section_id}.2",
                 "title": "变量定义与公式推导",
                 "question_id": qid,
-                "target_words": 850,
+                "target_words": 600,
                 "required_formulas": formulas,
             },
             {
                 "section_id": f"{section_id}.3",
                 "title": "求解算法",
                 "question_id": qid,
-                "target_words": 550,
+                "target_words": 400,
             },
             {
                 "section_id": f"{section_id}.4",
                 "title": "结果分析",
                 "question_id": qid,
-                "target_words": 850,
+                "target_words": 650,
                 "required_figures": required_figures,
                 "required_tables": required_tables,
                 "required_evidence": required_evidence,
@@ -258,7 +271,7 @@ def build_question_section(
                 "section_id": f"{section_id}.5",
                 "title": "模型检验或灵敏度分析",
                 "question_id": qid,
-                "target_words": 300,
+                "target_words": 250,
             },
         ],
     }
@@ -313,16 +326,20 @@ def build_outline() -> dict[str, Any]:
         build_question_section(question, index, figure_map, table_map, result_map, metric_map, conclusion_map)
         for index, question in enumerate(questions, start=1)
     ]
+    question_count = max(1, len(questions))
+    target_min = 6500 + 1200 * question_count
+    target_ideal = 7500 + 1500 * question_count
+    target_max = 10000 + 2200 * question_count
 
     outline = {
         "schema_version": "1.0",
         "generated_by": "paper-formal-writer/scripts/build_paper_outline.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "numbering_style": "1 / 1.1 / 1.1.1",
-        "target_words": {"min": 18000, "ideal": 22000, "max": 25000},
+        "target_words": {"min": target_min, "ideal": target_ideal, "max": target_max},
         "title": infer_title(data["problem_analysis"]),
         "front_matter": {
-            "abstract_target_words": 1000,
+            "abstract_target_words": 700,
             "keyword_count": "4-6",
             "requirements": [
                 "摘要按子问题展开，必须写明方法、模型、算法、关键结果和结论。",
@@ -336,31 +353,31 @@ def build_outline() -> dict[str, Any]:
             {
                 "section_id": "1",
                 "title": "问题重述",
-                "target_words": 1400,
+                "target_words": 900,
                 "subsections": [
-                    {"section_id": "1.1", "title": "背景说明", "target_words": 350},
-                    {"section_id": "1.2", "title": "题目任务", "target_words": 750},
-                    {"section_id": "1.3", "title": "本文解决思路概述", "target_words": 300},
+                    {"section_id": "1.1", "title": "背景说明", "target_words": 200},
+                    {"section_id": "1.2", "title": "题目任务", "target_words": 450},
+                    {"section_id": "1.3", "title": "本文解决思路概述", "target_words": 250},
                 ],
             },
             {
                 "section_id": "2",
                 "title": "问题分析",
-                "target_words": 2200,
+                "target_words": 1600,
                 "subsections": question_analysis_sections,
             },
-            {"section_id": "3", "title": "模型假设", "target_words": 800, "subsections": []},
-            {"section_id": "4", "title": "符号说明", "target_words": 700, "subsections": []},
+            {"section_id": "3", "title": "模型假设", "target_words": 600, "subsections": []},
+            {"section_id": "4", "title": "符号说明", "target_words": 500, "subsections": []},
             {
                 "section_id": "5",
                 "title": "模型的建立与求解",
                 "target_words": sum(item["target_words"] for item in model_sections),
                 "subsections": model_sections,
             },
-            {"section_id": "6", "title": "模型检验与灵敏度分析", "target_words": 1800, "subsections": []},
-            {"section_id": "7", "title": "模型评价与推广", "target_words": 1400, "subsections": []},
-            {"section_id": "8", "title": "参考文献", "target_words": 500, "subsections": []},
-            {"section_id": "appendix", "title": "附录", "target_words": 1000, "subsections": []},
+            {"section_id": "6", "title": "模型检验与灵敏度分析", "target_words": 1000, "subsections": []},
+            {"section_id": "7", "title": "模型评价与推广", "target_words": 800, "subsections": []},
+            {"section_id": "8", "title": "参考文献", "target_words": 350, "subsections": []},
+            {"section_id": "appendix", "title": "附录", "target_words": 600, "subsections": []},
         ],
     }
     return outline
