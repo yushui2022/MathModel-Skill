@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Review Board"
+  short_description: "五角色隔离审稿与修复闭环"
+  default_prompt: "Use $pro-review-board to run a complete isolated five-role review round and repeat until no unresolved Critical or Major findings remain."

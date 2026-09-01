@@ -1,16 +1,22 @@
-name: CI
+name: Pro CI
 
 on:
   push:
+    branches: [pro]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  verify-standard-skill:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+  verify-pro-skill:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 50
 
     steps:
       - name: Checkout
@@ -19,20 +25,37 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
           cache: pip
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Check platform synchronization
+      - name: Install LibreOffice on Ubuntu
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer
+
+      - name: Install LibreOffice on Windows
+        if: runner.os == 'Windows'
+        run: choco install libreoffice-fresh -y --no-progress
+
+      - name: Install LibreOffice on macOS
+        if: runner.os == 'macOS'
+        run: brew install --cask libreoffice
+
+      - name: Compile Python payload
+        run: python -m compileall -q packages scripts tests
+
+      - name: Check canonical payload synchronization
         run: python scripts/sync_platform_packages.py --check
 
-      - name: Run test suite
-        run: python tests/run_tests.py
+      - name: Run Pro contract and packaging tests
+        run: python tests/run_pro_tests.py
+        env:
+          REQUIRE_LIBREOFFICE: "1"
 
-      - name: Build deterministic release archives
-        run: python scripts/build_release_packages.py --output-dir tests/sandbox/ci-release
+      - name: Build deterministic Pro packages
+        run: python scripts/build_release_packages.py --output-dir tests/ci-release
 
-      - name: Verify release archives
-        run: python scripts/build_release_packages.py --verify --output-dir tests/sandbox/ci-release
+      - name: Verify deterministic Pro packages
+        run: python scripts/build_release_packages.py --verify --output-dir tests/ci-release

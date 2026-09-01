@@ -1,8 +1,0 @@
-interface:
-  display_name: "Data Cleaning & Visualization"
-  short_description: "清洗附件数据并生成论文图表"
-  brand_color: "#14B8A6"
-  default_prompt: "Use $data-cleaning-and-visualization to clean the modeling data and generate figures."
-
-policy:
-  allow_implicit_invocation: true

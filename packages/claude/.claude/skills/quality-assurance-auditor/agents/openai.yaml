@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Evidence Auditor"
+  short_description: "复算、来源与证据冻结审计"
+  default_prompt: "Use $quality-assurance-auditor to verify current experiment hashes and freeze evidence only after checkpoint 3."

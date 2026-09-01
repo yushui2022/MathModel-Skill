@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Model Tournament"
+  short_description: "多路线模型竞赛与实验预注册"
+  default_prompt: "Use $pro-model-tournament after checkpoint 1 to compare four materially different routes per subproblem, including an interpretable baseline."

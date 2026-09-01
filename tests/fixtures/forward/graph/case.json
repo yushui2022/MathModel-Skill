@@ -1,0 +1,6 @@
+{
+  "case_id": "pro-forward-graph",
+  "category": "graph",
+  "required_evidence": ["node_edge_semantics", "exact_discrete_replication", "baseline", "perturbation_robustness", "ablation"],
+  "acceptance": "All three checkpoints approved and final Pro gate PASS"
+}

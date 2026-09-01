@@ -4,12 +4,9 @@ __pycache__/
 .idea/
 
 problem_files/
-!examples/quickstart/problem_files/
-!examples/quickstart/problem_files/**
 crawled_data/
 paper_output/
-!examples/cumcm2024-b-demo/paper_output/
-!examples/cumcm2024-b-demo/paper_output/**
+paper_output_pro/
 data_requirements.json
 
 .DS_Store

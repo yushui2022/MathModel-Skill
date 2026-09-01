@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Context Memory"
+  short_description: "P0-P9 断点、哈希与失败计数"
+  default_prompt: "Use $context-memory-keeper to persist the current Pro phase, checkpoint states, hashes, failures, and next action."

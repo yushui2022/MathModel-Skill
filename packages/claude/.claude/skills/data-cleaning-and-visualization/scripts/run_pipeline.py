@@ -55,7 +55,7 @@ def main() -> int:
         print("   未检测到论文级图表模板脚本，跳过。")
 
     print("\n=== 数据清洗与可视化流程完成 ===")
-    print("请查看 paper_output/ 目录获取结果。")
+    print("请查看 paper_output_pro/ 目录获取结果。")
     return 0
 
 

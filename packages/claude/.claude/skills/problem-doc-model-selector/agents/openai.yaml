@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Problem Consensus"
+  short_description: "三路隔离审题与附件共识"
+  default_prompt: "Use $problem-doc-model-selector after P0 to produce three isolated analyses and a hash-linked problem consensus."

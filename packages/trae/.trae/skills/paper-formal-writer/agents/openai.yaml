@@ -1,8 +1,0 @@
-interface:
-  display_name: "Formal Paper Writer"
-  short_description: "按国赛范式生成正式论文 outline、Word 和格式检查"
-  brand_color: "#1D4ED8"
-  default_prompt: "Use $paper-formal-writer after evidence gate passes to build the formal paper outline, write final_paper_source.md, format the Word document, and check CUMCM paper format."
-
-policy:
-  allow_implicit_invocation: true
