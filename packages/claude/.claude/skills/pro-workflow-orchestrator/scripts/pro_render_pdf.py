@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 
 def find_soffice(explicit: str | None) -> Path | None:
     candidates = [
         explicit,
+        os.environ.get("LIBREOFFICE_PATH"),
         shutil.which("libreoffice"),
         shutil.which("soffice"),
         r"C:\Program Files\LibreOffice\program\soffice.exe",
@@ -37,14 +41,33 @@ def main() -> int:
         print("[BLOCKED] LibreOffice is required to produce and verify the final PDF")
         return 1
     output_dir.mkdir(parents=True, exist_ok=True)
-    completed = subprocess.run(
-        [str(soffice), "--headless", "--convert-to", "pdf", "--outdir", str(output_dir), str(docx)],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
     pdf = output_dir / f"{docx.stem}.pdf"
+    if pdf.exists():
+        pdf.unlink()
+    temp_parent = os.environ.get("MATHMODEL_TEMP_DIR")
+    if temp_parent:
+        Path(temp_parent).mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="mathmodel-pro-lo-", dir=temp_parent) as profile_dir:
+        profile_uri = Path(profile_dir).resolve().as_uri()
+        completed = subprocess.run(
+            [
+                str(soffice),
+                "--headless",
+                f"-env:UserInstallation={profile_uri}",
+                "--convert-to", "pdf",
+                "--outdir", str(output_dir),
+                str(docx),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=180,
+        )
+    for _ in range(20):
+        if pdf.is_file() and pdf.stat().st_size > 0:
+            break
+        time.sleep(0.25)
     if completed.returncode != 0 or not pdf.is_file() or pdf.stat().st_size == 0:
         print(completed.stdout)
         print(completed.stderr)

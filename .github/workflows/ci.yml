@@ -37,7 +37,14 @@ jobs:
 
       - name: Install LibreOffice on Windows
         if: runner.os == 'Windows'
-        run: choco install libreoffice-fresh -y --no-progress
+        shell: pwsh
+        run: |
+          choco install libreoffice-fresh -y --no-progress
+          $soffice = Join-Path $env:ProgramFiles "LibreOffice\program\soffice.exe"
+          if (-not (Test-Path -LiteralPath $soffice)) {
+            throw "LibreOffice executable not found at $soffice"
+          }
+          "LIBREOFFICE_PATH=$soffice" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Install LibreOffice on macOS
         if: runner.os == 'macOS'

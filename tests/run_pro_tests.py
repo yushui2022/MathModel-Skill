@@ -116,12 +116,13 @@ def valid_tournament() -> dict:
 
 class ProSkillTests(unittest.TestCase):
     def setUp(self) -> None:
-        preferred = Path(os.environ.get("MATHMODEL_TEST_TEMP", ""))
-        if preferred:
+        preferred_value = os.environ.get("MATHMODEL_TEST_TEMP")
+        if preferred_value:
+            preferred = Path(preferred_value).resolve()
             preferred.mkdir(parents=True, exist_ok=True)
-            self.temp = Path(tempfile.mkdtemp(prefix="pro-test-", dir=preferred))
+            self.temp = Path(tempfile.mkdtemp(prefix="pro-test-", dir=preferred)).resolve()
         else:
-            self.temp = Path(tempfile.mkdtemp(prefix="pro-test-"))
+            self.temp = Path(tempfile.mkdtemp(prefix="pro-test-")).resolve()
 
     def tearDown(self) -> None:
         shutil.rmtree(self.temp, ignore_errors=True)
@@ -288,7 +289,7 @@ class ProSkillTests(unittest.TestCase):
         from docx import Document
         from pypdf import PdfReader
 
-        docx_path = self.temp / "论文.docx"
+        docx_path = self.temp / "renderer-test.docx"
         document = Document()
         document.add_heading("MathModel Pro Renderer Test", level=1)
         document.add_paragraph("This deterministic paragraph verifies extractable PDF text. " * 12)
@@ -300,7 +301,7 @@ class ProSkillTests(unittest.TestCase):
             "--soffice", soffice,
         )
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
-        pdf = self.temp / "论文.pdf"
+        pdf = self.temp / "renderer-test.pdf"
         reader = PdfReader(str(pdf))
         self.assertGreaterEqual(len(reader.pages), 1)
         self.assertIn("MathModel Pro Renderer Test", "".join(page.extract_text() or "" for page in reader.pages))
@@ -411,4 +412,8 @@ class ProSkillTests(unittest.TestCase):
 if __name__ == "__main__":
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(ProSkillTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
+    if os.environ.get("GITHUB_ACTIONS") == "true" and not result.wasSuccessful():
+        details = [f"{case}: {error}" for case, error in [*result.failures, *result.errors]]
+        annotation = " | ".join(details).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=MathModel Pro tests failed::{annotation}")
     raise SystemExit(0 if result.wasSuccessful() else 1)

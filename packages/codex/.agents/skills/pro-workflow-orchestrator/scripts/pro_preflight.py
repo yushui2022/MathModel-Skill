@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import platform
 import shutil
 import sys
@@ -34,6 +35,7 @@ def classify(path: Path) -> str:
 
 def find_libreoffice() -> str | None:
     candidates = [
+        os.environ.get("LIBREOFFICE_PATH"),
         shutil.which("libreoffice"),
         shutil.which("soffice"),
         r"C:\Program Files\LibreOffice\program\soffice.exe",
