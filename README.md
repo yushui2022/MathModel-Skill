@@ -13,12 +13,15 @@
 
 ## 版本选择
 
-| 你的模型 | 推荐版本 | 分支 |
+| 模型与目标 | 建议版本 | 分支 |
 |---|---|---|
+| Claude Fable 5 / GPT-5.6 Sol Ultra，允许高计算成本，追求最高可验证质量 | Pro | [`pro`](https://github.com/yushui2022/MathModel-Skill/tree/pro) |
 | 强模型、长上下文、复杂工具调用稳定，需要正式竞赛论文 | Standard | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
 | 普通模型、较旧模型、上下文较短，希望流程简单稳定 | **Lite（当前分支）** | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
 
-Standard 完整版位于默认分支 `master`。Lite 不是让普通模型强行执行 Standard 的全部复杂步骤，而是用固定六步降低上下文和决策负担。不要把两个分支或两个版本的 ZIP 解压到同一个比赛项目。
+Pro 位于 `pro` 分支，面向 Claude Fable 5、GPT-5.6 Sol Ultra 和不计成本的高验证流程；Standard 位于默认分支 `master`，面向强模型和正式竞赛；Lite 用固定六步降低普通模型的上下文与决策负担。
+
+**一个比赛项目只安装一个版本。** 不要把 Pro、Standard 和 Lite 的 ZIP 解压到同一目录。
 
 ## 为什么有 Lite
 
