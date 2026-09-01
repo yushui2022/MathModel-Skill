@@ -19,12 +19,15 @@
 
 ## 版本选择
 
-| 你的模型 | 推荐版本 | 分支 |
+| 模型与目标 | 建议版本 | 分支 |
 |---|---|---|
+| Claude Fable 5 / GPT-5.6 Sol Ultra，允许高计算成本，追求最高可验证质量 | Pro | [`pro`](https://github.com/yushui2022/MathModel-Skill/tree/pro) |
 | 强模型、长上下文、复杂工具调用稳定，需要正式竞赛论文 | **Standard（当前默认分支）** | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
 | 普通模型、较旧模型、上下文较短，希望流程简单稳定 | Lite | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
 
-普通模型不建议强行执行 Standard 的全部多 Skill 流程，容易产生上下文负担、跳步或入口混淆；请直接使用 `lite` 分支。一个比赛项目只安装一个版本，不要把 Standard 和 Lite 的 ZIP 解压到同一目录。
+Pro 位于 `pro` 分支，面向 Claude Fable 5、GPT-5.6 Sol Ultra 等高算力模型，执行多路线竞赛、独立复算、三次用户确认和 Word/PDF 双门禁，不限制计算成本。普通或较旧模型不建议强行执行 Standard 或 Pro 的完整流程，请直接使用 `lite` 分支。
+
+**一个比赛项目只安装一个版本。** 不要把 Pro、Standard 和 Lite 的 ZIP 解压到同一目录。
 
 MathModel Skill 是一套面向数学建模比赛的 Agent-native skill 工作流，不是黑盒一键论文生成器。受长上下文注意力衰减影响，单次一键生成很难稳定产出具备省一竞争力的完整论文。因此，v2.1.0 将论文生产升级为可恢复、可校验、可继续且可验证新鲜度的 workflow。安装好 skill 后，用户只需输入“继续”，coding agent 会在 preflight、workflow guard、证据门禁和格式门禁的引导下，逐步完成读题、建模、运行代码、生成结果、撰写正文和 Word 成稿。它把常见流程固化为可复用的 Agent 原生能力，让 Codex、Claude Code、Trae 知道先读什么、代码写到哪里、结果如何沉淀、正文如何引用证据，并用 SHA-256 防止输入、代码或结果变化后继续使用旧报告。
 
