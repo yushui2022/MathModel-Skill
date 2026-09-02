@@ -1,6 +1,7 @@
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -21,6 +22,14 @@ UNITS_DIR = ARTIFACT_DIR / "micro_units"
 FINAL_FILE = ARTIFACT_DIR / "legacy_scaffold.md"
 REF_REPORT = ARTIFACT_DIR / "legacy_ref_check.md"
 DOCX_FILE = ARTIFACT_DIR / "legacy_scaffold.docx"
+
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
 
 def configure_paths(project_root: Path, output_root_text: str, stem: str) -> None:
@@ -253,6 +262,7 @@ class SimpleMarkdownToDocx:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Merge legacy or quickstart micro units without renumbering references.")
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--output-root", default="paper_output/drafts/legacy")

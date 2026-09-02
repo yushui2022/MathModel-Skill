@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -40,10 +41,11 @@ TRAE_PREFLIGHT = TRAE_ORCHESTRATOR_SCRIPTS / "preflight_check.py"
 TRAE_WORKFLOW_GUARD = TRAE_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
 
 
-def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+def run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd,
         cwd=str(cwd),
+        env=env,
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -765,12 +767,14 @@ def test_legacy_and_quickstart_outputs_are_isolated() -> None:
             {"id": "U2", "section": "结果分析", "target_words": 20, "file_path": "paper_output/micro_units/U2.txt"},
         ],
     )
-    result = run([sys.executable, str(GENERATE_LEGACY)], cwd)
+    legacy_env = os.environ.copy()
+    legacy_env["PYTHONIOENCODING"] = "cp1252"
+    result = run([sys.executable, str(GENERATE_LEGACY)], cwd, env=legacy_env)
     assert_true(result.returncode == 0, f"legacy generation should pass\n{result.stdout}")
     units = output / "drafts" / "legacy" / "micro_units"
     (units / "U1.txt").write_text("结果定义为图1，后文见图1；文献依据为[1]。\n", encoding="utf-8")
     (units / "U2.txt").write_text("复核仍引用图1与[1]，不得改成新的编号。\n", encoding="utf-8")
-    result = run([sys.executable, str(MERGE_LEGACY)], cwd)
+    result = run([sys.executable, str(MERGE_LEGACY)], cwd, env=legacy_env)
     assert_true(result.returncode == 0, f"legacy merge should pass\n{result.stdout}")
     legacy = output / "drafts" / "legacy"
     merged = (legacy / "legacy_scaffold.md").read_text(encoding="utf-8")

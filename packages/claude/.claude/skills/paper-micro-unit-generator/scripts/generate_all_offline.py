@@ -1,6 +1,7 @@
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 
@@ -10,6 +11,14 @@ TASKS_FILE = OUTPUT_DIR / "tasks.json"
 ARTIFACT_DIR = OUTPUT_DIR / "drafts" / "legacy"
 UNITS_DIR = ARTIFACT_DIR / "micro_units"
 LOG_FILE = ARTIFACT_DIR / "generate_log.json"
+
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
 
 def configure_paths(project_root: Path, output_root_text: str) -> None:
@@ -466,6 +475,7 @@ def render_unit(task: dict, ph: dict, results: dict) -> str:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Generate legacy or quickstart micro-unit draft material.")
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--output-root", default="paper_output/drafts/legacy")
