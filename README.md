@@ -12,12 +12,6 @@
 
 </div>
 
-<p align="center">
-  <a href="./assets/orlando-liu-social.jpg">
-    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
-  </a>
-</p>
-
 这是 MathModel Skill 的默认 `master` 分支。Standard 适合上下文较长、复杂推理与工具调用稳定的强模型，用于完成正式竞赛论文，同时控制流程复杂度与计算成本。
 
 Standard 2.2 保留 S0-S6 可复现证据链与 S8 Word/PDF 门禁，重点重建 S7 写作：完整章节是默认写作单位，微单元只在单章连续失败后进行局部修复。所有章节通过后，必须先确定性合并，再由 Agent 做一次全文统一改写，不能把章节或微单元简单拼接后直接交付。
@@ -31,6 +25,12 @@ Standard 2.2 保留 S0-S6 可复现证据链与 S8 Word/PDF 门禁，重点重�
 | 普通或较旧模型、短上下文、优先简单稳定 | Lite | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
 
 **一个比赛项目只安装一个版本。** 不要把 Standard、Lite、Pro 解压到同一目录。三版 preflight 都会扫描现代与历史 Skill 路径并阻止混装。
+
+<p align="center">
+  <a href="./assets/orlando-liu-social.jpg">
+    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
+  </a>
+</p>
 
 ## Standard 2.2 主线
 
