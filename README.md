@@ -12,6 +12,12 @@
 
 </div>
 
+<p align="center">
+  <a href="./assets/orlando-liu-social.jpg">
+    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
+  </a>
+</p>
+
 > 当前是永久独立的 `pro` 分支。推荐 **Claude Fable 5** 或
 > **GPT-5.6 Sol Ultra** 使用。其他模型会收到能力警告但仍可运行，Pro 不会因此
 > 降低候选数、复算、审稿或交付门禁。
