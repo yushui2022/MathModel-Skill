@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DIST_DIR = REPO_ROOT / "dist"
 VERSION_FILE = REPO_ROOT / "VERSION"
 BUILD_MANIFEST = "MATHMODEL_BUILD.json"
+CHECKSUM_FILE = "SHA256SUMS.txt"
 ZIP_TIMESTAMP = (2020, 1, 1, 0, 0, 0)
 
 EXCLUDED_DIRS = {
@@ -44,6 +45,7 @@ class PackageSpec:
 
 
 COMMON_DOCS = (
+    (REPO_ROOT / "LICENSE", Path("LICENSE")),
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
     (REPO_ROOT / "docs" / "lite-workflow.md", Path("docs/lite-workflow.md")),
     (REPO_ROOT / "docs" / "lite-starter-prompt.md", Path("docs/lite-starter-prompt.md")),
@@ -112,6 +114,15 @@ def package_version() -> str:
     return version
 
 
+def normalized_source_bytes(path: Path) -> bytes:
+    data = path.read_bytes()
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return data
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def source_entries(spec: PackageSpec) -> dict[str, bytes]:
     entries: dict[str, bytes] = {}
     for source_root, archive_root in spec.roots:
@@ -119,11 +130,11 @@ def source_entries(spec: PackageSpec) -> dict[str, bytes]:
             raise FileNotFoundError(f"Missing package root: {source_root}")
         for path in iter_files(source_root):
             archive_path = (archive_root / path.relative_to(source_root)).as_posix()
-            entries[archive_path] = path.read_bytes()
+            entries[archive_path] = normalized_source_bytes(path)
     for source_file, archive_path in spec.extra_files:
         if not source_file.exists():
             raise FileNotFoundError(f"Missing extra file: {source_file}")
-        entries[archive_path.as_posix()] = source_file.read_bytes()
+        entries[archive_path.as_posix()] = normalized_source_bytes(source_file)
     entries["VERSION"] = (package_version() + "\n").encode("utf-8")
     return dict(sorted(entries.items()))
 
@@ -142,6 +153,7 @@ def build_manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
         digest.update(b"\n")
     payload = {
         "schema_version": "1.0",
+        "edition": "lite",
         "package": spec.name,
         "version": package_version(),
         "file_count": len(entries),
@@ -212,6 +224,19 @@ def clean_dist(output_dir: Path) -> None:
         if output_dir.resolve() == DIST_DIR.resolve() and not resolved.is_relative_to(REPO_ROOT.resolve()):
             raise RuntimeError(f"Refusing to delete outside repo: {resolved}")
         shutil.rmtree(staging)
+    checksum_path = output_dir / CHECKSUM_FILE
+    if checksum_path.exists():
+        checksum_path.unlink()
+
+
+def checksum_payload(output_dir: Path) -> str:
+    lines = []
+    for spec in sorted(PACKAGE_SPECS, key=lambda item: item.archive_name):
+        path = output_dir / spec.archive_name
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing archive for checksum: {path}")
+        lines.append(f"{sha256_bytes(path.read_bytes())}  {path.name}")
+    return "\n".join(lines) + "\n"
 
 
 def main() -> int:
@@ -224,6 +249,11 @@ def main() -> int:
 
     if args.verify:
         failures = [failure for spec in PACKAGE_SPECS for failure in verify_package(spec, output_dir)]
+        checksum_path = output_dir / CHECKSUM_FILE
+        if not checksum_path.is_file():
+            failures.append(f"Missing checksum file: {checksum_path}")
+        elif checksum_path.read_text(encoding="utf-8").replace("\r\n", "\n") != checksum_payload(output_dir):
+            failures.append(f"Stale checksum file: {checksum_path}")
         if failures:
             for failure in failures:
                 print(f"[FAIL] {failure}")
@@ -239,6 +269,9 @@ def main() -> int:
         output, file_count = build_package(spec, output_dir)
         size_kb = output.stat().st_size / 1024
         print(f"[+] {spec.name}: {output} ({file_count} files, {size_kb:.1f} KB)")
+    checksum_path = output_dir / CHECKSUM_FILE
+    checksum_path.write_text(checksum_payload(output_dir), encoding="utf-8", newline="\n")
+    print(f"[+] Checksums: {checksum_path}")
     return 0
 
 

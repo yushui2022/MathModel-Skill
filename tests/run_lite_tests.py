@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 from docx import Document
@@ -140,18 +141,69 @@ def test_lite_rejects_placeholder_paper() -> None:
     assert_true(completed.returncode != 0, "finalizer should reject placeholder paper")
 
 
-def test_lite_preflight_rejects_standard_install() -> None:
-    cwd = SANDBOX / "lite_rejects_standard"
-    problem = cwd / "problem_files"
-    problem.mkdir(parents=True)
-    (problem / "problem.txt").write_text("Q1: test isolation.\n", encoding="utf-8")
-    standard_entry = cwd / "skills" / "paper-workflow-orchestrator" / "SKILL.md"
-    standard_entry.parent.mkdir(parents=True)
-    standard_entry.write_text("---\nname: paper-workflow-orchestrator\n---\n", encoding="utf-8")
-    completed = run(PREFLIGHT, cwd)
-    assert_true(completed.returncode != 0, "Lite preflight should reject a mixed Standard installation")
-    manifest = json.loads((cwd / "paper_output_lite" / "input_manifest.json").read_text(encoding="utf-8"))
-    assert_true(any("不得混装" in item for item in manifest["failures"]), "mixed-edition failure should be explicit")
+def test_lite_preflight_rejects_other_editions_in_all_skill_roots() -> None:
+    cases = [
+        ("skills", "paper-workflow-orchestrator", None),
+        (".agents/skills", "pro-workflow-orchestrator", None),
+        (".codex/skills", "custom-standard", "standard"),
+        (".claude/skills", "custom-pro", "pro"),
+        (".trae/skills", "paper-workflow-orchestrator", None),
+    ]
+    for index, (root_text, entry_name, marker_edition) in enumerate(cases, start=1):
+        cwd = SANDBOX / f"lite_rejects_foreign_{index}"
+        problem = cwd / "problem_files"
+        problem.mkdir(parents=True)
+        (problem / "problem.txt").write_text("Q1: test isolation.\n", encoding="utf-8")
+        entry = cwd / Path(root_text) / entry_name
+        entry.mkdir(parents=True)
+        if marker_edition:
+            write_json(entry / "MATHMODEL_EDITION.json", {
+                "product": "MathModel-Skill",
+                "edition": marker_edition,
+                "version": "test",
+                "entry_skill": entry_name,
+            })
+        else:
+            (entry / "SKILL.md").write_text(f"---\nname: {entry_name}\n---\n", encoding="utf-8")
+        completed = run(PREFLIGHT, cwd)
+        assert_true(completed.returncode != 0, f"Lite should reject {root_text}/{entry_name}")
+        manifest = json.loads((cwd / "paper_output_lite" / "input_manifest.json").read_text(encoding="utf-8"))
+        assert_true(manifest["mathmodel_installation"]["detected_editions"], "foreign edition should be recorded")
+        assert_true(any("当前入口是 Lite" in item or "混装" in item for item in manifest["failures"]), "mixed-edition failure should be explicit")
+
+
+def test_lite_release_packages_are_deterministic_and_marked() -> None:
+    builder = REPO_ROOT / "scripts" / "build_release_packages.py"
+    first = SANDBOX / "release-first"
+    second = SANDBOX / "release-second"
+    for output in (first, second):
+        completed = subprocess.run(
+            [sys.executable, str(builder), "--output-dir", str(output)],
+            cwd=str(REPO_ROOT),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        assert_true(completed.returncode == 0, completed.stdout)
+    names = sorted(path.name for path in first.glob("*.zip"))
+    assert_true(names == [
+        "MathModel-Skill-Lite-Claude-Code.zip",
+        "MathModel-Skill-Lite-Codex.zip",
+        "MathModel-Skill-Lite-Trae.zip",
+    ], "Lite should build exactly three platform archives")
+    assert_true((first / "SHA256SUMS.txt").read_bytes() == (second / "SHA256SUMS.txt").read_bytes(), "checksum files should match")
+    for name in names:
+        assert_true((first / name).read_bytes() == (second / name).read_bytes(), f"nondeterministic archive: {name}")
+        with zipfile.ZipFile(first / name) as archive:
+            entries = archive.namelist()
+            marker = next(item for item in entries if item.endswith("mathmodel-lite/MATHMODEL_EDITION.json"))
+            marker_data = json.loads(archive.read(marker).decode("utf-8"))
+            assert_true(marker_data["edition"] == "lite", "Lite marker edition should be present")
+            assert_true(marker_data["version"] == "2.2.1-lite.2", "Lite marker version should match")
+            assert_true("LICENSE" in entries, "Lite archive should include MIT license")
 
 
 def main() -> int:
@@ -163,7 +215,8 @@ def main() -> int:
         test_lite_rejects_modified_input,
         test_lite_rejects_modified_model_after_run,
         test_lite_rejects_placeholder_paper,
-        test_lite_preflight_rejects_standard_install,
+        test_lite_preflight_rejects_other_editions_in_all_skill_roots,
+        test_lite_release_packages_are_deterministic_and_marked,
     ]
     for test in tests:
         test()

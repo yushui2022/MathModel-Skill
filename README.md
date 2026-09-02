@@ -7,6 +7,8 @@
 
 #### 支持 Codex、Claude Code 和 Trae
 
+[![Version](https://img.shields.io/badge/version-2.2.1--lite.2-111827)](#下载)
+
 </div>
 
 这是 MathModel Skill 的 **Lite 分支**，推荐普通模型、较旧模型、上下文较短或工具调用稳定性一般的模型使用。本分支只包含 Lite，不包含 Standard 的总控、正式论文、证据门禁或其他协作 Skills。用户下载本分支或 Lite 发布包后，只会发现一个入口：`mathmodel-lite`。
@@ -115,4 +117,10 @@ python scripts/build_release_packages.py --clean
 python scripts/build_release_packages.py --verify
 ```
 
-每个 ZIP 都包含 `VERSION` 和 `MATHMODEL_BUILD.json`，可校验逐文件 SHA-256 与聚合 payload SHA-256。
+每个 ZIP 都包含 `VERSION`、`LICENSE`、`MATHMODEL_EDITION.json` 和
+`MATHMODEL_BUILD.json`，可校验逐文件 SHA-256 与聚合 payload SHA-256；
+`dist/SHA256SUMS.txt` 记录三个安装包的发布哈希。
+
+## 许可证
+
+MIT License，Copyright (c) 2026 yushui2022。

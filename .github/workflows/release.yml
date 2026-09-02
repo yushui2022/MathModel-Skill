@@ -1,0 +1,41 @@
+name: Release Lite
+
+on:
+  push:
+    tags:
+      - "v2.2.1-lite.2"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify version and tracked archives
+        run: |
+          test "$(cat VERSION)" = "2.2.1-lite.2"
+          python scripts/build_release_packages.py --verify
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          dist/MathModel-Skill-Lite-Trae.zip
+          dist/MathModel-Skill-Lite-Claude-Code.zip
+          dist/MathModel-Skill-Lite-Codex.zip
+          dist/SHA256SUMS.txt
+          --verify-tag
+          --title "MathModel Skill Lite 2.2.1-lite.2"
+          --generate-notes

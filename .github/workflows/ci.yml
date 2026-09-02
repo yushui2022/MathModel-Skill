@@ -8,9 +8,45 @@ permissions:
   contents: read
 
 jobs:
-  verify-lite-skill:
-    runs-on: ubuntu-latest
+  core:
+    name: Core ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Verify dependencies
+        run: python -m pip check
+
+      - name: Check platform synchronization
+        run: python scripts/sync_platform_packages.py --check
+
+      - name: Compile Python payload
+        run: python -m compileall -q packages scripts tests
+
+      - name: Run Lite test suite
+        run: python tests/run_lite_tests.py
+
+  packages:
+    name: Deterministic tracked packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -20,19 +56,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
-      - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+      - name: Verify tracked archives
+        run: python scripts/build_release_packages.py --verify
 
-      - name: Check platform synchronization
-        run: python scripts/sync_platform_packages.py --check
+      - name: Build twice
+        run: |
+          python scripts/build_release_packages.py --output-dir build-a
+          python scripts/build_release_packages.py --output-dir build-b
 
-      - name: Run Lite test suite
-        run: python tests/run_lite_tests.py
-
-      - name: Build deterministic release archives
-        run: python scripts/build_release_packages.py --output-dir tests/sandbox/ci-release
-
-      - name: Verify release archives
-        run: python scripts/build_release_packages.py --verify --output-dir tests/sandbox/ci-release
+      - name: Compare archive hashes
+        run: |
+          sha256sum build-a/*.zip | sed 's#build-a/##' > hashes-a.txt
+          sha256sum build-b/*.zip | sed 's#build-b/##' > hashes-b.txt
+          diff -u hashes-a.txt hashes-b.txt
+          cmp build-a/SHA256SUMS.txt build-b/SHA256SUMS.txt

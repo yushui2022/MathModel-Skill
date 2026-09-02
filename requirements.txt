@@ -1,5 +1,5 @@
-pandas
-numpy
-matplotlib
-python-docx
-openpyxl
+numpy>=2.0,<3
+pandas>=2.2,<4
+matplotlib>=3.8,<4
+python-docx>=1.1,<2
+openpyxl>=3.1,<4
