@@ -12,12 +12,6 @@
 
 </div>
 
-<p align="center">
-  <a href="./assets/orlando-liu-social.jpg">
-    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
-  </a>
-</p>
-
 > 当前是永久独立的 `pro` 分支。推荐 **Claude Fable 5** 或
 > **GPT-5.6 Sol Ultra** 使用。其他模型会收到能力警告但仍可运行，Pro 不会因此
 > 降低候选数、复算、审稿或交付门禁。
@@ -31,6 +25,12 @@
 **一个比赛项目只安装一个版本。** 不要把 Pro、Standard 或 Lite 解压到同一目录。
 Pro 预检发现混装时会阻止运行。Pro 使用独立 `paper_output_pro/`，不读取 Standard
 或 Lite 的旧结果和批准记录。
+
+<p align="center">
+  <a href="./assets/orlando-liu-social.jpg">
+    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
+  </a>
+</p>
 
 ## 三个检查点
 
