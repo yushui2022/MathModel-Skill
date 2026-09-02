@@ -11,12 +11,6 @@
 
 </div>
 
-<p align="center">
-  <a href="./assets/orlando-liu-social.jpg">
-    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
-  </a>
-</p>
-
 这是 MathModel Skill 的 **Lite 分支**，推荐普通模型、较旧模型、上下文较短或工具调用稳定性一般的模型使用。本分支只包含 Lite，不包含 Standard 的总控、正式论文、证据门禁或其他协作 Skills。用户下载本分支或 Lite 发布包后，只会发现一个入口：`mathmodel-lite`。
 
 ## 版本选择
@@ -30,6 +24,12 @@
 Pro 位于 `pro` 分支，面向 Claude Fable 5、GPT-5.6 Sol Ultra 和不计成本的高验证流程；Standard 位于默认分支 `master`，面向强模型和正式竞赛；Lite 用固定六步降低普通模型的上下文与决策负担。
 
 **一个比赛项目只安装一个版本。** 不要把 Pro、Standard 和 Lite 的 ZIP 解压到同一目录。
+
+<p align="center">
+  <a href="./assets/orlando-liu-social.jpg">
+    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
+  </a>
+</p>
 
 ## 为什么有 Lite
 
