@@ -1,8 +1,0 @@
-interface:
-  display_name: "Rubric & Model Selector"
-  short_description: "对齐评分点并规划模型路线"
-  brand_color: "#2563EB"
-  default_prompt: "Use $modeling-paper-rubric-and-model-selector to align the paper structure with scoring criteria."
-
-policy:
-  allow_implicit_invocation: true

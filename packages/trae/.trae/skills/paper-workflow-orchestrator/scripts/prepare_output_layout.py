@@ -28,7 +28,12 @@ DIRECTORIES = [
     "figures",
     "tables",
     "results",
-    "micro_units",
+    "drafts/sections",
+    "drafts/repairs",
+    "drafts/legacy",
+    "context",
+    "qa",
+    "quickstart",
 ]
 
 
@@ -65,6 +70,10 @@ paper_output/plan/                  # model route, scoring, data and visualizati
 paper_output/results/               # model_results.json, metrics.json, conclusions.json
 paper_output/tables/                # table_index.json and paper-ready CSV tables
 paper_output/figure_index.json      # figure evidence index
+paper_output/plan/writing_plan.json # adaptive S7 writing contract
+paper_output/context/authoring_state.json
+paper_output/qa/draft_audit.json
+paper_output/qa/repair_queue.json
 ```
 
 ## Data, Figures, And Text
@@ -72,14 +81,16 @@ paper_output/figure_index.json      # figure evidence index
 ```text
 paper_output/data_cleaned/          # cleaned CSV/XLSX exports
 paper_output/figures/               # paper-ready images; EDA figures may use subfolders
-paper_output/tasks.json             # micro-unit task manifest
-paper_output/micro_units/           # generated micro-unit text files
-paper_output/final_paper.md         # merged Markdown draft
-paper_output/final_paper.docx       # Word draft
-paper_output/ref_check.md           # reference and evidence check report
+paper_output/drafts/sections/       # audited section drafts
+paper_output/drafts/repairs/        # local repair material
+paper_output/drafts/assembled_draft.md
+paper_output/final_paper_source.md  # globally revised formal source
+paper_output/final_paper.docx       # formal Word after S7 PASS
+paper_output/drafts/legacy/         # legacy micro-unit scaffold only
+paper_output/quickstart/            # installation smoke-test drafts only
 ```
 
-Generated code should write real results back to `paper_output/results/` and `paper_output/tables/`, then QA should regenerate or verify `paper_output/tasks.json` before final text generation.
+Generated code should write real results back to `paper_output/results/` and `paper_output/tables/`. Formal writing uses `writing_plan.json` and `authoring_state.json`; `tasks.json` is optional and reserved for legacy/quickstart scaffolds.
 """
 
 

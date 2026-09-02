@@ -29,7 +29,7 @@ description: "自动清洗赛题或爬取的数据（处理缺失/异常/格式�
 ## 执行契约
 - 上游输入：优先读取 `paper_output/input_manifest.json`、`paper_output/step1/problem_analysis.json` 与 `paper_output/plan/model_route.json`；正式流程只处理 manifest 中标为 `raw_data` 且 `usable_for_modeling=true` 的附件。
 - 必须输出：`paper_output/data_cleaned/load_report.json`、`paper_output/plan/data_plan.json`、`paper_output/plan/visualization_plan.json`、`paper_output/figure_index.json`；有可处理数据时同步输出 `paper_output/data_cleaned/` 与 `paper_output/figures/`。
-- 下游交接：`quality-assurance-auditor` 读取数据/图表契约补全 `tasks.json`；`paper-micro-unit-generator` 通过任务清单引用图表证据。
+- 下游交接：`quality-assurance-auditor` 审计数据/图表证据；S7 写作计划直接引用 `figure_index.json`、表格索引和结果契约。`tasks.json` 仅供 legacy/quickstart。
 - 推荐下一步：完成数据和图表计划后进入 `quality-assurance-auditor` 生成任务清单；完整论文目标应回到 `paper-workflow-orchestrator` 判断后续阶段。
 - 失败回退：若没有可处理数据文件，仍尽量根据题意和模型路线生成计划文件；不得把模板图表直接当作最终真实结果。
 

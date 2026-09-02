@@ -28,9 +28,9 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 
 ## 执行契约
 - 上游输入：优先读取 `paper_output/plan/model_route.json`、`rubric_alignment.json`、`data_plan.json`、`visualization_plan.json`、`paper_output/figure_index.json`、`paper_output/results/model_results.json`、`paper_output/results/run_manifest.json`、`paper_output/results/metrics.json`、`paper_output/results/conclusions.json` 与 `paper_output/tables/table_index.json`；缺失时回退到 `paper_output/step1/problem_analysis.json`。
-- 必须输出：`paper_output/tasks.json`，并确保 `paper_output/micro_units/` 目录存在；正式成稿前必须输出 `paper_output/qa/evidence_gate_report.json` 与 `paper_output/qa/evidence_gate_report.md`，机器可读报告必须记录本次审计输入的 SHA-256。
-- 下游交接：`paper-micro-unit-generator` 只应在 `tasks.json` 存在后生成正文；任务中必须保留模型路线、验证计划、图表建议、评分点、结果摘要、指标、表格和结论字段。
-- 推荐下一步：正文生成前通过后进入 `paper-micro-unit-generator`；若已经生成 `final_paper.md` 或 `final_paper.docx`，则执行最终一致性检查并回到 `paper-workflow-orchestrator` 汇总。
+- 正式成稿前必须输出 `paper_output/qa/evidence_gate_report.json` 与 `.md`，机器可读报告必须记录本次审计输入的 SHA-256。`paper_output/tasks.json` 仅是 legacy/quickstart 的可选清单，不属于 S7 正式契约。
+- 下游交接：official evidence gate PASS 后直接进入 `paper-formal-writer` 的自适应章节写作。`paper-micro-unit-generator` 只有在 S7 修复队列明确要求 `micro-repair` 时才参与正式流程。
+- 推荐下一步：回到 `paper-workflow-orchestrator`，由 guard 路由到 `paper-formal-writer`；不得把 legacy/quickstart 合并稿当作正式稿审计通过。
 - 失败回退：若 `problem_files/` 为空应阻塞；若模型路线缺失则用题意分析生成任务；若题意分析也缺失才使用通用任务模板；若正式 evidence gate 缺少 `run_manifest.json` 或运行记录不匹配，必须回退到 `model-code-and-result-generator` 重新运行建模代码。
 
 ## 目标
@@ -115,13 +115,13 @@ description: "强制审计论文生成质量，防止模型偷换、逻辑断链
 ## 附录 A：脚本入口（推荐）
 本 skill 的可执行脚本都放在 `scripts/` 下。
 
-当前 `scripts/pipeline.py` 是基础门禁脚本，负责初始化目录、检查 `problem_files/` 并生成 `paper_output/tasks.json`。
+当前 `scripts/pipeline.py` 是 legacy/quickstart 基础检查脚本，负责初始化目录、检查 `problem_files/` 并按需生成 `paper_output/tasks.json`。正式 S6 使用 `evidence_gate.py`，正式 S7 不依赖 `tasks.json`。
 
 `scripts/evidence_gate.py` 是正式成稿前证据门禁脚本，负责检查每个 `question_id` 是否具备真实模型结果、有限且非空的评价指标、可读取的图表或表格、结论回扣和任务追踪。official 模式会复核 `execution_provenance` 与 `paper_output/results/run_manifest.json`，比较建模脚本、输入文件和输出产物的当前大小与 SHA-256，拒绝运行后被修改的代码或数据；缺少 `result_summary`、失败/空/占位图表表格、无匹配运行记录也会失败。它会输出 `paper_output/qa/evidence_gate_report.json` 与 `.md`，并在 JSON 的 `input_hashes` 中记录本次门禁输入，供后续格式化和 workflow guard 检查报告是否过期。official 模式未通过会返回非零退出码；quickstart 模式只给 warning。
 
 `paper-formal-writer/scripts/check_paper_format.py` 是正式成稿后的格式门禁脚本。它读取 outline 中按子问题数量生成的动态篇幅目标，检查 `1 / 1.1 / 1.1.1` 三级标题、每问的建模/算法/结果/检验、图表引用、正文引文与参考文献闭环、可编辑 Word OMML 公式、重复段落和内部工程话术。最终交付必须使用 `--render required`，通过 LibreOffice 将 DOCX 转为 PDF 并验证页数和可提取文本；报告同时记录源稿、DOCX、outline、索引和 evidence report 的哈希。它不替代 `evidence_gate.py`，而是在证据门禁通过后阻止内容或版式不合格的 Word 被称为最终稿。
 
-- 若存在 `paper_output/plan/model_route.json`，脚本会优先按模型路线、评分点证据、主模型、验证计划和建议图表动态生成微单元清单。
+- 若运行 legacy/quickstart 且存在 `paper_output/plan/model_route.json`，pipeline 会优先按模型路线、评分点证据、主模型、验证计划和建议图表动态生成微单元清单。
 - 若存在 `paper_output/plan/data_plan.json`、`visualization_plan.json` 与 `paper_output/figure_index.json`，脚本会做轻量证据链检查：确认图表 ID、输出路径和数据路径可追溯，但不会因为计划图尚未实际生成就阻塞全流程。
 - 若存在 `paper_output/results/model_results.json`、`metrics.json`、`conclusions.json` 与 `paper_output/tables/table_index.json`，脚本会把 `result_summary`、`key_metrics`、`tables`、`conclusions`、`evidence_status` 写入每个子问题任务，供微单元生成器直接使用。
 - 若不存在模型路线契约但存在 `paper_output/step1/problem_analysis.json`，脚本会按真实子问题、任务类型、推荐模型、验证计划和建议图表动态生成微单元清单。
@@ -145,22 +145,22 @@ python .claude/skills/quality-assurance-auditor/scripts/evidence_gate.py
 python .claude/skills/quality-assurance-auditor/scripts/evidence_gate.py --mode quickstart
 ```
 
-**行为**：初始化目录 → 检查 `problem_files/` 是否为空（不通过则阻塞）→ 优先读取 `paper_output/plan/model_route.json` 与 `rubric_alignment.json` → 读取数据/图表/结果/表格契约做轻量证据链提示 → 回退读取 `paper_output/step1/problem_analysis.json` → 生成动态 `paper_output/tasks.json` → 汇报当前微单元完成进度并扫描占位痕迹。
+**行为**：official 模式读取模型路线、真实运行账本、结果、指标、结论、图表和表格，输出带输入哈希的正式证据门禁；pipeline 仅为 legacy/quickstart 生成可选任务清单。
 
 ## 目录约定（与项目全局对齐）
 - 本技能会强制要求 `problem_files/` 非空。
-- 本技能统一在 `paper_output/` 下产出任务清单与微单元目录。
+- 本技能统一在 `paper_output/qa/` 下产出正式门禁报告；legacy/quickstart 清单仍位于 `paper_output/tasks.json`。
 
 ## 前后衔接
-- 常作为全局门禁：建议在“生成正文/合并全文”之前先跑一次。
-- 后续通常接：`paper-micro-unit-generator`（生成微单元与合并）或回到 `paper-workflow-orchestrator` 继续完整 workflow。
+- 常作为 S6 全局门禁：正式写作前必须通过。
+- official PASS 后回到 `paper-workflow-orchestrator`，通常进入 `paper-formal-writer`；微单元仅处理 S7 明确排队的局部修复。
 
 ## 约束（必须遵守）
 
 - **Memory Interaction (必做)**:
-  - **审计通过后**：必须调用 `context-memory-keeper`，将“审计通过状态”与“生成的任务清单概况”更新到 `Short-term Workbench`。
-- 本技能是全局门禁：当用户要进入“生成正文/合并全文/交付论文”阶段，必须先通过本技能的目录检查与任务清单生成。
-- 未生成 `paper_output/tasks.json` 时，禁止直接进入 `paper-micro-unit-generator`。
+  - **审计通过后**：必须调用 `context-memory-keeper`，记录证据门禁状态、报告哈希和下一阶段。
+- 本技能是 S6 全局门禁：正式写作依赖 fresh PASS，不依赖任务清单。
+- 正式 `paper-micro-unit-generator` 入口必须由 `repair_queue.json` 的 `micro-repair` 项触发；legacy/quickstart 才依赖 `tasks.json`。
 - 若 `evidence_gate.py` 未通过，禁止把 `final_paper.docx` 称为最终稿；必须回到 `model-code-and-result-generator` 或当前赛题专用代码，补齐真实结果、指标、图表、表格和结论。
 - 若 `paper-formal-writer/scripts/check_paper_format.py --render required` 未通过，禁止把 `final_paper.docx` 称为最终稿；必须回到 `final_paper_source.md` 或格式化阶段修复动态篇幅、标题结构、图表解释、原生公式、正文引文、重复内容、参考文献、附录或渲染问题。
-- 当用户已生成 `paper_output/final_paper.md` 时，建议再次调用本技能做最终一致性把关，确保“每问有结论、图表可定位、引用不断链”。
+- 当用户已生成 `paper_output/final_paper_source.md` 时，使用 S7 final audit 与 S8 format gate 做最终一致性把关。

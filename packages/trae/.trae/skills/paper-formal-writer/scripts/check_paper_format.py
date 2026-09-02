@@ -16,6 +16,7 @@ from docx import Document
 from lxml import etree
 
 from formula_omml import source_formula_tokens
+from authoring_contracts import authoring_pass_errors
 
 
 BASE_DIR = Path.cwd()
@@ -27,6 +28,8 @@ OUTLINE_FILE = OUTPUT_DIR / "plan" / "paper_outline.json"
 FIGURE_INDEX_FILE = OUTPUT_DIR / "figure_index.json"
 TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
 EVIDENCE_GATE_REPORT = OUTPUT_DIR / "qa" / "evidence_gate_report.json"
+AUTHORING_STATE = OUTPUT_DIR / "context" / "authoring_state.json"
+WRITING_PLAN = OUTPUT_DIR / "plan" / "writing_plan.json"
 REPORT_MD = OUTPUT_DIR / "format_check_report.md"
 REPORT_JSON = OUTPUT_DIR / "format_check_report.json"
 RENDER_DIR = OUTPUT_DIR / "qa" / "rendered"
@@ -102,9 +105,7 @@ def sha256_file(path: Path) -> str:
 
 
 def source_path() -> Path:
-    if SOURCE_FILE.exists():
-        return SOURCE_FILE
-    return FALLBACK_SOURCE_FILE
+    return SOURCE_FILE
 
 
 def heading_offset(text: str, title_pattern: str) -> int | None:
@@ -155,6 +156,9 @@ def _expand_citation_group(group: str) -> set[int]:
 def citation_quality(text: str) -> tuple[dict[str, Any], list[str], list[str]]:
     failures: list[str] = []
     warnings: list[str] = []
+
+    for message in authoring_pass_errors(BASE_DIR):
+        failures.append(f"S7 写作门禁未通过：{message}")
     references_start = heading_offset(text, "参考文献")
     appendix_start = heading_offset(text, "附录")
     if references_start is None:
@@ -735,6 +739,8 @@ def evaluate(render_mode: str = "auto") -> dict[str, Any]:
         FIGURE_INDEX_FILE,
         TABLE_INDEX_FILE,
         EVIDENCE_GATE_REPORT,
+        AUTHORING_STATE,
+        WRITING_PLAN,
     ]
     input_hashes = {
         rel(path): sha256_file(path)

@@ -17,6 +17,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 from formula_omml import FormulaConversionError, display_omml, inline_formula_tokens, latex_to_omml, source_formula_tokens
+from authoring_contracts import authoring_pass_errors
 
 
 BASE_DIR = Path.cwd()
@@ -455,10 +456,10 @@ def add_index_figure(document: Document, figure_id: str, figure_lookup: dict[str
     return add_image(document, resolve_path(str(item.get("path") or item.get("expected_path") or "")), str(caption))
 
 
-def source_path() -> Path:
+def source_path(*, allow_fallback: bool) -> Path:
     if SOURCE_FILE.exists():
         return SOURCE_FILE
-    return FALLBACK_SOURCE_FILE
+    return FALLBACK_SOURCE_FILE if allow_fallback else SOURCE_FILE
 
 
 def render_markdown(
@@ -704,27 +705,31 @@ def main() -> int:
     parser.add_argument(
         "--allow-draft",
         action="store_true",
-        help="证据门禁未通过时仍生成草稿 Word（写入 final_paper_draft.docx + format_draft_report.md），不会覆盖正式产物。",
+        help="证据或写作门禁未通过时仍生成草稿 Word（写入 final_paper_draft.docx + format_draft_report.md），不会覆盖正式产物。",
     )
     args = parser.parse_args()
 
     global DOCX_FILE, REPORT_MD
 
     gate_passed, gate_reason = check_evidence_gate()
+    authoring_errors = authoring_pass_errors(BASE_DIR)
+    authoring_passed = not authoring_errors
+    block_reasons = [reason for reason in (gate_reason, "; ".join(authoring_errors)) if reason]
     draft_mode = False
-    if not gate_passed:
+    if not gate_passed or not authoring_passed:
         if not args.allow_draft:
-            print("[FORMAT BLOCKED] 证据门禁未通过，禁止生成正式 final_paper.docx。", file=sys.stderr)
-            print(f"  原因：{gate_reason}", file=sys.stderr)
+            print("[FORMAT BLOCKED] 证据或 S7 写作门禁未通过，禁止生成正式 final_paper.docx。", file=sys.stderr)
+            for reason in block_reasons:
+                print(f"  原因：{reason}", file=sys.stderr)
             print("  如需先看排版草稿，请加 --allow-draft，会写入 final_paper_draft.docx，不会污染正式产物。", file=sys.stderr)
             return 2
         draft_mode = True
         DOCX_FILE = DOCX_FILE_DRAFT
         REPORT_MD = REPORT_MD_DRAFT
-        print(f"[DRAFT MODE] 证据门禁未通过：{gate_reason}")
+        print(f"[DRAFT MODE] 正式门禁未通过：{'; '.join(block_reasons)}")
         print(f"[DRAFT MODE] 将写入草稿 Word：{rel(DOCX_FILE)}（不会覆盖正式 final_paper.docx）")
 
-    source = source_path()
+    source = source_path(allow_fallback=draft_mode)
     if not source.exists():
         print(f"缺少正式论文 Markdown：{rel(SOURCE_FILE)}", file=sys.stderr)
         return 1
@@ -771,7 +776,7 @@ def main() -> int:
     print(f"{label}已生成：{rel(DOCX_FILE)}")
     print(f"格式化报告已生成：{rel(REPORT_MD)}")
     if draft_mode:
-        print("[DRAFT MODE] 该文件不是最终稿；正式提交前必须先通过证据门禁，再不带 --allow-draft 重跑本脚本。")
+        print("[DRAFT MODE] 该文件不是最终稿；正式提交前必须先通过证据门禁与 S7 写作门禁，再不带 --allow-draft 重跑本脚本。")
     return 0
 
 

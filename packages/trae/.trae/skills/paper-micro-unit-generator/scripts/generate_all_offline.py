@@ -1,11 +1,35 @@
+import argparse
 import json
+import re
 from pathlib import Path
 
 
 BASE_DIR = Path.cwd()
 OUTPUT_DIR = BASE_DIR / "paper_output"
 TASKS_FILE = OUTPUT_DIR / "tasks.json"
-UNITS_DIR = OUTPUT_DIR / "micro_units"
+ARTIFACT_DIR = OUTPUT_DIR / "drafts" / "legacy"
+UNITS_DIR = ARTIFACT_DIR / "micro_units"
+LOG_FILE = ARTIFACT_DIR / "generate_log.json"
+
+
+def configure_paths(project_root: Path, output_root_text: str) -> None:
+    global BASE_DIR, OUTPUT_DIR, TASKS_FILE, ARTIFACT_DIR, UNITS_DIR, LOG_FILE
+    normalized = str(output_root_text or "").strip().replace("\\", "/")
+    if (
+        not normalized
+        or normalized.startswith("/")
+        or re.match(r"^[A-Za-z]:/", normalized)
+        or ".." in normalized.split("/")
+    ):
+        raise ValueError("--output-root must be a relative path inside --project-root")
+    BASE_DIR = project_root.resolve()
+    OUTPUT_DIR = BASE_DIR / "paper_output"
+    TASKS_FILE = OUTPUT_DIR / "tasks.json"
+    ARTIFACT_DIR = (BASE_DIR / Path(normalized)).resolve()
+    if not ARTIFACT_DIR.is_relative_to(BASE_DIR):
+        raise ValueError("--output-root escapes --project-root")
+    UNITS_DIR = ARTIFACT_DIR / "micro_units"
+    LOG_FILE = ARTIFACT_DIR / "generate_log.json"
 
 
 def load_results() -> dict:
@@ -442,13 +466,22 @@ def render_unit(task: dict, ph: dict, results: dict) -> str:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Generate legacy or quickstart micro-unit draft material.")
+    parser.add_argument("--project-root", type=Path, default=Path.cwd())
+    parser.add_argument("--output-root", default="paper_output/drafts/legacy")
+    args = parser.parse_args()
+    try:
+        configure_paths(args.project_root, args.output_root)
+    except ValueError as exc:
+        print(f"[ERROR] {exc}")
+        return 2
     if not TASKS_FILE.exists():
-        print(f"❌ 未找到任务清单：{TASKS_FILE}")
+        print(f"[ERROR] 未找到任务清单：{TASKS_FILE}")
         return 1
 
     tasks = json.loads(TASKS_FILE.read_text(encoding="utf-8"))
     if not isinstance(tasks, list):
-        print("❌ tasks.json 格式不正确")
+        print("[ERROR] tasks.json 格式不正确")
         return 1
 
     ph = load_placeholders()
@@ -457,14 +490,14 @@ def main() -> int:
     log = []
 
     for t in tasks:
-        fp = Path(t.get("file_path", str(UNITS_DIR / f"{t.get('id','unit')}.txt")))
+        unit_id = re.sub(r"[^0-9A-Za-z._-]+", "_", str(t.get("id") or "unit")).strip("._") or "unit"
+        fp = UNITS_DIR / f"{unit_id}.txt"
         text = render_unit(t, ph, results)
-        fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(text, encoding="utf-8")
-        log.append({"id": t.get("id"), "len": len(text), "file": str(fp)})
+        log.append({"id": t.get("id"), "len": len(text), "file": fp.relative_to(BASE_DIR).as_posix()})
 
-    (OUTPUT_DIR / "generate_log.json").write_text(json.dumps(log, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"✅ 已生成 {len(tasks)} 个微单元：{UNITS_DIR}")
+    LOG_FILE.write_text(json.dumps(log, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"[PASS] 已生成 {len(tasks)} 个微单元：{UNITS_DIR}")
     return 0
 
 

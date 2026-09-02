@@ -1157,7 +1157,7 @@ def write_modeling_code_readme(questions: list[dict[str, Any]], cleaned_files: l
             "3. Run `python paper_output/code/modeling/run_modeling.py` from the project root, or run an individual `q*_model.py`.",
             "4. Keep `execution_provenance` in `model_results.json`; official evidence gate requires result items to come from an executed code path.",
             "5. Only change `evidence_status` to `computed` or another formal status after the model code has been reviewed against the real contest statement.",
-            "6. Re-run QA so `paper_output/tasks.json` picks up refreshed results and tables.",
+            "6. Re-run the evidence gate and rebuild the S7 writing plan from refreshed results and tables.",
             "",
             "## Inputs",
             "",

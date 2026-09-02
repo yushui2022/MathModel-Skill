@@ -171,7 +171,7 @@ def main() -> int:
 
     if failures:
         for failure in failures:
-            print(f"❌ {failure}")
+            print(f"[FAIL] {failure}")
         return 1
 
     analysis = load_json(PROBLEM_ANALYSIS_FILE)
@@ -200,9 +200,7 @@ def main() -> int:
             if qid and qid not in route_qids:
                 failures.append(f"rubric_alignment.json 引用了不存在的 question_id：{qid}")
 
-    if not isinstance(tasks, list) or not tasks:
-        failures.append("tasks.json 不是非空数组")
-    else:
+    if isinstance(tasks, list) and tasks:
         task_qids = {str(t.get("question_id")) for t in tasks if isinstance(t, dict) and t.get("question_id")}
         for qid in route_qids:
             if qid not in task_qids:
@@ -225,10 +223,10 @@ def main() -> int:
 
     if failures:
         for failure in failures:
-            print(f"❌ {failure}")
+            print(f"[FAIL] {failure}")
         return 1
 
-    print("✅ 工作流契约检查通过")
+    print("[PASS] 工作流契约检查通过")
     print(f"   子问题：{sorted(route_qids)}")
     return 0
 

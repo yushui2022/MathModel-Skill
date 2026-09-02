@@ -19,7 +19,6 @@ RUN_MANIFEST_FILE = OUTPUT_DIR / "results" / "run_manifest.json"
 METRICS_FILE = OUTPUT_DIR / "results" / "metrics.json"
 CONCLUSIONS_FILE = OUTPUT_DIR / "results" / "conclusions.json"
 TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
-TASKS_FILE = OUTPUT_DIR / "tasks.json"
 REPORT_JSON = QA_DIR / "evidence_gate_report.json"
 REPORT_MD = QA_DIR / "evidence_gate_report.md"
 
@@ -325,7 +324,6 @@ def evaluate() -> dict[str, Any]:
     metrics = load_json(METRICS_FILE)
     conclusions = load_json(CONCLUSIONS_FILE)
     table_index = load_json(TABLE_INDEX_FILE)
-    tasks = load_json(TASKS_FILE)
 
     failures: list[str] = []
     warnings: list[str] = []
@@ -338,7 +336,6 @@ def evaluate() -> dict[str, Any]:
         (METRICS_FILE, metrics),
         (CONCLUSIONS_FILE, conclusions),
         (TABLE_INDEX_FILE, table_index),
-        (TASKS_FILE, tasks),
     ):
         if data is None:
             failures.append(f"缺少证据门禁输入文件：{path.relative_to(BASE_DIR) if path.is_relative_to(BASE_DIR) else path}")
@@ -354,7 +351,6 @@ def evaluate() -> dict[str, Any]:
     conclusion_map = grouped_items(conclusions, "items")
     figure_map = figure_items(figure_index)
     table_map = table_items(table_index)
-    task_map = task_items(tasks)
 
     question_reports = []
     for qid in qids:
@@ -365,7 +361,6 @@ def evaluate() -> dict[str, Any]:
         q_conclusions = conclusion_map.get(qid, [])
         q_figures = figure_map.get(qid, [])
         q_tables = table_map.get(qid, []) + table_map.get("ALL", [])
-        q_tasks = task_map.get(qid, [])
 
         if not result:
             q_failures.append("缺少 model_results.json 中的模型结果")
@@ -399,9 +394,6 @@ def evaluate() -> dict[str, Any]:
             q_failures.append("表格证据仍包含草稿、模板或待补状态")
         for table in q_tables:
             q_failures.extend(indexed_artifact_failures(table, "表格"))
-
-        if not q_tasks:
-            q_warnings.append("tasks.json 中没有对应问题任务，正式写作时需补齐任务追踪")
 
         for message in q_failures:
             failures.append(f"{qid}: {message}")
@@ -440,7 +432,6 @@ def evaluate() -> dict[str, Any]:
                 METRICS_FILE,
                 CONCLUSIONS_FILE,
                 TABLE_INDEX_FILE,
-                TASKS_FILE,
             )
             if path.exists()
         },

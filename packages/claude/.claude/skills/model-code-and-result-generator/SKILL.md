@@ -37,7 +37,7 @@ description: "根据 model_route.json、数据计划和清洗数据，为数学�
 - 上游输入：优先读取 `paper_output/plan/model_route.json`、`data_plan.json`、`visualization_plan.json`，并扫描 `paper_output/data_cleaned/`。
 - 必须输出：`paper_output/results/model_results.json`、`metrics.json`、`conclusions.json`、`run_manifest.json`、`paper_output/tables/table_index.json`、`paper_output/tables/*.csv`。
 - 建模代码输出：`paper_output/code/modeling/result_contract_io.py`、`run_modeling.py`、`q1_model.py`、`q2_model.py`、`q3_model.py` 或与 `question_id` 对应的 `q*_model.py`。
-- 下游交接：`quality-assurance-auditor` 读取结果与表格证据后写入 `tasks.json`；`paper-micro-unit-generator` 通过任务清单引用结果、指标、表格和结论。
+- 下游交接：`quality-assurance-auditor` 直接审计结果、指标、表格、图表和结论；证据门禁 PASS 后由 `paper-formal-writer` 构建正式写作计划。
 - 失败回退：如果没有清洗数据或真实建模代码，仍生成契约骨架，并用 `needs_real_modeling` 标记，不伪装成最终比赛结果。
 
 ## 脚本
@@ -111,7 +111,7 @@ python .claude/skills/model-code-and-result-generator/scripts/build_result_contr
 python paper_output/code/modeling/run_modeling.py
 ```
 
-该入口会写入 `paper_output/results/run_manifest.json`。运行后不要再编辑建模脚本或产物；如需修正，修改后重新运行入口。然后重新运行 QA，让 `paper_output/tasks.json` 读取刷新后的 `model_results.json`、`metrics.json`、`conclusions.json`、`run_manifest.json` 和 `table_index.json`。
+该入口会写入 `paper_output/results/run_manifest.json`。运行后不要再编辑建模脚本或产物；如需修正，修改后重新运行入口，再重新运行 evidence gate 和 S7 写作准备，使结果与写作契约同步失效并重建。
 
 ## 真实赛题使用原则
 

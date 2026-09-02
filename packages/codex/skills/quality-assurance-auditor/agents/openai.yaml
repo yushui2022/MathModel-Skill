@@ -1,8 +1,0 @@
-interface:
-  display_name: "Quality Assurance Auditor"
-  short_description: "审计论文生成质量与断链问题"
-  brand_color: "#DC2626"
-  default_prompt: "Use $quality-assurance-auditor to audit the MathModel workflow outputs before delivery."
-
-policy:
-  allow_implicit_invocation: true

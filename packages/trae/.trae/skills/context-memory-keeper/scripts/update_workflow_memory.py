@@ -110,6 +110,7 @@ def build_snapshot() -> tuple[dict[str, Any], list[str]]:
     load_report = load_json(OUTPUT_DIR / "data_cleaned" / "load_report.json")
     run_manifest = load_json(OUTPUT_DIR / "results" / "run_manifest.json")
     evidence_gate = load_json(QA_DIR / "evidence_gate_report.json")
+    authoring_state = load_json(OUTPUT_DIR / "context" / "authoring_state.json")
     format_report = load_json(OUTPUT_DIR / "format_check_report.json")
 
     steps = workflow.get("steps") if isinstance(workflow, dict) and isinstance(workflow.get("steps"), list) else []
@@ -144,6 +145,8 @@ def build_snapshot() -> tuple[dict[str, Any], list[str]]:
             "load_report": artifact(OUTPUT_DIR / "data_cleaned" / "load_report.json"),
             "run_manifest": artifact(OUTPUT_DIR / "results" / "run_manifest.json"),
             "evidence_gate_report": artifact(QA_DIR / "evidence_gate_report.json"),
+            "authoring_state": artifact(OUTPUT_DIR / "context" / "authoring_state.json"),
+            "writing_plan": artifact(OUTPUT_DIR / "plan" / "writing_plan.json"),
             "format_check_report": artifact(OUTPUT_DIR / "format_check_report.json"),
         },
         "latest_statuses": {
@@ -151,6 +154,7 @@ def build_snapshot() -> tuple[dict[str, Any], list[str]]:
             "load_report": load_report.get("status") if isinstance(load_report, dict) else None,
             "run_manifest": run_manifest.get("status") if isinstance(run_manifest, dict) else None,
             "evidence_gate": evidence_gate.get("status") if isinstance(evidence_gate, dict) else None,
+            "authoring": authoring_state.get("status") if isinstance(authoring_state, dict) else None,
             "format_check": format_report.get("status") if isinstance(format_report, dict) else None,
         },
         "blockers": errors + compact_failures(workflow),

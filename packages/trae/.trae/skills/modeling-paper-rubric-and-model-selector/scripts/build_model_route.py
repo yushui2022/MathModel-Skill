@@ -236,7 +236,7 @@ def build_rubric_alignment(model_route: dict[str, Any]) -> dict[str, Any]:
 def write_scoring_strategy(model_route: dict[str, Any], rubric_alignment: dict[str, Any]) -> None:
     lines = [
         "# 评分闭环与模型路线策略\n\n",
-        "本文件由 `modeling-paper-rubric-and-model-selector` 根据结构化题意分析生成，用于指导后续 QA 与微单元写作。\n\n",
+        "本文件由 `modeling-paper-rubric-and-model-selector` 根据结构化题意分析生成，用于指导后续建模、证据审计与正式写作。\n\n",
         "## 全局原则\n\n",
         "- 每一问必须形成“任务定义 -> 模型建立 -> 求解结果 -> 验证检验 -> 回答原问”的闭环。\n",
         "- `model_route.json` 是后续写作的模型路线交接单，不能在正文生成时随意偷换主模型。\n",

@@ -8,9 +8,45 @@ permissions:
   contents: read
 
 jobs:
-  verify-standard-skill:
+  core:
+    name: Core ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Verify dependencies
+        run: python -m pip check
+
+      - name: Check platform synchronization
+        run: python scripts/sync_platform_packages.py --check
+
+      - name: Compile Python sources
+        run: python -m compileall -q packages scripts tests
+
+      - name: Run test suite
+        run: python -u tests/run_tests.py
+
+  render:
+    name: LibreOffice render gate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -25,14 +61,37 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Check platform synchronization
-        run: python scripts/sync_platform_packages.py --check
+      - name: Install LibreOffice
+        run: sudo apt-get update && sudo apt-get install -y libreoffice-writer
 
-      - name: Run test suite
-        run: python tests/run_tests.py
+      - name: Run required render integration test
+        run: python -c "import sys; sys.path.insert(0, 'tests'); import setup_sandbox, run_tests; setup_sandbox.main(); run_tests.test_render_required_when_libreoffice_is_available()"
 
-      - name: Build deterministic release archives
-        run: python scripts/build_release_packages.py --output-dir tests/sandbox/ci-release
+  packages:
+    name: Deterministic tracked packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
-      - name: Verify release archives
-        run: python scripts/build_release_packages.py --verify --output-dir tests/sandbox/ci-release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify tracked archives
+        run: python scripts/build_release_packages.py --verify
+
+      - name: Build twice
+        run: |
+          python scripts/build_release_packages.py --output-dir build-a
+          python scripts/build_release_packages.py --output-dir build-b
+
+      - name: Compare archive hashes
+        run: |
+          sha256sum build-a/*.zip | sed 's#build-a/##' > hashes-a.txt
+          sha256sum build-b/*.zip | sed 's#build-b/##' > hashes-b.txt
+          diff -u hashes-a.txt hashes-b.txt
+          cmp build-a/SHA256SUMS.txt build-b/SHA256SUMS.txt

@@ -29,7 +29,7 @@ description: "按常见评分点生成建模论文结构与写作清单，并根
 ## 执行契约
 - 上游输入：优先读取 `paper_output/step1/problem_analysis.json`。
 - 必须输出：`paper_output/plan/model_route.json`、`rubric_alignment.json`、`scoring_strategy.md`。
-- 下游交接：`quality-assurance-auditor` 读取模型路线生成 `tasks.json`；`paper-micro-unit-generator` 通过 `tasks.json` 使用模型、验证和评分字段。
+- 下游交接：数据、建模与证据门禁读取模型路线；S7 的 `paper-formal-writer` 将模型、验证和评分字段写入正式写作计划。`tasks.json` 仅供 legacy/quickstart。
 - 推荐下一步：若需要外部数据，进入 `authoritative-data-harvester`；否则进入 `data-cleaning-and-visualization`。完整论文目标应回到 `paper-workflow-orchestrator` 判断后续阶段。
 - 失败回退：若 `problem_analysis.json` 缺失，先运行 `problem-doc-model-selector`；完整 workflow 中本步骤失败时，QA 应回退到 `problem_analysis.json`。
 

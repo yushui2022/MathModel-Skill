@@ -115,84 +115,37 @@ def main() -> int:
 
     print("=== Step-8 微单元离线生成 ===")
     r1 = run_step(
-        [sys.executable, ".trae/skills/paper-micro-unit-generator/scripts/generate_all_offline.py"],
+        [
+            sys.executable,
+            ".trae/skills/paper-micro-unit-generator/scripts/generate_all_offline.py",
+            "--output-root",
+            "paper_output/quickstart",
+        ],
         check=False,
     )
     if r1.returncode != 0:
         return r1.returncode
 
-    print("=== Step-9 合并 ===")
+    print("=== Step-9 合并 quickstart 草稿 ===")
     r2 = run_step(
-        [sys.executable, ".trae/skills/paper-micro-unit-generator/scripts/merge.py"],
+        [
+            sys.executable,
+            ".trae/skills/paper-micro-unit-generator/scripts/merge.py",
+            "--output-root",
+            "paper_output/quickstart",
+            "--stem",
+            "quickstart_scaffold",
+        ],
         check=False,
     )
     if r2.returncode != 0:
         return r2.returncode
 
-    print("=== Step-10 转换为 Word (docx，写入 quickstart 草稿目录) ===")
-    print("⚠️ Quickstart 不会覆盖 paper_output/final_paper.docx；草稿写到 paper_output/quickstart/。")
-
-    direct_docx = root / "paper_output/final_paper_direct.docx"
     quickstart_dir = root / "paper_output/quickstart"
-    quickstart_dir.mkdir(parents=True, exist_ok=True)
-    draft_docx = quickstart_dir / "quickstart_draft.docx"
-
-    if direct_docx.exists():
-        import shutil
-
-        try:
-            shutil.copy(direct_docx, draft_docx)
-            print(f"✅ 已写入 quickstart 草稿 Word：{draft_docx}")
-        except Exception as e:
-            print(f"⚠️ 写入 quickstart 草稿失败: {e}")
-    else:
-        try:
-            run_step(["pandoc", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            md_path = root / "paper_output/final_paper.md"
-            if md_path.exists():
-                print("ℹ️ 未检测到直接生成的 Word，尝试使用 Pandoc 转换 quickstart 草稿...")
-                run_step(
-                    ["pandoc", str(md_path), "-o", str(draft_docx), "--reference-doc=reference.docx"],
-                    check=False,
-                )
-                if not draft_docx.exists():
-                    run_step(
-                        ["pandoc", str(md_path), "-o", str(draft_docx)],
-                        check=False,
-                    )
-                if draft_docx.exists():
-                    print(f"✅ 已通过 Pandoc 生成 quickstart 草稿 Word：{draft_docx}")
-                else:
-                    print("⚠️ Word 转换失败：pandoc 执行未生成文件")
-            else:
-                print("⚠️ 未找到 Markdown 源文件，跳过转换")
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print("⚠️ 未检测到 pandoc 且未安装 python-docx，无法生成 Word 草稿。")
-
-    print("=== Step-11 迁移正式命名中间产物到 quickstart 目录 ===")
-    import shutil as _shutil
-    _migrations = [
-        (root / "paper_output/final_paper.md", quickstart_dir / "quickstart_draft.md"),
-        (root / "paper_output/final_paper_direct.docx", quickstart_dir / "quickstart_direct.docx"),
-    ]
-    migrated: list[Path] = []
-    for src, dst in _migrations:
-        if src.exists():
-            try:
-                if dst.exists():
-                    dst.unlink()
-                _shutil.move(str(src), str(dst))
-                migrated.append(dst)
-                print(f"   迁移：{src.relative_to(root).as_posix()} -> {dst.relative_to(root).as_posix()}")
-            except Exception as e:
-                print(f"   ⚠️ 迁移 {src} 失败：{e}")
-
     print("✅ Quickstart 验证流程结束。以下文件是验证草稿，不代表正式比赛稿：")
-    if draft_docx.exists():
-        print(f"   - Word 草稿: {draft_docx.relative_to(root).as_posix()}")
-    for path in migrated:
+    for path in sorted(quickstart_dir.glob("quickstart_scaffold*")):
         print(f"   - {path.relative_to(root).as_posix()}")
-    print("   注意：正式 paper_output/final_paper.docx / final_paper.md 不会被 quickstart 写入；正式稿走 paper-formal-writer 流程。")
+    print("   注意：Quickstart 只写 paper_output/quickstart/；正式稿走 paper-formal-writer 流程。")
 
     return 0
 

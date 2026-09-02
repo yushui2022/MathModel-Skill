@@ -354,7 +354,8 @@ def build_analysis(text: str, documents: list[dict[str, Any]], data_files: list[
         "data_requirements": data_requirements,
         "next_outputs": {
             "model_route": "paper_output/plan/model_route.json",
-            "tasks": "paper_output/tasks.json",
+            "writing_plan": "paper_output/plan/writing_plan.json",
+            "legacy_tasks": "paper_output/tasks.json",
             "figures": "paper_output/figures/",
         },
     }

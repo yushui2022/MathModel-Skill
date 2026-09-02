@@ -1,8 +1,0 @@
-interface:
-  display_name: "Context Memory Keeper"
-  short_description: "维护建模流程的长期与短期记忆"
-  brand_color: "#64748B"
-  default_prompt: "Use $context-memory-keeper to read or update the active MathModel project memory."
-
-policy:
-  allow_implicit_invocation: true

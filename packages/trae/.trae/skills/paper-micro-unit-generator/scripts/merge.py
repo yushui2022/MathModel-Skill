@@ -1,3 +1,4 @@
+import argparse
 import json
 import re
 from pathlib import Path
@@ -15,9 +16,37 @@ except ImportError:
 BASE_DIR = Path.cwd()
 OUTPUT_DIR = BASE_DIR / "paper_output"
 TASKS_FILE = OUTPUT_DIR / "tasks.json"
-UNITS_DIR = OUTPUT_DIR / "micro_units"
-FINAL_FILE = OUTPUT_DIR / "final_paper.md"
-REF_REPORT = OUTPUT_DIR / "ref_check.md"
+ARTIFACT_DIR = OUTPUT_DIR / "drafts" / "legacy"
+UNITS_DIR = ARTIFACT_DIR / "micro_units"
+FINAL_FILE = ARTIFACT_DIR / "legacy_scaffold.md"
+REF_REPORT = ARTIFACT_DIR / "legacy_ref_check.md"
+DOCX_FILE = ARTIFACT_DIR / "legacy_scaffold.docx"
+
+
+def configure_paths(project_root: Path, output_root_text: str, stem: str) -> None:
+    global BASE_DIR, OUTPUT_DIR, TASKS_FILE, ARTIFACT_DIR, UNITS_DIR, FINAL_FILE, REF_REPORT, DOCX_FILE
+    normalized = str(output_root_text or "").strip().replace("\\", "/")
+    if (
+        not normalized
+        or normalized.startswith("/")
+        or re.match(r"^[A-Za-z]:/", normalized)
+        or ".." in normalized.split("/")
+    ):
+        raise ValueError("--output-root must be a relative path inside --project-root")
+    safe_stem = str(stem or "").strip()
+    if not re.fullmatch(r"[0-9A-Za-z._-]+", safe_stem):
+        raise ValueError("--stem may contain only letters, digits, dot, underscore, and hyphen")
+    BASE_DIR = project_root.resolve()
+    OUTPUT_DIR = BASE_DIR / "paper_output"
+    TASKS_FILE = OUTPUT_DIR / "tasks.json"
+    ARTIFACT_DIR = (BASE_DIR / Path(normalized)).resolve()
+    if not ARTIFACT_DIR.is_relative_to(BASE_DIR):
+        raise ValueError("--output-root escapes --project-root")
+    UNITS_DIR = ARTIFACT_DIR / "micro_units"
+    FINAL_FILE = ARTIFACT_DIR / f"{safe_stem}.md"
+    ref_stem = "legacy_ref_check" if safe_stem == "legacy_scaffold" else f"{safe_stem}_ref_check"
+    REF_REPORT = ARTIFACT_DIR / f"{ref_stem}.md"
+    DOCX_FILE = ARTIFACT_DIR / f"{safe_stem}.docx"
 
 
 def clean_unit_text(text: str) -> str:
@@ -40,7 +69,14 @@ def collect_units_from_tasks() -> List[str]:
         if section and section != last_section:
             units.append(f"## {section}\n")
             last_section = section
-        fp = Path(t.get("file_path", ""))
+        unit_id = re.sub(r"[^0-9A-Za-z._-]+", "_", str(t.get("id") or "unit")).strip("._") or "unit"
+        fp = UNITS_DIR / f"{unit_id}.txt"
+        if not fp.is_file():
+            legacy_text = str(t.get("file_path") or "").strip().replace("\\", "/")
+            if legacy_text and not legacy_text.startswith("/") and not re.match(r"^[A-Za-z]:/", legacy_text) and ".." not in legacy_text.split("/"):
+                candidate = (BASE_DIR / Path(legacy_text)).resolve()
+                if candidate.is_relative_to(BASE_DIR):
+                    fp = candidate
         if fp.exists():
             units.append(clean_unit_text(fp.read_text(encoding="utf-8")))
         else:
@@ -216,15 +252,23 @@ class SimpleMarkdownToDocx:
         self.doc.save(output_path)
 
 
-def main() -> None:
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Merge legacy or quickstart micro units without renumbering references.")
+    parser.add_argument("--project-root", type=Path, default=Path.cwd())
+    parser.add_argument("--output-root", default="paper_output/drafts/legacy")
+    parser.add_argument("--stem", default="legacy_scaffold")
+    args = parser.parse_args()
+    try:
+        configure_paths(args.project_root, args.output_root, args.stem)
+    except ValueError as exc:
+        print(f"配置错误：{exc}")
+        return 2
     units = collect_units_from_tasks()
     raw_text = "\n\n".join(units)
-    numbered = auto_numbering(raw_text)
-    index = build_cross_ref_index(numbered)
-    final = replace_cross_ref(numbered, index)
+    final = raw_text
     toc = generate_toc(final)
     full = toc + final
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     FINAL_FILE.write_text(full, encoding="utf-8")
     REF_REPORT.write_text(ref_check_report(full), encoding="utf-8")
     print(f"合并完成：{FINAL_FILE}")
@@ -232,16 +276,16 @@ def main() -> None:
     
     # Export to Docx directly
     if HAS_DOCX:
-        docx_path = OUTPUT_DIR / "final_paper_direct.docx"
         try:
             converter = SimpleMarkdownToDocx()
-            converter.convert(full, docx_path)
-            print(f"Word导出成功：{docx_path}")
+            converter.convert(full, DOCX_FILE)
+            print(f"Word导出成功：{DOCX_FILE}")
         except Exception as e:
             print(f"Word导出失败：{e}")
     else:
         print("跳过Word导出：未安装 python-docx")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

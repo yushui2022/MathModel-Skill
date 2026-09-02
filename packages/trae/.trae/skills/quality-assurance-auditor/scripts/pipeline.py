@@ -7,7 +7,7 @@ from pathlib import Path
 BASE_DIR = Path.cwd()
 PROBLEM_DIR = BASE_DIR / "problem_files"
 OUTPUT_DIR = BASE_DIR / "paper_output"
-MICRO_UNITS_DIR = OUTPUT_DIR / "micro_units"
+MICRO_UNITS_DIR = OUTPUT_DIR / "drafts" / "legacy" / "micro_units"
 TASKS_FILE = OUTPUT_DIR / "tasks.json"
 PROBLEM_ANALYSIS_FILE = OUTPUT_DIR / "step1" / "problem_analysis.json"
 PLAN_DIR = OUTPUT_DIR / "plan"
@@ -437,7 +437,7 @@ def add_task(tasks: list[dict], task_id: str, section: str, target_words: int, *
         "section": section,
         "status": "pending",
         "target_words": int(target_words),
-        "file_path": str(MICRO_UNITS_DIR / f"{task_id}.txt"),
+        "file_path": (Path("paper_output") / "drafts" / "legacy" / "micro_units" / f"{task_id}.txt").as_posix(),
     }
     payload.update(extra)
     tasks.append(payload)
@@ -732,8 +732,8 @@ def verify_completeness() -> tuple[int, int, int]:
 def scan_generated_text() -> list[str]:
     warnings: list[str] = []
     targets = []
-    if (OUTPUT_DIR / "final_paper.md").exists():
-        targets.append(OUTPUT_DIR / "final_paper.md")
+    if (OUTPUT_DIR / "final_paper_source.md").exists():
+        targets.append(OUTPUT_DIR / "final_paper_source.md")
     if MICRO_UNITS_DIR.exists():
         targets.extend(sorted(MICRO_UNITS_DIR.glob("*.txt")))
 

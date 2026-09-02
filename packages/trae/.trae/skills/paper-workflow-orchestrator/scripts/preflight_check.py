@@ -32,6 +32,13 @@ DOC_EXTS = {".pdf", ".docx", ".md", ".txt"}
 LEGACY_DOC_EXTS = {".doc"}
 DATA_EXTS = {".xlsx", ".xls", ".csv", ".tsv", ".json"}
 SUSPICIOUS_NAME_HINTS = ("result", "结果", "submit", "提交")
+EXPECTED_EDITION = "standard"
+SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".trae/skills", ".trae/skills")
+LEGACY_ENTRY_EDITIONS = {
+    "paper-workflow-orchestrator": "standard",
+    "mathmodel-lite": "lite",
+    "pro-workflow-orchestrator": "pro",
+}
 
 DEP_IMPORT_TO_PACKAGE = {
     "pypdf": "pypdf",
@@ -79,6 +86,42 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def detect_mathmodel_installations(root: Path) -> list[dict[str, Any]]:
+    installations: list[dict[str, Any]] = []
+    for root_text in SKILL_ROOTS:
+        skills_root = root / Path(root_text)
+        if not skills_root.is_dir():
+            continue
+        for skill_dir in sorted(path for path in skills_root.iterdir() if path.is_dir()):
+            marker_path = skill_dir / "MATHMODEL_EDITION.json"
+            marker: dict[str, Any] = {}
+            marker_error = ""
+            if marker_path.is_file():
+                try:
+                    value = json.loads(marker_path.read_text(encoding="utf-8"))
+                    marker = value if isinstance(value, dict) else {}
+                    if marker.get("product") not in (None, "", "MathModel-Skill"):
+                        continue
+                except Exception as exc:
+                    marker_error = f"{type(exc).__name__}: {exc}"
+            legacy_edition = LEGACY_ENTRY_EDITIONS.get(skill_dir.name)
+            edition = str(marker.get("edition") or legacy_edition or "").strip().lower()
+            if edition not in {"standard", "lite", "pro"}:
+                continue
+            installations.append(
+                {
+                    "edition": edition,
+                    "version": str(marker.get("version") or "legacy-unmarked"),
+                    "entry_skill": str(marker.get("entry_skill") or skill_dir.name),
+                    "skill_root": root_text,
+                    "path": rel_path(skill_dir, root),
+                    "marker": rel_path(marker_path, root) if marker_path.is_file() else None,
+                    "marker_error": marker_error or None,
+                }
+            )
+    return installations
 
 
 def is_suspicious_name(name: str) -> bool:
@@ -512,6 +555,19 @@ def evaluate(root: Path) -> dict[str, Any]:
     pf_dir = root / "problem_files"
     pf_exists = pf_dir.exists() and pf_dir.is_dir()
     files = list_problem_files(root) if pf_exists else []
+    installations = detect_mathmodel_installations(root)
+    editions = sorted({item["edition"] for item in installations})
+
+    if len(editions) > 1:
+        errors.append(f"检测到 MathModel Skill 混装：{', '.join(editions)}。一个项目只能安装一个版本。")
+    elif editions and editions != [EXPECTED_EDITION]:
+        errors.append(f"当前入口是 Standard，但项目中检测到 {editions[0]} 安装。请移除其他版本后重试。")
+    marker_errors = [item for item in installations if item.get("marker_error")]
+    for item in marker_errors:
+        errors.append(f"Edition marker 无法读取：{item['marker']} ({item['marker_error']})")
+    versions = sorted({item["version"] for item in installations if item["edition"] == EXPECTED_EDITION})
+    if len(versions) > 1:
+        warnings.append(f"检测到多个 Standard 安装版本：{', '.join(versions)}。建议只保留当前版本。")
 
     if not pf_exists:
         errors.append("缺少 problem_files/ 目录。请创建并放入题面 PDF/Word 和数据附件。")
@@ -570,6 +626,11 @@ def evaluate(root: Path) -> dict[str, Any]:
             "suspicious_template_files": suspicious,
         },
         "deps": deps,
+        "mathmodel_installation": {
+            "expected_edition": EXPECTED_EDITION,
+            "detected_editions": editions,
+            "installations": installations,
+        },
         "stale_output": {"final_paper_docx_exists": stale},
         "input_manifest": {
             "path": "paper_output/input_manifest.json",

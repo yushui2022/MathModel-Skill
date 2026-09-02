@@ -57,7 +57,7 @@ description: "解析赛题PDF/Word，抽取任务与数据条件并给出模型�
 - C 评分点对齐表：评分点 → 证据形式（图表/实验/检验）→ 论文位置。
 - D 模型选型与路线：每问的任务类型、最小可用基线、改进路线、验证计划、风险与备选。
 - E 数据需求配置 (可选)：若发现题目需要外部数据（如人口、气象、经济数据），自动生成或更新根目录下的 `data_requirements.json`，以便 `authoritative-data-harvester` 自动获取。
-- 机器可读契约：`paper_output/step1/problem_analysis.json`，包含 `documents`、`data_files`、`questions`、`recommended_models`、`validation_plan`、`figure_suggestions` 等字段，供 QA、微单元生成和总编排器继续读取。
+- 机器可读契约：`paper_output/step1/problem_analysis.json`，包含 `documents`、`data_files`、`questions`、`recommended_models`、`validation_plan`、`figure_suggestions` 等字段，供模型路线、证据审计、正式写作和总编排器继续读取。
 
 ## 目录约定（与项目全局对齐）
 - 赛题与附件统一放在 `problem_files/`。
@@ -71,7 +71,7 @@ description: "解析赛题PDF/Word，抽取任务与数据条件并给出模型�
 python .trae/skills/problem-doc-model-selector/scripts/analyze_problem.py
 ```
 
-该脚本会扫描 `problem_files/`，读取 TXT/Markdown/DOCX/PDF 赛题文本，并对 CSV/XLSX/XLS 附件做轻量字段画像。成功后会写入 `paper_output/step1/problem_analysis.json`，后续 `quality-assurance-auditor` 会优先用它生成动态 `tasks.json`。
+该脚本会扫描 `problem_files/`，读取 TXT/Markdown/DOCX/PDF 赛题文本，并对 CSV/XLSX/XLS 附件做轻量字段画像。成功后会写入 `paper_output/step1/problem_analysis.json`，后续模型路线、证据门禁和正式 outline 均以它为上游契约。
 
 ## 前后衔接
 - 后续通常先做：`data-cleaning-and-visualization`（数据清洗与可视化）。

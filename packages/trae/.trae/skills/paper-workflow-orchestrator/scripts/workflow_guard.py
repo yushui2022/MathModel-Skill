@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -58,7 +59,7 @@ STEP_RECOVERY = {
     },
     "S7": {
         "recommended_skill": "paper-formal-writer",
-        "action": "证据门禁通过后生成 paper_outline、final_paper_source.md 与 final_paper.docx。",
+        "action": "执行写作计划、章节审计、必要的局部修复、确定性合并与全文统一改写；S7 PASS 后再生成正式 Word。",
     },
     "S8": {
         "recommended_skill": "paper-formal-writer",
@@ -96,8 +97,8 @@ SKILL_REQUIREMENTS = {
         "handoff": "结果证据具备后才能做 evidence gate；失败时回退补齐结果、表格、图表或结论。",
     },
     "paper-micro-unit-generator": {
-        "required_step": "S5",
-        "handoff": "微单元只能作为局部写作/兜底素材，不能替代正式 evidence gate 和 formal writer。",
+        "required_step": "S6",
+        "handoff": "正式模式只处理 repair_queue.json 中的局部修复；legacy/quickstart 产物不得使用正式文件名。",
     },
     "paper-formal-writer": {
         "required_step": "S6",
@@ -152,6 +153,22 @@ def resolve_artifact(path_text: object) -> Path:
     return path if path.is_absolute() else BASE_DIR / path
 
 
+def resolve_authoring_path(path_text: object) -> Path:
+    normalized = str(path_text or "").strip().replace("\\", "/")
+    if (
+        not normalized
+        or normalized.startswith("/")
+        or normalized.startswith("//")
+        or re.match(r"^[A-Za-z]:/", normalized)
+        or ".." in Path(normalized).parts
+    ):
+        raise ValueError(f"写作契约路径必须位于项目目录内：{path_text!r}")
+    path = (BASE_DIR / Path(normalized)).resolve()
+    if not path.is_relative_to(BASE_DIR):
+        raise ValueError(f"写作契约路径逃逸项目目录：{path_text!r}")
+    return path
+
+
 def sha256_file(path: Path) -> str:
     if not path.exists() or not path.is_file():
         return ""
@@ -160,6 +177,24 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def contract_hash_failures(contract_data: Any, label: str) -> list[str]:
+    hashes = contract_data.get("input_hashes") if isinstance(contract_data, dict) else None
+    if not isinstance(hashes, dict) or not hashes:
+        return [f"{label} 缺少 input_hashes。"]
+    failures: list[str] = []
+    for path_text, expected_hash in hashes.items():
+        try:
+            path = resolve_authoring_path(path_text)
+        except ValueError as exc:
+            failures.append(str(exc))
+            continue
+        if not path.is_file():
+            failures.append(f"{label} 输入已缺失：{path_text}")
+        elif sha256_file(path) != str(expected_hash or "").strip().lower():
+            failures.append(f"{label} 输入已变化：{path_text}")
+    return failures
 
 
 def recorded_file_failures(entry: Any, label: str) -> list[str]:
@@ -372,9 +407,74 @@ def check_s6() -> dict[str, Any]:
 def check_s7() -> dict[str, Any]:
     failures: list[str] = []
     check_json_file(OUTPUT_DIR / "plan" / "paper_outline.json", failures)
+    writing_plan = check_json_file(OUTPUT_DIR / "plan" / "writing_plan.json", failures)
+    authoring_state = check_json_file(OUTPUT_DIR / "context" / "authoring_state.json", failures)
     check_text_file(OUTPUT_DIR / "final_paper_source.md", failures)
     check_text_file(OUTPUT_DIR / "final_paper.docx", failures)
+    if isinstance(writing_plan, dict):
+        if str(writing_plan.get("status") or "").upper() != "PASS":
+            failures.append("writing_plan.json status 不是 PASS。")
+        failures.extend(contract_hash_failures(writing_plan, "writing_plan.json"))
+    if isinstance(authoring_state, dict):
+        if str(authoring_state.get("status") or "").upper() != "PASS":
+            failures.append("authoring_state.json status 不是 PASS。")
+        failures.extend(contract_hash_failures(authoring_state, "authoring_state.json"))
+        records = authoring_state.get("sections")
+        if not isinstance(records, dict) or not records:
+            failures.append("authoring_state.json 缺少章节状态。")
+        else:
+            expected_ids = ["GLOBAL"] if authoring_state.get("mode") == "global" else [
+                str(item.get("section_id"))
+                for item in (writing_plan.get("sections", []) if isinstance(writing_plan, dict) else [])
+                if isinstance(item, dict) and item.get("section_id")
+            ]
+            for section_id in expected_ids:
+                record = records.get(section_id)
+                if not isinstance(record, dict) or str(record.get("status") or "").upper() != "PASS":
+                    failures.append(f"写作章节 {section_id} 不是 PASS。")
+                    continue
+                try:
+                    path = resolve_authoring_path(record.get("path"))
+                except ValueError as exc:
+                    failures.append(str(exc))
+                    continue
+                expected = str(record.get("approved_sha256") or "").strip().lower()
+                if not path.is_file() or not expected or sha256_file(path) != expected:
+                    failures.append(f"写作章节 {section_id} 在审计后缺失或发生变化。")
+        for label in ("assembled", "final"):
+            record = authoring_state.get(label)
+            if not isinstance(record, dict) or str(record.get("status") or "").upper() != "PASS":
+                failures.append(f"authoring_state.json 中 {label} 不是 PASS。")
+                continue
+            try:
+                path = resolve_authoring_path(record.get("path"))
+            except ValueError as exc:
+                failures.append(str(exc))
+                continue
+            expected = str(record.get("sha256") or "").strip().lower()
+            if not path.is_file() or not expected or sha256_file(path) != expected:
+                failures.append(f"{label} 文稿在审计后缺失或发生变化。")
+        final_record = authoring_state.get("final") or {}
+        if str(final_record.get("path") or "").replace("\\", "/") != "paper_output/final_paper_source.md":
+            failures.append("正式源稿路径必须是 paper_output/final_paper_source.md。")
     return {"step": "S7", "name": "正式稿", "status": "PASS" if not failures else "FAIL", "failures": failures}
+
+
+def s7_recovery() -> dict[str, str]:
+    state = load_json(OUTPUT_DIR / "context" / "authoring_state.json")
+    queue = load_json(OUTPUT_DIR / "qa" / "repair_queue.json")
+    issues = queue.get("issues", []) if isinstance(queue, dict) else []
+    if isinstance(state, dict) and str(state.get("status") or "").upper() == "BLOCKED":
+        return {
+            "recommended_skill": "paper-formal-writer",
+            "action": "S7 已因同类失败连续出现三次而 BLOCKED；检查证据或要求，必要时由用户改用 Lite，不自动切换版本。",
+        }
+    if any(isinstance(item, dict) and item.get("strategy") == "micro-repair" for item in issues):
+        return {
+            "recommended_skill": "paper-micro-unit-generator",
+            "action": "只处理 repair_queue.json 中 strategy=micro-repair 的局部问题，写回对应章节后重新运行章节审计。",
+        }
+    return STEP_RECOVERY["S7"]
 
 
 def check_s8() -> dict[str, Any]:
@@ -492,7 +592,7 @@ def evaluate_status() -> dict[str, Any]:
             "failures": [],
         }
 
-    guidance = STEP_RECOVERY[first_blocked]
+    guidance = s7_recovery() if first_blocked == "S7" else STEP_RECOVERY[first_blocked]
     return {
         "schema_version": "1.0",
         "generated_by": "paper-workflow-orchestrator/scripts/workflow_guard.py",

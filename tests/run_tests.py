@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import setup_sandbox
@@ -17,9 +19,15 @@ BUILD_RESULT_CONTRACTS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills
 EVIDENCE_GATE = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
 FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
 CHECK_PAPER_FORMAT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_paper_format.py"
+PREPARE_AUTHORING = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "prepare_authoring.py"
+VALIDATE_AUTHORING = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "validate_authoring.py"
+ASSEMBLE_SECTIONS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "assemble_sections.py"
+GENERATE_LEGACY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-micro-unit-generator" / "scripts" / "generate_all_offline.py"
+MERGE_LEGACY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-micro-unit-generator" / "scripts" / "merge.py"
+BUILD_PACKAGES = REPO_ROOT / "scripts" / "build_release_packages.py"
 UPDATE_WORKFLOW_MEMORY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "context-memory-keeper" / "scripts" / "update_workflow_memory.py"
 CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
-CODEX_SKILLS = REPO_ROOT / "packages" / "codex" / "skills"
+CODEX_SKILLS = REPO_ROOT / "packages" / "codex" / ".agents" / "skills"
 TRAE_SKILLS = REPO_ROOT / "packages" / "trae" / ".trae" / "skills"
 CLAUDE_ORCHESTRATOR_SCRIPTS = CLAUDE_SKILLS / "paper-workflow-orchestrator" / "scripts"
 CODEX_ORCHESTRATOR_SCRIPTS = CODEX_SKILLS / "paper-workflow-orchestrator" / "scripts"
@@ -87,6 +95,28 @@ def write_fresh_gate_report(output: Path) -> None:
             "input_hashes": {marker.resolve().relative_to(output.parent.resolve()).as_posix(): sha256_file(marker)},
         },
     )
+
+
+def prepare_authoring_pass(cwd: Path, output: Path, source: str) -> None:
+    outline_path = output / "plan" / "paper_outline.json"
+    outline = load_json(outline_path)
+    target = outline.setdefault("target_words", {})
+    target["ideal"] = max(20, min(6000, len(re.sub(r"\s+", "", source))))
+    write_json(outline_path, outline)
+    result = run([sys.executable, str(PREPARE_AUTHORING), "--mode", "global"], cwd)
+    assert_true(result.returncode == 0, f"authoring preparation should pass\n{result.stdout}")
+    draft_path = output / "drafts" / "global_draft.md"
+    draft_path.parent.mkdir(parents=True, exist_ok=True)
+    draft_path.write_text(source.rstrip() + "\n\n初稿阶段保留此句用于证明最终稿经过全文统一改写。\n", encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "GLOBAL"], cwd)
+    assert_true(result.returncode == 0, f"global draft audit should pass\n{result.stdout}")
+    result = run([sys.executable, str(ASSEMBLE_SECTIONS)], cwd)
+    assert_true(result.returncode == 0, f"authoring assembly should pass\n{result.stdout}")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--assembled"], cwd)
+    assert_true(result.returncode == 0, f"assembled audit should pass\n{result.stdout}")
+    (output / "final_paper_source.md").write_text(source, encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--final"], cwd)
+    assert_true(result.returncode == 0, f"final authoring audit should pass\n{result.stdout}")
 
 
 def complete_paper_source(
@@ -158,6 +188,7 @@ def prepare_formal_paper_scenario(name: str, source: str) -> tuple[Path, Path]:
     write_json(output / "figure_index.json", {"figures": []})
     write_json(output / "tables" / "table_index.json", {"tables": []})
     write_fresh_gate_report(output)
+    prepare_authoring_pass(cwd, output, source)
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
     assert_true(result.returncode == 0, f"formal docx generation should pass\n{result.stdout}")
     return cwd, output
@@ -264,14 +295,11 @@ def stage_workflow(output: Path, through_step: str) -> None:
         result = run([sys.executable, str(EVIDENCE_GATE)], cwd)
         assert_true(result.returncode == 0, f"staged evidence gate should pass\n{result.stdout}")
     if limit >= order.index("S7"):
-        from docx import Document
-
+        source = "# Title\n\n# 摘要\n\nFormal computed abstract.\n\n# 1 Problem Restatement\n\nFormal computed content with a complete explanation for the staged workflow.\n"
         write_json(output / "plan" / "paper_outline.json", {"target_words": {"min": 10, "max": 5000}, "questions": [{"question_id": "Q1"}]})
-        (output / "final_paper_source.md").write_text("# Title\n\n# 1 Problem Restatement\n\nFormal content.\n", encoding="utf-8")
-        doc = Document()
-        doc.add_heading("Title", level=1)
-        doc.add_paragraph("Formal content.")
-        doc.save(output / "final_paper.docx")
+        prepare_authoring_pass(cwd, output, source)
+        result = run([sys.executable, str(FORMAT_DOCX)], cwd)
+        assert_true(result.returncode == 0, f"staged formal docx should pass\n{result.stdout}")
     if limit >= order.index("S8"):
         format_inputs = [
             output / "final_paper_source.md",
@@ -280,6 +308,8 @@ def stage_workflow(output: Path, through_step: str) -> None:
             output / "figure_index.json",
             output / "tables" / "table_index.json",
             output / "qa" / "evidence_gate_report.json",
+            output / "plan" / "writing_plan.json",
+            output / "context" / "authoring_state.json",
         ]
         write_json(
             output / "format_check_report.json",
@@ -327,6 +357,39 @@ def test_preflight() -> None:
     assert_true(manifest["summary"]["raw_data_count"] == 0, "scenario_4 should not count result template as raw data")
     manifest = load_json(SANDBOX / "scenario_7_real_data" / "paper_output" / "input_manifest.json")
     assert_true(manifest["summary"]["raw_data_count"] == 1, "scenario_7 should classify csv as raw_data")
+
+
+def test_preflight_detects_modern_and_legacy_mixed_installations() -> None:
+    cwd = make_problem_scenario("scenario_mixed_skill_roots")
+    entries = [
+        (".agents/skills/paper-workflow-orchestrator", "standard", True),
+        ("skills/mathmodel-lite", "lite", False),
+        (".codex/skills/pro-workflow-orchestrator", "pro", False),
+        (".claude/skills/mathmodel-lite", "lite", True),
+        (".trae/skills/paper-workflow-orchestrator", "standard", True),
+    ]
+    for path_text, edition, marked in entries:
+        skill_dir = cwd / Path(path_text)
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(f"# {edition}\n", encoding="utf-8")
+        if marked:
+            write_json(
+                skill_dir / "MATHMODEL_EDITION.json",
+                {
+                    "schema_version": "1.0",
+                    "product": "MathModel-Skill",
+                    "edition": edition,
+                    "version": "test",
+                    "entry_skill": skill_dir.name,
+                },
+            )
+    result = run([sys.executable, str(PREFLIGHT)], cwd)
+    assert_true(result.returncode == 1, "mixed Standard/Lite/Pro installation should fail preflight")
+    report = load_json(cwd / "paper_output" / "preflight_report.json")
+    install = report["mathmodel_installation"]
+    assert_true(install["detected_editions"] == ["lite", "pro", "standard"], "preflight should identify all editions")
+    assert_true({item["skill_root"] for item in install["installations"]} == {item[0].rsplit("/", 1)[0] for item in entries}, "preflight should scan all five skill roots")
+    assert_true(any("混装" in item for item in report["errors"]), "mixed-install failure should be explicit")
 
 
 def test_missing_pypdf() -> None:
@@ -513,6 +576,223 @@ def test_workflow_status_complete_after_s8() -> None:
     assert_true(report["failures"] == [], "complete workflow should have no failures")
 
 
+def test_authoring_auto_modes_and_global_fallback() -> None:
+    cwd, output = make_staged_scenario("scenario_authoring_auto_modes", "S6")
+    outline = {
+        "target_words": {"min": 100, "ideal": 7001, "max": 9000},
+        "sections": [{"section_id": "1", "title": "问题重述", "target_words": 200}],
+    }
+    write_json(output / "plan" / "paper_outline.json", outline)
+    result = run([sys.executable, str(PREPARE_AUTHORING), "--mode", "auto"], cwd)
+    assert_true(result.returncode == 0, f"long auto authoring should prepare\n{result.stdout}")
+    assert_true(load_json(output / "plan" / "writing_plan.json")["mode"] == "section", "auto should choose section above 6000 chars")
+
+    outline["target_words"]["ideal"] = 5000
+    write_json(output / "plan" / "paper_outline.json", outline)
+    result = run([sys.executable, str(PREPARE_AUTHORING), "--mode", "auto"], cwd)
+    assert_true(result.returncode == 0, f"short auto authoring should prepare\n{result.stdout}")
+    assert_true(load_json(output / "plan" / "writing_plan.json")["mode"] == "global", "auto should choose global at 6000 chars or below")
+
+    draft = output / "drafts" / "global_draft.md"
+    draft.write_text("# 完整论文草稿\n\n第一次短稿。\n", encoding="utf-8")
+    first = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "GLOBAL"], cwd)
+    assert_true(first.returncode == 1, "first global length failure should block the draft")
+    draft.write_text("# 完整论文草稿\n\n第二次仍然过短。\n", encoding="utf-8")
+    second = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "GLOBAL"], cwd)
+    assert_true(second.returncode == 1, "second repeated global failure should route to section mode")
+    state = load_json(output / "context" / "authoring_state.json")
+    assert_true(state["mode"] == "section", "global should fall back to section after two repeated categories")
+    assert_true("GLOBAL" not in state["sections"] and "1" in state["sections"], "fallback should initialize section records")
+    queue = load_json(output / "qa" / "repair_queue.json")
+    assert_true(all(item["strategy"] == "section-rewrite" for item in queue["issues"]), "global fallback should request section rewrites")
+
+
+def test_authoring_section_micro_repair_and_block() -> None:
+    cwd, output = make_staged_scenario("scenario_authoring_repair_route", "S6")
+    write_json(
+        output / "plan" / "paper_outline.json",
+        {
+            "target_words": {"min": 100, "ideal": 7000, "max": 9000},
+            "sections": [{"section_id": "1", "title": "问题重述", "target_words": 500}],
+        },
+    )
+    result = run([sys.executable, str(PREPARE_AUTHORING), "--mode", "section"], cwd)
+    assert_true(result.returncode == 0, f"section authoring should prepare\n{result.stdout}")
+    draft = output / "drafts" / "sections" / "1.md"
+
+    for attempt, body in enumerate(("第一次短稿", "第二次短稿", "第三次短稿"), start=1):
+        draft.write_text(f"# 问题重述\n\n{body}。\n", encoding="utf-8")
+        result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "1"], cwd)
+        assert_true(result.returncode == 1, f"attempt {attempt} should fail the length gate")
+        state = load_json(output / "context" / "authoring_state.json")
+        queue = load_json(output / "qa" / "repair_queue.json")
+        if attempt == 1:
+            assert_true(state["status"] == "DRAFTING", "first failure should stay with section rewrite")
+            assert_true(all(item["strategy"] == "section-rewrite" for item in queue["issues"]), "first failure should not use micro repair")
+        elif attempt == 2:
+            assert_true(state["status"] == "REPAIR_REQUIRED", "second repeated failure should require repair")
+            assert_true(all(item["strategy"] == "micro-repair" for item in queue["issues"]), "second repeated failure should use micro repair")
+            status = run([sys.executable, str(WORKFLOW_GUARD), "--status"], cwd)
+            assert_true(status.returncode == 0, f"workflow status should remain diagnostic\n{status.stdout}")
+            report = load_json(output / "qa" / "workflow_guard_report.json")
+            assert_true(report["recommended_skill"] == "paper-micro-unit-generator", "guard should dynamically route queued micro repair")
+        else:
+            assert_true(state["status"] == "BLOCKED", "third repeated failure should block S7")
+            status = run([sys.executable, str(WORKFLOW_GUARD), "--status"], cwd)
+            report = load_json(output / "qa" / "workflow_guard_report.json")
+            assert_true("Lite" in report["next_action"], "blocked S7 should explain the Lite option")
+
+
+def test_authoring_evidence_assembly_and_hash_invalidation() -> None:
+    cwd, output = make_staged_scenario("scenario_authoring_evidence", "S6")
+    write_json(
+        output / "plan" / "paper_outline.json",
+        {
+            "target_words": {"min": 120, "ideal": 300, "max": 800},
+            "front_matter": {"abstract_target_words": 50},
+            "sections": [
+                {
+                    "section_id": "1",
+                    "title": "问题重述",
+                    "question_id": "Q1",
+                    "target_words": 180,
+                    "required_evidence": [{"type": "metric", "name": "score", "value": 1.25}],
+                    "required_tables": [{"table_id": "t1", "title": "结果表", "path": "paper_output/tables/t1.csv"}],
+                }
+            ],
+        },
+    )
+    result = run([sys.executable, str(PREPARE_AUTHORING), "--mode", "section"], cwd)
+    assert_true(result.returncode == 0, f"evidence authoring should prepare\n{result.stdout}")
+    abstract = output / "drafts" / "sections" / "abstract.md"
+    section = output / "drafts" / "sections" / "1.md"
+    abstract.write_text("# 摘要\n\n本文围绕问题一建立可复核模型，说明输入、方法、计算结果及验证结论，并保持术语和符号一致。\n", encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "abstract"], cwd)
+    assert_true(result.returncode == 0, f"abstract should pass\n{result.stdout}")
+
+    section.write_text("# 问题重述\n\n本节完整说明题目目标、输入条件、约束边界和输出要求，但故意遗漏证据标记与指标数值。正文长度足以触发证据审计而不是长度审计。\n", encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "1"], cwd)
+    assert_true(result.returncode == 1, "missing evidence marker and value should fail")
+    audit = load_json(output / "qa" / "draft_audit.json")
+    categories = {item["category"] for item in audit["issues"]}
+    assert_true({"evidence-coverage", "numeric-evidence"}.issubset(categories), "S7 should report missing evidence and numeric value")
+
+    section_text = "\n".join(
+        [
+            "# 问题重述",
+            "",
+            "<!-- mathmodel-evidence: metric:Q1:score, table:t1 -->",
+            "题目要求在给定数据与边界约束下形成可复核结论。我们先统一字段口径，再明确决策对象、评价指标和输出格式。",
+            "实际运行得到的 score 为 1.25，该数值用于核对模型输出与题目目标的一致性，详细结果见结果表 t1.csv。",
+            "正文两次引用图1与见图1保持原编号，用于验证确定性合并不会按出现次数错误重排交叉引用。",
+        ]
+    )
+    section.write_text(section_text, encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "1"], cwd)
+    assert_true(result.returncode == 0, f"evidence-complete section should pass\n{result.stdout}")
+    result = run([sys.executable, str(ASSEMBLE_SECTIONS)], cwd)
+    assert_true(result.returncode == 0, f"assembly should pass\n{result.stdout}")
+    assembled_path = output / "drafts" / "assembled_draft.md"
+    assembled = assembled_path.read_text(encoding="utf-8")
+    assert_true("mathmodel-evidence" not in assembled, "assembly should remove evidence markers")
+    assert_true(assembled.count("图1") == 2 and "图2" not in assembled, "assembly should preserve repeated reference numbering")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--assembled"], cwd)
+    assert_true(result.returncode == 0, f"assembled audit should pass\n{result.stdout}")
+
+    final_path = output / "final_paper_source.md"
+    final_path.write_text(assembled, encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--final"], cwd)
+    assert_true(result.returncode == 1, "copy-only final should fail the global revision gate")
+    final_path.write_text(assembled.rstrip() + "\n\n全文统一改写后，结论与问题目标形成闭环，并统一了术语、符号和章节过渡。\n", encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--final"], cwd)
+    assert_true(result.returncode == 0, f"globally revised final should pass\n{result.stdout}")
+    assert_true(load_json(output / "context" / "authoring_state.json")["status"] == "PASS", "final audit should set authoring PASS")
+
+    section.write_text(section_text + "\n审计通过后发生的手工改动。\n", encoding="utf-8")
+    result = run([sys.executable, str(FORMAT_DOCX)], cwd)
+    assert_true(result.returncode == 2, "changed approved section should invalidate formal DOCX generation")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--final"], cwd)
+    assert_true(result.returncode == 1, "changed approved section should invalidate final authoring PASS")
+
+
+def test_authoring_rejects_formula_placeholder_duplicate_and_escape() -> None:
+    cwd, output = make_staged_scenario("scenario_authoring_content_failures", "S6")
+    write_json(
+        output / "plan" / "paper_outline.json",
+        {
+            "target_words": {"min": 50, "ideal": 7000, "max": 9000},
+            "sections": [{"section_id": "1", "title": "问题分析", "target_words": 80}],
+        },
+    )
+    result = run([sys.executable, str(PREPARE_AUTHORING), "--mode", "section"], cwd)
+    assert_true(result.returncode == 0, f"content failure scenario should prepare\n{result.stdout}")
+    repeated = "该段落用于说明输入变量、目标函数、约束条件、边界范围、求解步骤、评价指标和验证口径，内容足够长以触发归一化重复检测并阻止机械扩写。"
+    draft = output / "drafts" / "sections" / "1.md"
+    draft.write_text(f"# 问题分析\n\n待补\n\n{repeated}\n\n{repeated}\n\n损坏公式 $x+1\n", encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "1"], cwd)
+    assert_true(result.returncode == 1, "placeholder, duplicate, and malformed formula should fail")
+    audit = load_json(output / "qa" / "draft_audit.json")
+    categories = {item["category"] for item in audit["issues"]}
+    assert_true({"placeholder", "duplicate-paragraph", "formula"}.issubset(categories), "S7 should report all three content failures")
+
+    state_path = output / "context" / "authoring_state.json"
+    state = load_json(state_path)
+    state["sections"]["1"]["path"] = "paper_output\\drafts/sections\\中文稿.md"
+    write_json(state_path, state)
+    chinese_path = output / "drafts" / "sections" / "中文稿.md"
+    chinese_path.write_text("# 问题分析\n\n本节完整说明问题目标、数据范围、模型变量、约束边界、求解过程、评价指标和验证方法，并解释结论如何回扣原始任务。\n", encoding="utf-8")
+    result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "1"], cwd)
+    assert_true(result.returncode == 0, f"mixed separators and Chinese paths should be accepted\n{result.stdout}")
+
+    for invalid_path in ("../outside.md", "C:\\outside.md", "/tmp/outside.md"):
+        state = load_json(state_path)
+        state["sections"]["1"]["path"] = invalid_path
+        write_json(state_path, state)
+        result = run([sys.executable, str(VALIDATE_AUTHORING), "--section", "1"], cwd)
+        assert_true(result.returncode == 1 and "inside the project root" in result.stdout, f"S7 should reject escaping path {invalid_path}")
+
+
+def test_legacy_and_quickstart_outputs_are_isolated() -> None:
+    cwd = SANDBOX / "scenario_legacy_isolation"
+    if cwd.exists():
+        shutil.rmtree(cwd)
+    output = cwd / "paper_output"
+    output.mkdir(parents=True)
+    write_json(
+        output / "tasks.json",
+        [
+            {"id": "U1", "section": "结果分析", "target_words": 20, "file_path": "paper_output/micro_units/U1.txt"},
+            {"id": "U2", "section": "结果分析", "target_words": 20, "file_path": "paper_output/micro_units/U2.txt"},
+        ],
+    )
+    result = run([sys.executable, str(GENERATE_LEGACY)], cwd)
+    assert_true(result.returncode == 0, f"legacy generation should pass\n{result.stdout}")
+    units = output / "drafts" / "legacy" / "micro_units"
+    (units / "U1.txt").write_text("结果定义为图1，后文见图1；文献依据为[1]。\n", encoding="utf-8")
+    (units / "U2.txt").write_text("复核仍引用图1与[1]，不得改成新的编号。\n", encoding="utf-8")
+    result = run([sys.executable, str(MERGE_LEGACY)], cwd)
+    assert_true(result.returncode == 0, f"legacy merge should pass\n{result.stdout}")
+    legacy = output / "drafts" / "legacy"
+    merged = (legacy / "legacy_scaffold.md").read_text(encoding="utf-8")
+    assert_true("图2" not in merged and merged.count("图1") >= 3, "legacy merge should not renumber repeated references")
+    assert_true((legacy / "legacy_scaffold.docx").exists(), "legacy Word should use a non-formal name")
+    assert_true((legacy / "legacy_ref_check.md").exists(), "legacy reference report should stay in legacy output")
+    for name in ("final_paper.md", "final_paper_source.md", "final_paper.docx", "final_paper_direct.docx"):
+        assert_true(not (output / name).exists(), f"legacy scripts must not create {name}")
+
+    result = run([sys.executable, str(GENERATE_LEGACY), "--output-root", "../escape"], cwd)
+    assert_true(result.returncode == 2, "legacy output root must reject path traversal")
+    result = run([sys.executable, str(GENERATE_LEGACY), "--output-root", "paper_output/quickstart"], cwd)
+    assert_true(result.returncode == 0, f"quickstart generation should write directly to its directory\n{result.stdout}")
+    result = run(
+        [sys.executable, str(MERGE_LEGACY), "--output-root", "paper_output/quickstart", "--stem", "quickstart_scaffold"],
+        cwd,
+    )
+    assert_true(result.returncode == 0, f"quickstart merge should pass\n{result.stdout}")
+    assert_true((output / "quickstart" / "quickstart_scaffold.md").exists(), "quickstart Markdown should be created directly")
+    assert_true((output / "quickstart" / "quickstart_scaffold.docx").exists(), "quickstart Word should be created directly")
+
+
 def test_format_gate() -> None:
     cwd = SANDBOX / "scenario_4_suspicious_template"
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
@@ -531,8 +811,7 @@ def test_format_formal_docx_after_evidence_gate() -> None:
         shutil.rmtree(cwd)
     output = cwd / "paper_output"
     output.mkdir(parents=True)
-    (output / "final_paper_source.md").write_text(
-        "\n".join(
+    source = "\n".join(
             [
                 "# Title",
                 "",
@@ -545,10 +824,11 @@ def test_format_formal_docx_after_evidence_gate() -> None:
                 "# 5.1 问题一模型",
                 "Model section.",
             ]
-        ),
-        encoding="utf-8",
     )
+    (output / "final_paper_source.md").write_text(source, encoding="utf-8")
+    write_json(output / "plan" / "paper_outline.json", {"target_words": {"min": 20, "max": 5000}, "questions": []})
     write_fresh_gate_report(output)
+    prepare_authoring_pass(cwd, output, source)
 
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
     assert_true(result.returncode == 0, f"formal docx should be generated after evidence gate PASS\n{result.stdout}")
@@ -568,6 +848,7 @@ def test_check_paper_format_passes_complete_docx() -> None:
     source = complete_paper_source()
     (output / "final_paper_source.md").write_text(source, encoding="utf-8")
     write_fresh_gate_report(output)
+    prepare_authoring_pass(cwd, output, source)
 
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
     assert_true(result.returncode == 0, f"formal docx generation should pass\n{result.stdout}")
@@ -585,7 +866,8 @@ def test_check_paper_format_passes_complete_docx() -> None:
 
 def test_format_gate_rejects_control_characters() -> None:
     source = complete_paper_source(extra_body=["该公式被错误转义为控制字符：\x0crac 与 \x08ar，必须被门禁识别。"])
-    cwd, output = prepare_formal_paper_scenario("scenario_control_characters", source)
+    cwd, output = prepare_formal_paper_scenario("scenario_control_characters", complete_paper_source())
+    (output / "final_paper_source.md").write_text(source, encoding="utf-8")
 
     result = run([sys.executable, str(CHECK_PAPER_FORMAT), "--render", "skip"], cwd)
     assert_true(result.returncode == 1, "format gate should reject control characters in source markdown")
@@ -598,7 +880,8 @@ def test_format_gate_rejects_numeric_padding_duplicates() -> None:
         "在第 1 轮稳健性检验中，我们重新计算全部策略，并比较目标值、约束满足率与排序变化，从而判断结论是否稳定。",
         "在第 27 轮稳健性检验中，我们重新计算全部策略，并比较目标值、约束满足率与排序变化，从而判断结论是否稳定。",
     ]
-    cwd, output = prepare_formal_paper_scenario("scenario_duplicate_padding", complete_paper_source(extra_body=repeated))
+    cwd, output = prepare_formal_paper_scenario("scenario_duplicate_padding", complete_paper_source())
+    (output / "final_paper_source.md").write_text(complete_paper_source(extra_body=repeated), encoding="utf-8")
 
     result = run([sys.executable, str(CHECK_PAPER_FORMAT), "--render", "skip"], cwd)
     assert_true(result.returncode == 1, "format gate should reject number-swapped duplicate padding")
@@ -608,7 +891,8 @@ def test_format_gate_rejects_numeric_padding_duplicates() -> None:
 
 def test_format_gate_rejects_internal_project_language() -> None:
     source = complete_paper_source(extra_body=["本样例通过 paper_output/qa/evidence_gate.py 一键生成正式论文。"])
-    cwd, output = prepare_formal_paper_scenario("scenario_internal_language", source)
+    cwd, output = prepare_formal_paper_scenario("scenario_internal_language", complete_paper_source())
+    (output / "final_paper_source.md").write_text(source, encoding="utf-8")
 
     result = run([sys.executable, str(CHECK_PAPER_FORMAT), "--render", "skip"], cwd)
     assert_true(result.returncode == 1, "format gate should reject internal project language before the appendix")
@@ -617,10 +901,8 @@ def test_format_gate_rejects_internal_project_language() -> None:
 
 
 def test_format_gate_requires_body_citations() -> None:
-    cwd, output = prepare_formal_paper_scenario(
-        "scenario_missing_body_citations",
-        complete_paper_source(include_body_citations=False),
-    )
+    cwd, output = prepare_formal_paper_scenario("scenario_missing_body_citations", complete_paper_source())
+    (output / "final_paper_source.md").write_text(complete_paper_source(include_body_citations=False), encoding="utf-8")
 
     result = run([sys.executable, str(CHECK_PAPER_FORMAT), "--render", "skip"], cwd)
     assert_true(result.returncode == 1, "format gate should reject a bibliography that is never cited in the body")
@@ -629,20 +911,13 @@ def test_format_gate_requires_body_citations() -> None:
 
 
 def test_formal_formatter_blocks_invalid_latex_but_allows_draft_fallback() -> None:
-    cwd = SANDBOX / "scenario_invalid_latex"
-    if cwd.exists():
-        shutil.rmtree(cwd)
-    output = cwd / "paper_output"
-    output.mkdir(parents=True)
+    cwd, output = prepare_formal_paper_scenario("scenario_invalid_latex", complete_paper_source())
+    (output / "final_paper.docx").unlink()
     source = complete_paper_source(extra_body=[r"该处故意放入损坏公式 $\left($ 以验证正式门禁。"])
     (output / "final_paper_source.md").write_text(source, encoding="utf-8")
-    write_json(output / "plan" / "paper_outline.json", {"target_words": {"min": 100, "max": 5000}, "questions": [{"question_id": "Q1"}]})
-    write_json(output / "figure_index.json", {"figures": []})
-    write_json(output / "tables" / "table_index.json", {"tables": []})
-    write_fresh_gate_report(output)
 
     result = run([sys.executable, str(FORMAT_DOCX)], cwd)
-    assert_true(result.returncode == 3, f"formal formatter should block invalid LaTeX\n{result.stdout}")
+    assert_true(result.returncode == 2, f"formal formatter should block a source changed after S7 PASS\n{result.stdout}")
     assert_true(not (output / "final_paper.docx").exists(), "invalid LaTeX must not produce a formal Word file")
 
     result = run([sys.executable, str(FORMAT_DOCX), "--allow-draft"], cwd)
@@ -652,15 +927,8 @@ def test_formal_formatter_blocks_invalid_latex_but_allows_draft_fallback() -> No
 
 
 def test_formal_formatter_rejects_stale_evidence_gate() -> None:
-    cwd = SANDBOX / "scenario_stale_gate_before_format"
-    if cwd.exists():
-        shutil.rmtree(cwd)
-    output = cwd / "paper_output"
-    output.mkdir(parents=True)
-    (output / "final_paper_source.md").write_text(complete_paper_source(), encoding="utf-8")
-    write_json(output / "figure_index.json", {"figures": []})
-    write_json(output / "tables" / "table_index.json", {"tables": []})
-    write_fresh_gate_report(output)
+    cwd, output = prepare_formal_paper_scenario("scenario_stale_gate_before_format", complete_paper_source())
+    (output / "final_paper.docx").unlink()
     marker = output / "qa" / "evidence_gate_test_input.json"
     write_json(marker, {"status": "changed_after_gate"})
 
@@ -992,8 +1260,9 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
     }
     for skill in sorted(expected):
         text = (CLAUDE_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
-        assert_true("## 全局流程协作约束（长对话防漂移）" in text, f"{skill} should include global workflow contract")
-        assert_true(f"workflow_guard.py --skill {skill}" in text, f"{skill} should call workflow guard with its own skill name")
+        assert_true("workflow_guard.py" in text, f"{skill} should use the workflow guard")
+        if skill != "paper-workflow-orchestrator":
+            assert_true(f"workflow_guard.py --skill {skill}" in text, f"{skill} should call workflow guard with its own skill name")
         assert_true("workflow_guard.py --status" in text, f"{skill} should include workflow status recovery command")
         assert_true("paper_output/context/workflow_memory.json" in text, f"{skill} should read workflow memory snapshots")
         assert_true("update_workflow_memory.py" in text, f"{skill} should update workflow memory snapshots after handoff")
@@ -1009,13 +1278,48 @@ def test_skill_docs_are_readable() -> None:
                 assert_true(fragment not in text, f"{rel} contains unreadable fragment: {fragment}")
 
 
+def test_release_packages_are_isolated_and_deterministic() -> None:
+    first = SANDBOX / "release-build-a"
+    second = SANDBOX / "release-build-b"
+    for target in (first, second):
+        result = run([sys.executable, str(BUILD_PACKAGES), "--output-dir", str(target)], REPO_ROOT)
+        assert_true(result.returncode == 0, f"release package build should pass\n{result.stdout}")
+        result = run([sys.executable, str(BUILD_PACKAGES), "--verify", "--output-dir", str(target)], REPO_ROOT)
+        assert_true(result.returncode == 0, f"release package verification should pass\n{result.stdout}")
+
+    archives = {
+        "Codex": "MathModel-Skill-Codex.zip",
+        "Claude": "MathModel-Skill-Claude-Code.zip",
+        "Trae": "MathModel-Skill-Trae.zip",
+    }
+    for name in archives.values():
+        assert_true((first / name).read_bytes() == (second / name).read_bytes(), f"{name} should be byte-for-byte deterministic")
+    assert_true((first / "SHA256SUMS.txt").read_bytes() == (second / "SHA256SUMS.txt").read_bytes(), "checksum manifests should be deterministic")
+
+    with zipfile.ZipFile(first / archives["Codex"]) as archive:
+        names = set(archive.namelist())
+        assert_true(any(path.startswith(".agents/skills/") for path in names), "Codex archive should use .agents/skills")
+        assert_true(not any(path.startswith("skills/") for path in names), "Codex archive should not retain legacy skills root")
+        assert_true(".agents/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Codex archive should contain edition marker")
+        assert_true("AGENTS.md" not in names and "CLAUDE.md" not in names, "Codex archive should not overwrite root instructions")
+        assert_true(archive.read("VERSION").decode("utf-8").strip() == "2.2.0", "Codex archive should report Standard 2.2.0")
+    with zipfile.ZipFile(first / archives["Claude"]) as archive:
+        names = set(archive.namelist())
+        assert_true(".claude/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Claude archive should contain edition marker")
+        assert_true("CLAUDE.md" not in names and "AGENTS.md" not in names, "Claude archive should not overwrite root instructions")
+    with zipfile.ZipFile(first / archives["Trae"]) as archive:
+        names = set(archive.namelist())
+        assert_true(".trae/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Trae archive should contain edition marker")
+        assert_true("CLAUDE.md" not in names and "AGENTS.md" not in names, "Trae archive should not overwrite root instructions")
+
+
 def test_platform_packages_stay_synced() -> None:
     for claude_skill in sorted(CLAUDE_SKILLS.glob("*/SKILL.md")):
         skill = claude_skill.parent.name
         claude_text = claude_skill.read_text(encoding="utf-8")
         codex_text = (CODEX_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
         trae_text = (TRAE_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
-        assert_true(codex_text == claude_text.replace(".claude/skills", "skills"), f"codex SKILL.md drift: {skill}")
+        assert_true(codex_text == claude_text.replace(".claude/skills", ".agents/skills"), f"codex SKILL.md drift: {skill}")
         assert_true(trae_text == claude_text.replace(".claude/skills", ".trae/skills"), f"trae SKILL.md drift: {skill}")
 
     def tracked_payload_files(root: Path) -> set[Path]:
@@ -1046,7 +1350,7 @@ def test_platform_packages_stay_synced() -> None:
             assert_true(codex_path.read_bytes() == claude_bytes, f"codex binary payload drift: {rel}")
             assert_true(trae_path.read_bytes() == claude_bytes, f"trae binary payload drift: {rel}")
             continue
-        assert_true(codex_text == claude_text.replace(".claude/skills", "skills"), f"codex payload drift: {rel}")
+        assert_true(codex_text == claude_text.replace(".claude/skills", ".agents/skills"), f"codex payload drift: {rel}")
         assert_true(trae_text == claude_text.replace(".claude/skills", ".trae/skills"), f"trae payload drift: {rel}")
 
 
@@ -1054,6 +1358,7 @@ def main() -> int:
     setup_sandbox.main()
     tests = [
         test_preflight,
+        test_preflight_detects_modern_and_legacy_mixed_installations,
         test_missing_pypdf,
         test_robust_loader_and_workflow_guard,
         test_orchestrator_guard_allows_fresh_entry,
@@ -1063,6 +1368,11 @@ def main() -> int:
         test_workflow_status_recovery_across_stages,
         test_workflow_memory_snapshot,
         test_workflow_status_complete_after_s8,
+        test_authoring_auto_modes_and_global_fallback,
+        test_authoring_section_micro_repair_and_block,
+        test_authoring_evidence_assembly_and_hash_invalidation,
+        test_authoring_rejects_formula_placeholder_duplicate_and_escape,
+        test_legacy_and_quickstart_outputs_are_isolated,
         test_format_gate,
         test_format_formal_docx_after_evidence_gate,
         test_check_paper_format_passes_complete_docx,
@@ -1087,6 +1397,7 @@ def main() -> int:
         test_workflow_guard_rejects_stale_format_report,
         test_skill_docs_have_workflow_guard_contract,
         test_skill_docs_are_readable,
+        test_release_packages_are_isolated_and_deterministic,
         test_platform_packages_stay_synced,
     ]
     for test in tests:

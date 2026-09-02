@@ -7,19 +7,19 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
 TARGETS = (
-    (REPO_ROOT / "packages" / "codex" / "skills", ".claude/skills", "skills"),
-    (REPO_ROOT / "packages" / "trae" / ".trae" / "skills", ".claude/skills", ".trae/skills"),
+    (REPO_ROOT / "packages" / "codex" / ".agents" / "skills", ".claude/skills", ".agents/skills", True),
+    (REPO_ROOT / "packages" / "trae" / ".trae" / "skills", ".claude/skills", ".trae/skills", False),
 )
-SKIP_PARTS = {"__pycache__", "agents"}
+SKIP_PARTS = {"__pycache__"}
 
 
-def payload_files(root: Path) -> dict[Path, Path]:
+def payload_files(root: Path, *, include_agents: bool) -> dict[Path, Path]:
     result: dict[Path, Path] = {}
     for path in root.rglob("*"):
         if not path.is_file():
             continue
         relative = path.relative_to(root)
-        if any(part in SKIP_PARTS for part in relative.parts):
+        if any(part in SKIP_PARTS for part in relative.parts) or (not include_agents and "agents" in relative.parts):
             continue
         result[relative] = path
     return result
@@ -31,20 +31,22 @@ def transformed_bytes(path: Path, source_prefix: str, target_prefix: str) -> byt
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError:
         return data
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     return text.replace(source_prefix, target_prefix).encode("utf-8")
 
 
 def normalized_existing_bytes(path: Path) -> bytes:
     data = path.read_bytes()
     try:
-        return data.decode("utf-8-sig").encode("utf-8")
+        text = data.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
+        return text.encode("utf-8")
     except UnicodeDecodeError:
         return data
 
 
-def sync_target(target_root: Path, source_prefix: str, target_prefix: str, check: bool) -> list[str]:
-    source_files = payload_files(SOURCE_ROOT)
-    target_files = payload_files(target_root) if target_root.exists() else {}
+def sync_target(target_root: Path, source_prefix: str, target_prefix: str, include_agents: bool, check: bool) -> list[str]:
+    source_files = payload_files(SOURCE_ROOT, include_agents=include_agents)
+    target_files = payload_files(target_root, include_agents=include_agents) if target_root.exists() else {}
     failures: list[str] = []
 
     for relative, source_path in source_files.items():
@@ -83,8 +85,8 @@ def main() -> int:
         raise FileNotFoundError(f"Missing canonical skill root: {SOURCE_ROOT}")
 
     failures: list[str] = []
-    for target_root, source_prefix, target_prefix in TARGETS:
-        failures.extend(sync_target(target_root, source_prefix, target_prefix, args.check))
+    for target_root, source_prefix, target_prefix, include_agents in TARGETS:
+        failures.extend(sync_target(target_root, source_prefix, target_prefix, include_agents, args.check))
 
     if failures:
         for failure in failures:
