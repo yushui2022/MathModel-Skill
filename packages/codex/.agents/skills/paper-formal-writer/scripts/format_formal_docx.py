@@ -61,7 +61,7 @@ def rel(path: Path) -> str:
 
 
 def resolve_path(path_text: str) -> Path:
-    normalized = path_text.strip().strip("<>").replace("/", "\\")
+    normalized = path_text.strip().strip("<>").replace("\\", "/")
     path = Path(normalized)
     if path.is_absolute():
         return path
