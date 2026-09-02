@@ -30,13 +30,15 @@ def transformed_bytes(path: Path) -> bytes:
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError:
         return data
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     return text.replace(".claude/skills", ".agents/skills").encode("utf-8")
 
 
 def normalized_bytes(path: Path) -> bytes:
     data = path.read_bytes()
     try:
-        return data.decode("utf-8-sig").encode("utf-8")
+        text = data.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
+        return text.encode("utf-8")
     except UnicodeDecodeError:
         return data
 

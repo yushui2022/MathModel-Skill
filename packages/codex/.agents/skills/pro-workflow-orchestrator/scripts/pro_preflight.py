@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import platform
 import shutil
@@ -11,11 +12,12 @@ from pro_contracts import contract, hash_paths, output_root, read_json, sha256_f
 
 
 RECOMMENDED_MODELS = ("claude fable 5", "fable 5", "gpt-5.6-sol", "gpt 5.6 sol")
-FORBIDDEN_SKILLS = {
-    "paper-workflow-orchestrator",
-    "paper-micro-unit-generator",
-    "modeling-paper-rubric-and-model-selector",
-    "mathmodel-lite",
+EXPECTED_EDITION = "pro"
+SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".agents/skills", ".trae/skills")
+LEGACY_ENTRY_EDITIONS = {
+    "paper-workflow-orchestrator": "standard",
+    "mathmodel-lite": "lite",
+    "pro-workflow-orchestrator": "pro",
 }
 
 
@@ -48,15 +50,38 @@ def find_libreoffice() -> str | None:
     return None
 
 
-def mixed_installations(project_root: Path) -> list[str]:
-    found: list[str] = []
-    for skill_root in (project_root / ".claude" / "skills", project_root / ".agents" / "skills"):
+def mathmodel_installations(project_root: Path) -> list[dict[str, str | None]]:
+    found: list[dict[str, str | None]] = []
+    for root_text in SKILL_ROOTS:
+        skill_root = project_root / Path(root_text)
         if not skill_root.is_dir():
             continue
-        for child in skill_root.iterdir():
-            if child.is_dir() and child.name in FORBIDDEN_SKILLS:
-                found.append(child.relative_to(project_root).as_posix())
-    return sorted(found)
+        for child in sorted(path for path in skill_root.iterdir() if path.is_dir()):
+            marker_path = child / "MATHMODEL_EDITION.json"
+            marker: dict[str, object] = {}
+            marker_error: str | None = None
+            if marker_path.is_file():
+                try:
+                    value = json.loads(marker_path.read_text(encoding="utf-8"))
+                    marker = value if isinstance(value, dict) else {}
+                    if marker.get("product") not in (None, "", "MathModel-Skill"):
+                        continue
+                except Exception as exc:
+                    marker_error = f"{type(exc).__name__}: {exc}"
+            legacy_edition = LEGACY_ENTRY_EDITIONS.get(child.name)
+            edition = str(marker.get("edition") or legacy_edition or "").strip().lower()
+            if edition not in {"standard", "lite", "pro"}:
+                continue
+            found.append({
+                "edition": edition,
+                "version": str(marker.get("version") or "legacy-unmarked"),
+                "entry_skill": str(marker.get("entry_skill") or child.name),
+                "skill_root": root_text,
+                "path": child.relative_to(project_root).as_posix(),
+                "marker": marker_path.relative_to(project_root).as_posix() if marker_path.is_file() else None,
+                "marker_error": marker_error,
+            })
+    return found
 
 
 def main() -> int:
@@ -74,16 +99,24 @@ def main() -> int:
     out = output_root(project_root, args.output_root)
     problem_root = project_root / "problem_files"
     files = sorted((path for path in problem_root.rglob("*") if path.is_file()), key=lambda p: p.as_posix()) if problem_root.is_dir() else []
-    installed_conflicts = mixed_installations(project_root)
+    installations = mathmodel_installations(project_root)
+    editions = sorted({str(item["edition"]) for item in installations})
+    installed_conflicts = [item for item in installations if item["edition"] != EXPECTED_EDITION]
     model_recommended = any(token in args.model.casefold() for token in RECOMMENDED_MODELS)
     warnings = [] if model_recommended else [
         "The declared model is outside the recommended Fable 5 / GPT-5.6 Sol Ultra profile; Pro will continue without reducing its gates."
     ]
+    versions = sorted({str(item["version"]) for item in installations if item["edition"] == EXPECTED_EDITION})
+    if len(versions) > 1:
+        warnings.append("Multiple Pro versions are installed: " + ", ".join(versions))
     errors: list[str] = []
     if not files:
         errors.append("problem_files/ has no readable task or attachment files")
     if installed_conflicts:
-        errors.append("mixed MathModel editions detected: " + ", ".join(installed_conflicts))
+        errors.append("mixed MathModel editions detected: " + ", ".join(str(item["path"]) for item in installed_conflicts))
+    for item in installations:
+        if item.get("marker_error"):
+            errors.append(f"unreadable edition marker {item['marker']}: {item['marker_error']}")
 
     out.mkdir(parents=True, exist_ok=True)
     for relative in (
@@ -114,7 +147,7 @@ def main() -> int:
         producer_role="p0-capability-preflight",
         status="PASS" if not errors else "BLOCKED",
         input_hashes={"input_manifest.json": sha256_file(out / "input_manifest.json")},
-        version="3.0.0-pro.1",
+        version="3.0.0-pro.2",
         platform=args.platform,
         declared_model=args.model,
         recommended_model=model_recommended,
@@ -129,6 +162,11 @@ def main() -> int:
             "libreoffice": find_libreoffice(),
             "multi_agent": args.multi_agent,
             "network": args.network,
+        },
+        mathmodel_installation={
+            "expected_edition": EXPECTED_EDITION,
+            "detected_editions": editions,
+            "installations": installations,
         },
         warnings=warnings,
         errors=errors,

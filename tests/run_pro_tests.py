@@ -164,16 +164,35 @@ class ProSkillTests(unittest.TestCase):
         config = json.loads((root / "pro_config.json").read_text(encoding="utf-8"))
         self.assertFalse(config["recommended_model"])
         self.assertTrue(config["warnings"])
-        mixed = self.temp / ".agents" / "skills" / "mathmodel-lite"
-        mixed.mkdir(parents=True)
-        completed = run(
-            sys.executable, PREFLIGHT_SCRIPT,
-            "--project-root", self.temp,
-            "--platform", "codex",
-            "--model", "gpt-5.6-sol",
-        )
-        self.assertNotEqual(completed.returncode, 0)
-        self.assertIn("mixed MathModel editions", completed.stdout)
+        self.assertEqual(config["version"], "3.0.0-pro.2")
+        cases = [
+            ("skills", "paper-workflow-orchestrator", None),
+            (".agents/skills", "mathmodel-lite", None),
+            (".codex/skills", "custom-standard", "standard"),
+            (".claude/skills", "custom-lite", "lite"),
+            (".trae/skills", "paper-workflow-orchestrator", None),
+        ]
+        for root_text, entry_name, marker_edition in cases:
+            mixed = self.temp / Path(root_text) / entry_name
+            mixed.mkdir(parents=True)
+            if marker_edition:
+                (mixed / "MATHMODEL_EDITION.json").write_text(json.dumps({
+                    "product": "MathModel-Skill",
+                    "edition": marker_edition,
+                    "version": "test",
+                    "entry_skill": entry_name,
+                }), encoding="utf-8")
+            else:
+                (mixed / "SKILL.md").write_text(f"---\nname: {entry_name}\n---\n", encoding="utf-8")
+            completed = run(
+                sys.executable, PREFLIGHT_SCRIPT,
+                "--project-root", self.temp,
+                "--platform", "codex",
+                "--model", "gpt-5.6-sol",
+            )
+            self.assertNotEqual(completed.returncode, 0, root_text)
+            self.assertIn("mixed MathModel editions", completed.stdout)
+            shutil.rmtree(mixed)
 
     def test_checkpoints_cannot_skip_and_hash_change_invalidates_downstream(self) -> None:
         root = self.preflight("gpt-5.6-sol")
@@ -403,7 +422,12 @@ class ProSkillTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as bundle:
                 names = bundle.namelist()
                 self.assertIn("VERSION", names)
+                self.assertIn("LICENSE", names)
                 self.assertIn("MATHMODEL_BUILD.json", names)
+                marker_name = next(name for name in names if name.endswith("pro-workflow-orchestrator/MATHMODEL_EDITION.json"))
+                marker = json.loads(bundle.read(marker_name).decode("utf-8"))
+                self.assertEqual(marker["edition"], "pro")
+                self.assertEqual(marker["version"], "3.0.0-pro.2")
                 self.assertNotIn("AGENTS.md", names)
                 self.assertNotIn("CLAUDE.md", names)
                 self.assertFalse(any(name.startswith(".trae/") or "mathmodel-lite" in name or "paper-workflow-orchestrator" in name for name in names))

@@ -31,6 +31,7 @@ SPECS = (
     PackageSpec("Pro Codex", "MathModel-Skill-Pro-Codex.zip", REPO_ROOT / "packages" / "codex" / ".agents", Path(".agents")),
 )
 COMMON_FILES = (
+    (REPO_ROOT / "LICENSE", Path("LICENSE")),
     (REPO_ROOT / "README.md", Path("README-MathModel-Skill-Pro.md")),
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
     (REPO_ROOT / "docs" / "pro-start-prompt.md", Path("START_HERE.md")),
@@ -49,6 +50,15 @@ def should_skip(path: Path) -> bool:
     return path.name in EXCLUDED_FILES or path.suffix.lower() in EXCLUDED_SUFFIXES or any(part in EXCLUDED_DIRS for part in path.parts)
 
 
+def normalized_source_bytes(path: Path) -> bytes:
+    data = path.read_bytes()
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return data
+    return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+
+
 def source_entries(spec: PackageSpec) -> dict[str, bytes]:
     if not spec.source_root.is_dir():
         raise FileNotFoundError(f"Missing package root: {spec.source_root}")
@@ -56,11 +66,11 @@ def source_entries(spec: PackageSpec) -> dict[str, bytes]:
     for path in sorted((item for item in spec.source_root.rglob("*") if item.is_file()), key=lambda item: item.as_posix().casefold()):
         relative = path.relative_to(spec.source_root)
         if not should_skip(relative):
-            entries[(spec.archive_root / relative).as_posix()] = path.read_bytes()
+            entries[(spec.archive_root / relative).as_posix()] = normalized_source_bytes(path)
     for source, target in COMMON_FILES:
         if not source.is_file():
             raise FileNotFoundError(f"Missing package document: {source}")
-        entries[target.as_posix()] = source.read_bytes()
+        entries[target.as_posix()] = normalized_source_bytes(source)
     entries["VERSION"] = (version() + "\n").encode("utf-8")
     return dict(sorted(entries.items()))
 

@@ -5,7 +5,7 @@
 
 ### 不计成本、强调独立复算与可审计证据的高算力数学建模工作流
 
-[![Version](https://img.shields.io/badge/version-3.0.0--pro.1-111827)](#安装)
+[![Version](https://img.shields.io/badge/version-3.0.0--pro.2-111827)](#安装)
 [![Skills](https://img.shields.io/badge/skills-10-2563eb)](#技能组成)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code-16a34a)](#安装)
 [![Output](https://img.shields.io/badge/output-DOCX%20%2B%20PDF-b91c1c)](#交付门禁)
@@ -73,7 +73,8 @@ Pro 可自动检索公开资源，优先政府、国际组织、官方数据库�
 | Claude Code | `dist/MathModel-Skill-Pro-Claude-Code.zip` | `.claude/skills/` |
 
 安装包不会写入或覆盖项目根目录的 `AGENTS.md`、`CLAUDE.md`。每个 ZIP 包含
-`VERSION`、`MATHMODEL_BUILD.json` 逐文件哈希、Pro README、依赖和启动提示词。
+`VERSION`、`LICENSE`、`MATHMODEL_EDITION.json`、`MATHMODEL_BUILD.json`
+逐文件哈希、Pro README、依赖和启动提示词。
 
 Python 需要 3.11 或 3.12。安装依赖：
 
@@ -145,3 +146,7 @@ CI 在 Windows、Ubuntu、macOS 的 Python 3.11/3.12 上验证契约、路径、
 平台同步和确定性 ZIP。四类真实赛题的前向验收矩阵见
 [Forward evaluation](docs/forward-evaluation.md)；真实模型运行结果应在首次 Pro Release
 前单独归档，本分支首次推送不创建 Tag 或 Release。
+
+## 许可证
+
+MIT License，Copyright (c) 2026 yushui2022。
