@@ -13,6 +13,8 @@ from pro_contracts import approval_is_fresh, contract, output_root, read_json, s
 CONTRACTS = (
     "pro_config.json",
     "input_manifest.json",
+    "instruction_manifest.json",
+    "instruction_audit.json",
     "checkpoint_ledger.json",
     "problem_consensus.json",
     "source_ledger.json",
@@ -238,7 +240,8 @@ def main() -> int:
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--output-root", type=Path)
     args = parser.parse_args()
-    root = output_root(args.project_root.resolve(), args.output_root)
+    project_root = args.project_root.resolve()
+    root = output_root(project_root, args.output_root)
     errors: list[str] = []
     for name in CONTRACTS:
         errors.extend(validate_envelope(root / name, {"PASS", "APPROVED"}))
@@ -255,6 +258,9 @@ def main() -> int:
         entry = ledger.get("checkpoints", {}).get(number, {})
         if entry.get("status") != "APPROVED" or not approval_is_fresh(root, entry):
             errors.append(f"checkpoint {number} is not freshly approved")
+    from pro_checkpoint import validate_instruction_audit
+
+    errors.extend(validate_instruction_audit(project_root, root))
     if "source_ledger.json" in data:
         errors.extend(check_sources(data["source_ledger.json"]))
     if "candidate_routes.json" in data and "tournament_report.json" in data:
@@ -281,6 +287,7 @@ def main() -> int:
         errors=sorted(set(errors)),
         checks={
             "checkpoints": "PASS" if not any("checkpoint" in item for item in errors) else "BLOCKED",
+            "instructions": "PASS" if not any("instruction" in item for item in errors) else "BLOCKED",
             "research": "PASS" if not any("source" in item or "claim" in item for item in errors) else "BLOCKED",
             "evidence": "PASS" if not any(token in item for item in errors for token in ("experiment", "replication", "robustness", "ablation", "frozen")) else "BLOCKED",
             "review": "PASS" if not any("review" in item or "Critical/Major" in item for item in errors) else "BLOCKED",

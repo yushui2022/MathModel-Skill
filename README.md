@@ -5,20 +5,20 @@
 
 ### 不计成本、强调独立复算与可审计证据的高算力数学建模工作流
 
-[![Version](https://img.shields.io/badge/version-3.0.0--pro.2-111827)](#安装)
+[![Version](https://img.shields.io/badge/version-3.1.0--pro.1-111827)](#安装)
 [![Skills](https://img.shields.io/badge/skills-10-2563eb)](#技能组成)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code-16a34a)](#安装)
 [![Output](https://img.shields.io/badge/output-DOCX%20%2B%20PDF-b91c1c)](#交付门禁)
 
 </div>
 
-> 当前是永久独立的 `pro` 分支。推荐 **Claude Fable 5** 或
-> **GPT-5.6 Sol Ultra** 使用。其他模型会收到能力警告但仍可运行，Pro 不会因此
-> 降低候选数、复算、审稿或交付门禁。
+> 当前是永久独立的 `pro` 分支。首选 **GPT-6 Astra** 或
+> **Claude Fable 5.1**；同时支持 Claude Opus 5、Sonnet 5、Fable 5 和
+> GPT-5.6 Sol。其他模型会收到能力警告但仍可运行，Pro 不会因此降低门禁。
 
 | 模型与目标 | 建议版本 | 分支 |
 |---|---|---|
-| Fable 5 / GPT-5.6 Sol Ultra，允许高计算成本，追求最高可验证质量 | **Pro（当前分支）** | `pro` |
+| GPT-6 Astra / Claude Fable 5.1 等前沿模型，允许高计算成本，追求最高可验证质量 | **Pro（当前分支）** | `pro` |
 | 强模型、正式竞赛、希望控制复杂度 | Standard（默认分支） | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
 | 普通或较旧模型、短上下文、优先简单稳定 | Lite | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
 
@@ -31,6 +31,29 @@ Pro 预检发现混装时会阻止运行。Pro 使用独立 `paper_output_pro/`�
     <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
   </a>
 </p>
+
+## 前沿模型适配
+
+Pro 3.1 使用可维护的模型能力档案，不再仅靠模型名称片段判断。P0 会记录规范模型 ID、
+支持档位、推理档位别名、分阶段建议、官方来源和运行环境能力：
+
+| 档位 | 模型 | Pro 策略 |
+|---|---|---|
+| 首选 | GPT-6 Astra、Claude Fable 5.1 | 建模与评审优先 `max`，长篇写作优先 `high` |
+| 支持 | Claude Opus 5、Sonnet 5、Fable 5、GPT-5.6 Sol | 完整 P0-P9，不降低候选、复算或门禁 |
+| 未识别 | 其他或更新型号 | 警告并核对官方能力，仍执行完整 Pro 工作流 |
+
+能力档案于 `2026-09-04` 依据
+[OpenAI GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra)、
+[OpenAI 模型指南](https://developers.openai.com/api/docs/guides/latest-model)、
+[Claude Fable 5.1](https://www.anthropic.com/claude/fable) 和
+[Claude 模型状态](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+核验。这里的“支持”表示配置与门禁兼容；只有真实赛题前向测试通过后才标记为
+Pro-qualified。
+
+P0 同时生成项目指令与所有 Pro `SKILL.md` 的哈希清单。检查点 1 前必须完成
+`instruction_audit.json`，解决指令冲突并锁定“三个检查点之外自动推进”的执行契约。
+支持并行/异步工具时会批量发起独立任务；不支持时按隔离上下文顺序执行。
 
 ## 三个检查点
 
@@ -71,7 +94,7 @@ Pro 可自动检索公开资源，优先政府、国际组织、官方数据库�
 
 ## 安装
 
-首版只支持 Codex 和 Claude Code，不提供 Trae 包：
+Pro 只支持 Codex 和 Claude Code，不提供 Trae 包：
 
 | 平台 | 安装包 | 安装目录 |
 |---|---|---|
@@ -100,6 +123,8 @@ Windows 默认也会检测 `C:\Program Files\LibreOffice\program\soffice.exe`。
 用户声明模型为 <模型名>，推理档位为 <档位>。
 所有产物只写入 paper_output_pro/，不要读取 Standard/Lite 旧结果。
 在题意与附件分类、模型路线、数值结果与不确定性三个检查点分别停下等待我确认。
+除这三个检查点、缺少用户数据/授权或同类失败连续三次外，持续完成已授权工作。
+读取 P0 模型档案和指令审计；支持并行时批量启动独立角色，主 Agent 继续其他工作。
 只自动使用公开来源；登录、付费、私有或额外授权资源先询问我。
 最终必须通过五角色审稿、DOCX 与 LibreOffice PDF 双门禁，未通过不要称为正式交付。
 ```
@@ -148,8 +173,8 @@ python scripts/build_release_packages.py --clean
 python scripts/build_release_packages.py --verify
 ```
 
-CI 在 Windows、Ubuntu、macOS 的 Python 3.11/3.12 上验证契约、路径、检查点、门禁、
-平台同步和确定性 ZIP。四类真实赛题的前向验收矩阵见
+CI 在 Windows、Ubuntu、macOS 的 Python 3.11/3.12 上验证模型档案、指令审计、
+契约、路径、检查点、门禁、平台同步和确定性 ZIP。四类真实赛题的前向验收矩阵见
 [Forward evaluation](docs/forward-evaluation.md)；真实模型运行结果应在首次 Pro Release
 前单独归档，本分支首次推送不创建 Tag 或 Release。
 

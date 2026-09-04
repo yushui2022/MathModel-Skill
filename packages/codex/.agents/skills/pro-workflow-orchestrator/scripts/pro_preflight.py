@@ -4,14 +4,18 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import sys
+from datetime import date
 from pathlib import Path
 
 from pro_contracts import contract, hash_paths, output_root, read_json, sha256_file, write_json
 
 
-RECOMMENDED_MODELS = ("claude fable 5", "fable 5", "gpt-5.6-sol", "gpt 5.6 sol")
+VERSION = "3.1.0-pro.1"
+MODEL_CATALOG_PATH = Path(__file__).resolve().parents[1] / "references" / "model-profiles.json"
+MODEL_SUFFIXES = {"low", "medium", "high", "xhigh", "max", "ultra", "preview", "latest"}
 EXPECTED_EDITION = "pro"
 SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".agents/skills", ".trae/skills")
 LEGACY_ENTRY_EDITIONS = {
@@ -19,6 +23,127 @@ LEGACY_ENTRY_EDITIONS = {
     "mathmodel-lite": "lite",
     "pro-workflow-orchestrator": "pro",
 }
+
+
+def normalize_model_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+
+
+def normalize_effort(value: str) -> str | None:
+    normalized = re.sub(r"[^a-z0-9]+", "", value.casefold())
+    return None if normalized in {"", "auto", "default", "unspecified", "unknown"} else normalized
+
+
+def load_model_catalog(path: Path = MODEL_CATALOG_PATH) -> dict:
+    catalog = read_json(path)
+    profiles = catalog.get("profiles")
+    if not isinstance(profiles, list) or not profiles:
+        raise ValueError("model profile catalog must contain profiles")
+    profile_ids: set[str] = set()
+    aliases: dict[str, str] = {}
+    required = {
+        "profile_id", "vendor", "display_name", "canonical_model_id", "aliases",
+        "support_tier", "supported_efforts", "phase_effort", "behavior_flags", "official_sources",
+    }
+    for profile in profiles:
+        if not isinstance(profile, dict):
+            raise ValueError("every model profile must be an object")
+        missing = required - set(profile)
+        if missing:
+            raise ValueError(f"invalid model profile: missing {sorted(missing)}")
+        if profile["support_tier"] not in {"preferred", "supported"}:
+            raise ValueError(f"invalid support tier for {profile['profile_id']}")
+        if not isinstance(profile["aliases"], list) or not isinstance(profile["supported_efforts"], list):
+            raise ValueError(f"aliases and supported_efforts must be arrays for {profile['profile_id']}")
+        profile_id = str(profile["profile_id"])
+        if profile_id in profile_ids:
+            raise ValueError(f"duplicate model profile_id: {profile_id}")
+        profile_ids.add(profile_id)
+        for alias in [profile["canonical_model_id"], *profile["aliases"]]:
+            normalized = normalize_model_name(str(alias))
+            owner = aliases.get(normalized)
+            if owner and owner != profile_id:
+                raise ValueError(f"model alias {alias!r} belongs to both {owner} and {profile_id}")
+            aliases[normalized] = profile_id
+    return catalog
+
+
+def match_model_profile(declared_model: str, catalog: dict) -> tuple[dict | None, str | None]:
+    normalized = normalize_model_name(declared_model)
+    candidates: list[tuple[int, dict, str]] = []
+    for profile in catalog["profiles"]:
+        for alias in [profile["canonical_model_id"], *profile["aliases"]]:
+            normalized_alias = normalize_model_name(str(alias))
+            if normalized == normalized_alias:
+                candidates.append((len(normalized_alias), profile, str(alias)))
+                continue
+            prefix = normalized_alias + "-"
+            if normalized.startswith(prefix):
+                suffix = normalized[len(prefix):]
+                if suffix and all(part in MODEL_SUFFIXES or part.isdigit() for part in suffix.split("-")):
+                    candidates.append((len(normalized_alias), profile, str(alias)))
+    if not candidates:
+        return None, None
+    _, profile, matched_alias = max(candidates, key=lambda item: item[0])
+    return profile, matched_alias
+
+
+def reasoning_profile(profile: dict | None, declared_effort: str) -> dict:
+    normalized = normalize_effort(declared_effort)
+    if profile is None:
+        return {
+            "declared_effort": declared_effort,
+            "normalized_effort": normalized,
+            "compatible": None,
+            "profile_recommended_effort": None,
+            "phase_effort": {},
+            "alias_applied": False,
+        }
+    aliases = {normalize_effort(key): value for key, value in profile.get("effort_aliases", {}).items()}
+    canonical = aliases.get(normalized, normalized)
+    supported = set(profile["supported_efforts"])
+    phase_effort = profile["phase_effort"]
+    return {
+        "declared_effort": declared_effort,
+        "normalized_effort": canonical,
+        "compatible": None if canonical is None else canonical in supported,
+        "profile_recommended_effort": phase_effort.get("problem_and_research"),
+        "phase_effort": phase_effort,
+        "alias_applied": canonical != normalized,
+    }
+
+
+def catalog_is_stale(catalog: dict) -> bool:
+    try:
+        verified = date.fromisoformat(str(catalog["verified_on"]))
+        freshness_days = int(catalog.get("catalog_freshness_days", 90))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"invalid model catalog freshness metadata: {exc}") from exc
+    return (date.today() - verified).days > freshness_days
+
+
+def instruction_sources(project_root: Path) -> list[dict[str, str]]:
+    sources: list[dict[str, str]] = []
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        path = project_root / name
+        if path.is_file():
+            sources.append({
+                "locator": f"project://{name}",
+                "scope": "project",
+                "path": name,
+                "sha256": sha256_file(path),
+            })
+    skill_root = Path(__file__).resolve().parents[2]
+    for path in sorted(skill_root.glob("*/SKILL.md"), key=lambda item: item.as_posix()):
+        skill_name = path.parent.name
+        sources.append({
+            "locator": f"skill://{skill_name}/SKILL.md",
+            "scope": "skill",
+            "path": f"{skill_name}/SKILL.md",
+            "skill_name": skill_name,
+            "sha256": sha256_file(path),
+        })
+    return sources
 
 
 def classify(path: Path) -> str:
@@ -93,6 +218,8 @@ def main() -> int:
     parser.add_argument("--reasoning", default="unspecified")
     parser.add_argument("--multi-agent", choices=("available", "unavailable", "unknown"), default="unknown")
     parser.add_argument("--network", choices=("available", "unavailable", "unknown"), default="unknown")
+    parser.add_argument("--parallel-tools", choices=("available", "unavailable", "unknown"), default="unknown")
+    parser.add_argument("--async-tools", choices=("available", "unavailable", "unknown"), default="unknown")
     args = parser.parse_args()
 
     project_root = args.project_root.resolve()
@@ -102,10 +229,24 @@ def main() -> int:
     installations = mathmodel_installations(project_root)
     editions = sorted({str(item["edition"]) for item in installations})
     installed_conflicts = [item for item in installations if item["edition"] != EXPECTED_EDITION]
-    model_recommended = any(token in args.model.casefold() for token in RECOMMENDED_MODELS)
-    warnings = [] if model_recommended else [
-        "The declared model is outside the recommended Fable 5 / GPT-5.6 Sol Ultra profile; Pro will continue without reducing its gates."
-    ]
+    catalog = load_model_catalog()
+    profile, matched_alias = match_model_profile(args.model, catalog)
+    support_tier = str(profile.get("support_tier")) if profile else "unverified"
+    model_recommended = support_tier in {"preferred", "supported"}
+    model_preferred = support_tier == "preferred"
+    effort = reasoning_profile(profile, args.reasoning)
+    warnings: list[str] = []
+    if not model_recommended:
+        warnings.append(
+            "The declared model is outside the verified Pro profiles; Pro will continue without reducing its gates."
+        )
+    if effort["compatible"] is False:
+        warnings.append(
+            f"Reasoning effort {args.reasoning!r} is not listed for {profile['display_name']}; verify the host setting before P1."
+        )
+    stale_catalog = catalog_is_stale(catalog)
+    if stale_catalog:
+        warnings.append("The bundled frontier-model catalog is stale; verify the declared model against current official vendor documentation.")
     versions = sorted({str(item["version"]) for item in installations if item["edition"] == EXPECTED_EDITION})
     if len(versions) > 1:
         warnings.append("Multiple Pro versions are installed: " + ", ".join(versions))
@@ -143,15 +284,90 @@ def main() -> int:
         classification_counts={role: sum(item["role"] == role for item in manifest_files) for role in sorted({item["role"] for item in manifest_files})},
         errors=errors,
     ))
+    execution_policy = {
+        "required_user_stops": ["checkpoint_1", "checkpoint_2", "checkpoint_3"],
+        "continue_between_checkpoints": True,
+        "additional_stop_reasons": [
+            "missing_user_owned_data_or_authorization",
+            "irreversible_external_action_outside_approved_scope",
+            "same_normalized_failure_three_consecutive_times",
+        ],
+        "output_root": "paper_output_pro",
+        "parallel_role_requirements": {
+            "independent_problem_readers_minimum": 3,
+            "candidate_routes_per_subproblem_default": 4,
+            "independent_replication_paths_minimum": 2,
+            "review_board_roles": 5,
+        },
+    }
+    instruction_files = instruction_sources(project_root)
+    instruction_manifest_path = out / "instruction_manifest.json"
+    write_json(instruction_manifest_path, contract(
+        producer_role="p0-instruction-inventory",
+        status="PASS",
+        input_hashes={item["locator"]: item["sha256"] for item in instruction_files},
+        files=instruction_files,
+        precedence=[
+            "platform_system_and_safety",
+            "host_applied_project_instructions",
+            "explicit_user_scope_and_checkpoint_decisions",
+            "pro_workflow_orchestrator",
+            "phase_specific_pro_skills",
+        ],
+        required_execution_contract=execution_policy,
+    ))
+    audit_path = out / "instruction_audit.json"
+    manifest_hash = sha256_file(instruction_manifest_path)
+    existing_audit = read_json(audit_path) if audit_path.is_file() else {}
+    if existing_audit.get("instruction_manifest_sha256") != manifest_hash:
+        write_json(audit_path, contract(
+            producer_role="p0-instruction-auditor",
+            status="PENDING",
+            input_hashes={"instruction_manifest.json": manifest_hash},
+            instruction_manifest_sha256=manifest_hash,
+            reviewed_files=[],
+            conflicts=[],
+            unresolved_conflicts=["instruction audit not completed"],
+            active_execution_contract=execution_policy,
+        ))
+    profile_public = None
+    if profile:
+        profile_public = {key: value for key, value in profile.items() if key not in {"aliases", "effort_aliases"}}
+        profile_public.update({"match_status": "MATCHED", "matched_alias": matched_alias})
+    else:
+        profile_public = {
+            "match_status": "UNVERIFIED",
+            "profile_id": None,
+            "vendor": None,
+            "display_name": args.model,
+            "canonical_model_id": None,
+            "support_tier": "unverified",
+            "behavior_flags": [],
+            "official_sources": [],
+        }
     config = contract(
         producer_role="p0-capability-preflight",
         status="PASS" if not errors else "BLOCKED",
-        input_hashes={"input_manifest.json": sha256_file(out / "input_manifest.json")},
-        version="3.0.0-pro.2",
+        input_hashes={
+            "input_manifest.json": sha256_file(out / "input_manifest.json"),
+            "instruction_manifest.json": manifest_hash,
+            "model-profiles.json": sha256_file(MODEL_CATALOG_PATH),
+        },
+        version=VERSION,
         platform=args.platform,
         declared_model=args.model,
         recommended_model=model_recommended,
+        preferred_model=model_preferred,
+        model_support_status=support_tier.upper(),
+        model_profile=profile_public,
+        model_profile_catalog={
+            "catalog_version": catalog["catalog_version"],
+            "verified_on": catalog["verified_on"],
+            "sha256": sha256_file(MODEL_CATALOG_PATH),
+            "stale": stale_catalog,
+        },
         reasoning_effort=args.reasoning,
+        reasoning_profile=effort,
         checkpoint_mode="required",
         research_policy="public_sources_only_without_explicit_authorization",
         delivery_formats=["docx", "pdf"],
@@ -162,7 +378,10 @@ def main() -> int:
             "libreoffice": find_libreoffice(),
             "multi_agent": args.multi_agent,
             "network": args.network,
+            "parallel_tools": args.parallel_tools,
+            "async_tools": args.async_tools,
         },
+        execution_policy=execution_policy,
         mathmodel_installation={
             "expected_edition": EXPECTED_EDITION,
             "detected_editions": editions,
@@ -181,6 +400,7 @@ def main() -> int:
             checkpoints={str(i): {"status": "PENDING", "decision": None, "decided_at_utc": None, "artifact_hashes": {}, "approval_hash": None} for i in range(1, 4)},
         ))
     print(f"[{'PASS' if not errors else 'BLOCKED'}] Pro preflight: {out}")
+    print(f"[MODEL] {profile_public['display_name']} ({support_tier.upper()})")
     for warning in warnings:
         print(f"[WARNING] {warning}")
     for error in errors:

@@ -7,8 +7,8 @@ timestamps, SHA-256 hashes, and paths relative to the project root or
 
 ## Checkpoint contracts
 
-- Checkpoint 1 freezes `pro_config.json`, `input_manifest.json`, and
-  `problem_consensus.json`.
+- Checkpoint 1 freezes `pro_config.json`, `input_manifest.json`,
+  `instruction_manifest.json`, `instruction_audit.json`, and `problem_consensus.json`.
 - Checkpoint 2 freezes `problem_consensus.json`, `source_ledger.json`,
   `candidate_routes.json`, and `tournament_report.json`.
 - Checkpoint 3 freezes `tournament_report.json`, `experiment_manifest.json`,
@@ -17,6 +17,28 @@ timestamps, SHA-256 hashes, and paths relative to the project root or
   decision, decision time, per-file hashes, and the canonical approval hash.
 - Any changed or missing approved artifact invalidates that checkpoint and all later
   checkpoints. Never copy approval records between projects.
+
+## Model and instruction contracts
+
+`pro_config.json` preserves the user-declared model and effort for compatibility, and
+adds `model_profile`, `reasoning_profile`, `model_profile_catalog`, capabilities, and
+`execution_policy`. A matched profile identifies its canonical model ID, support tier,
+phase effort, behavior flags, and official source URLs. An unknown profile is warned but
+does not reduce any Pro gate.
+
+`instruction_manifest.json` inventories project `AGENTS.md`/`CLAUDE.md` files that are
+present plus every installed Pro `SKILL.md`, with locators and SHA-256 hashes.
+`instruction_audit.json` must contain:
+
+- `instruction_manifest_sha256` equal to the current manifest hash;
+- `reviewed_files` containing every manifest locator and hash exactly once;
+- `conflicts` with the applied resolution for each conflict;
+- an empty `unresolved_conflicts` array;
+- `active_execution_contract` exactly equal to the manifest's
+  `required_execution_contract`.
+
+Adding, removing, or modifying an inventoried instruction invalidates checkpoint 1 and
+all downstream approvals. Re-run P0 and repeat the audit.
 
 ## Required payloads
 

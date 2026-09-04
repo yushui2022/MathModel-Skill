@@ -23,6 +23,7 @@ SOURCE_SCRIPT = CLAUDE_SKILLS / "authoritative-data-harvester" / "scripts" / "va
 REVIEW_SCRIPT = CLAUDE_SKILLS / "pro-review-board" / "scripts" / "validate_review_board.py"
 PREFLIGHT_SCRIPT = ORCHESTRATOR_SCRIPTS / "pro_preflight.py"
 CHECKPOINT_SCRIPT = ORCHESTRATOR_SCRIPTS / "pro_checkpoint.py"
+MODEL_PROFILES = CLAUDE_SKILLS / "pro-workflow-orchestrator" / "references" / "model-profiles.json"
 RENDER_SCRIPT = ORCHESTRATOR_SCRIPTS / "pro_render_pdf.py"
 FREEZE_SCRIPT = ORCHESTRATOR_SCRIPTS / "pro_freeze_evidence.py"
 FORMAT_SCRIPT = ORCHESTRATOR_SCRIPTS / "pro_format_check.py"
@@ -57,6 +58,18 @@ def envelope(role: str, **payload):
 
 
 def write_valid_consensus(root: Path) -> None:
+    manifest = json.loads((root / "instruction_manifest.json").read_text(encoding="utf-8"))
+    write_json(root / "instruction_audit.json", envelope(
+        "p0-instruction-auditor",
+        instruction_manifest_sha256=sha256_file(root / "instruction_manifest.json"),
+        reviewed_files=[
+            {"locator": item["locator"], "sha256": item["sha256"]}
+            for item in manifest["files"]
+        ],
+        conflicts=[],
+        unresolved_conflicts=[],
+        active_execution_contract=manifest["required_execution_contract"],
+    ))
     analyses = []
     for index in range(1, 4):
         path = root / "analysis" / "independent" / f"analysis_{index}.json"
@@ -127,8 +140,8 @@ class ProSkillTests(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.temp, ignore_errors=True)
 
-    def preflight(self, model: str = "ordinary-model") -> Path:
-        (self.temp / "problem_files").mkdir(parents=True)
+    def preflight(self, model: str = "ordinary-model", reasoning: str = "ultra") -> Path:
+        (self.temp / "problem_files").mkdir(parents=True, exist_ok=True)
         (self.temp / "problem_files" / "赛题.pdf").write_bytes(b"fixture-problem")
         completed = run(
             sys.executable,
@@ -136,9 +149,11 @@ class ProSkillTests(unittest.TestCase):
             "--project-root", self.temp,
             "--platform", "codex",
             "--model", model,
-            "--reasoning", "ultra",
+            "--reasoning", reasoning,
             "--multi-agent", "available",
             "--network", "available",
+            "--parallel-tools", "available",
+            "--async-tools", "available",
         )
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
         return self.temp / "paper_output_pro"
@@ -159,12 +174,40 @@ class ProSkillTests(unittest.TestCase):
         self.assertEqual({item["category"] for item in cases}, {"prediction", "optimization", "graph", "open_data"})
         self.assertTrue(all(len(item.get("required_evidence", [])) >= 5 for item in cases))
 
+    def test_latest_frontier_model_profiles_are_selected(self) -> None:
+        cases = [
+            ("GPT-6 Astra", "openai-gpt-6-astra", "gpt-6-astra", "PREFERRED"),
+            ("Claude Fable 5.1", "anthropic-claude-fable-5-1", "claude-fable-5-1", "PREFERRED"),
+            ("claude-opus-5", "anthropic-claude-opus-5", "claude-opus-5", "SUPPORTED"),
+            ("Claude Sonnet 5", "anthropic-claude-sonnet-5", "claude-sonnet-5", "SUPPORTED"),
+            ("Claude Fable 5", "anthropic-claude-fable-5", "claude-fable-5", "SUPPORTED"),
+            ("gpt-5.6-sol ultra", "openai-gpt-5-6-sol", "gpt-5.6-sol", "SUPPORTED"),
+        ]
+        for declared, profile_id, canonical_id, status in cases:
+            with self.subTest(model=declared):
+                root = self.preflight(declared)
+                config = json.loads((root / "pro_config.json").read_text(encoding="utf-8"))
+                self.assertTrue(config["recommended_model"])
+                self.assertEqual(config["model_support_status"], status)
+                self.assertEqual(config["model_profile"]["profile_id"], profile_id)
+                self.assertEqual(config["model_profile"]["canonical_model_id"], canonical_id)
+                self.assertEqual(config["reasoning_profile"]["normalized_effort"], "max")
+                self.assertTrue(config["reasoning_profile"]["compatible"])
+
+        catalog = json.loads(MODEL_PROFILES.read_text(encoding="utf-8"))
+        self.assertEqual(len(catalog["profiles"]), 6)
+        self.assertEqual(
+            {item["canonical_model_id"] for item in catalog["profiles"] if item["support_tier"] == "preferred"},
+            {"gpt-6-astra", "claude-fable-5-1"},
+        )
+
     def test_preflight_warns_ordinary_model_and_blocks_mixed_install(self) -> None:
         root = self.preflight()
         config = json.loads((root / "pro_config.json").read_text(encoding="utf-8"))
         self.assertFalse(config["recommended_model"])
         self.assertTrue(config["warnings"])
-        self.assertEqual(config["version"], "3.0.0-pro.2")
+        self.assertEqual(config["version"], "3.1.0-pro.1")
+        self.assertEqual(config["model_support_status"], "UNVERIFIED")
         cases = [
             ("skills", "paper-workflow-orchestrator", None),
             (".agents/skills", "mathmodel-lite", None),
@@ -204,6 +247,32 @@ class ProSkillTests(unittest.TestCase):
         original = json.loads((root / "problem_consensus.json").read_text(encoding="utf-8"))
         original["consensus"].append("changed")
         write_json(root / "problem_consensus.json", original)
+        stale = run(sys.executable, CHECKPOINT_SCRIPT, "validate", "--project-root", self.temp)
+        self.assertNotEqual(stale.returncode, 0)
+        ledger = json.loads((root / "checkpoint_ledger.json").read_text(encoding="utf-8"))
+        self.assertEqual(ledger["checkpoints"]["1"]["status"], "PENDING")
+
+    def test_instruction_audit_is_required_and_new_instruction_invalidates_checkpoint(self) -> None:
+        checkpoint = load_module("checkpoint_path_test", CHECKPOINT_SCRIPT)
+        self.assertIsNone(checkpoint.instruction_source_path(
+            self.temp, {"scope": "project", "path": "../outside.md"},
+        ))
+        self.assertIsNone(checkpoint.instruction_source_path(
+            self.temp, {"scope": "skill", "skill_name": "../outside"},
+        ))
+        root = self.preflight("gpt-6-astra")
+        write_valid_consensus(root)
+        audit = json.loads((root / "instruction_audit.json").read_text(encoding="utf-8"))
+        audit["unresolved_conflicts"] = ["conflicting output root"]
+        write_json(root / "instruction_audit.json", audit)
+        blocked = run(sys.executable, CHECKPOINT_SCRIPT, "approve", "--checkpoint", "1", "--project-root", self.temp)
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn("unresolved conflicts", blocked.stdout)
+
+        write_valid_consensus(root)
+        approved = run(sys.executable, CHECKPOINT_SCRIPT, "approve", "--checkpoint", "1", "--project-root", self.temp)
+        self.assertEqual(approved.returncode, 0, approved.stdout + approved.stderr)
+        (self.temp / "AGENTS.md").write_text("# Added after approval\n", encoding="utf-8")
         stale = run(sys.executable, CHECKPOINT_SCRIPT, "validate", "--project-root", self.temp)
         self.assertNotEqual(stale.returncode, 0)
         ledger = json.loads((root / "checkpoint_ledger.json").read_text(encoding="utf-8"))
@@ -427,7 +496,9 @@ class ProSkillTests(unittest.TestCase):
                 marker_name = next(name for name in names if name.endswith("pro-workflow-orchestrator/MATHMODEL_EDITION.json"))
                 marker = json.loads(bundle.read(marker_name).decode("utf-8"))
                 self.assertEqual(marker["edition"], "pro")
-                self.assertEqual(marker["version"], "3.0.0-pro.2")
+                self.assertEqual(marker["version"], "3.1.0-pro.1")
+                self.assertTrue(any(name.endswith("references/model-profiles.json") for name in names))
+                self.assertTrue(any(name.endswith("references/frontier-model-guidance.md") for name in names))
                 self.assertNotIn("AGENTS.md", names)
                 self.assertNotIn("CLAUDE.md", names)
                 self.assertFalse(any(name.startswith(".trae/") or "mathmodel-lite" in name or "paper-workflow-orchestrator" in name for name in names))

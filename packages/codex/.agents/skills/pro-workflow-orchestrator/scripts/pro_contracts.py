@@ -21,6 +21,8 @@ CHECKPOINT_ARTIFACTS = {
     "1": (
         "pro_config.json",
         "input_manifest.json",
+        "instruction_manifest.json",
+        "instruction_audit.json",
         "problem_consensus.json",
     ),
     "2": (

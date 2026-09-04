@@ -23,9 +23,14 @@ def main() -> int:
     root = output_root(project_root, args.output_root)
     errors: list[str] = []
     ledger = read_json(root / "checkpoint_ledger.json")
-    checkpoint = ledger.get("checkpoints", {}).get("3", {})
-    if checkpoint.get("status") != "APPROVED" or not approval_is_fresh(root, checkpoint):
-        errors.append("checkpoint 3 must be freshly approved")
+    checkpoints = ledger.get("checkpoints", {})
+    for number in ("1", "2", "3"):
+        checkpoint = checkpoints.get(number, {})
+        if checkpoint.get("status") != "APPROVED" or not approval_is_fresh(root, checkpoint):
+            errors.append(f"checkpoint {number} must be freshly approved")
+    from pro_checkpoint import validate_instruction_audit
+
+    errors.extend(validate_instruction_audit(project_root, root))
     for name in REQUIRED_REPORTS:
         path = root / name
         if not path.is_file():
@@ -55,7 +60,8 @@ def main() -> int:
         if base.is_dir():
             tracked.extend(path for path in base.rglob("*") if path.is_file())
     for name in (
-        "pro_config.json", "input_manifest.json", "problem_consensus.json", "source_ledger.json",
+        "pro_config.json", "input_manifest.json", "instruction_manifest.json", "instruction_audit.json",
+        "problem_consensus.json", "source_ledger.json",
         "candidate_routes.json", "tournament_report.json", *REQUIRED_REPORTS, "claim_evidence_map.json",
     ):
         path = root / name
@@ -79,12 +85,12 @@ def main() -> int:
         producer_role="p6-evidence-freezer",
         status="PASS",
         input_hashes=file_hashes,
-        checkpoint_3_approval_hash=checkpoint["approval_hash"],
+        checkpoint_3_approval_hash=checkpoints["3"]["approval_hash"],
         file_hashes=file_hashes,
         claims=claims,
         reverse_index={key: sorted(set(value)) for key, value in sorted(reverse_index.items())},
         snapshot_sha256=canonical_json_hash({
-            "checkpoint_3_approval_hash": checkpoint["approval_hash"],
+            "checkpoint_3_approval_hash": checkpoints["3"]["approval_hash"],
             "file_hashes": file_hashes,
             "claims": claims,
             "reverse_index": reverse_index,

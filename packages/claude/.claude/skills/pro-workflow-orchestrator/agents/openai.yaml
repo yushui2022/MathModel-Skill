@@ -1,4 +1,4 @@
 interface:
   display_name: "MathModel Pro Orchestrator"
-  short_description: "高算力数学建模三检查点总控"
-  default_prompt: "Use $pro-workflow-orchestrator to run the P0-P9 Pro workflow. Stop for user approval at all three checkpoints."
+  short_description: "Astra 与 Claude 5 高算力数学建模总控"
+  default_prompt: "Use $pro-workflow-orchestrator to run the P0-P9 Pro workflow. Pause only at the three required user checkpoints; continue autonomously between them."

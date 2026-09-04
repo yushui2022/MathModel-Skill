@@ -50,7 +50,8 @@ def main() -> int:
         failure_history.append({"signature": signature, "message": args.failure, "at_utc": utc_now(), "consecutive_count": prior_count + 1})
     ledger = load(root / "checkpoint_ledger.json")
     tracked_names = (
-        "pro_config.json", "input_manifest.json", "problem_consensus.json", "source_ledger.json",
+        "pro_config.json", "input_manifest.json", "instruction_manifest.json", "instruction_audit.json",
+        "problem_consensus.json", "source_ledger.json",
         "candidate_routes.json", "tournament_report.json", "experiment_manifest.json",
         "replication_report.json", "robustness_report.json", "ablation_report.json",
         "evidence_freeze.json", "review_board_report.json", "final_format_report.json", "pro_gate_report.json",
@@ -62,6 +63,8 @@ def main() -> int:
         "current_phase": args.phase,
         "next_action": args.next_action,
         "checkpoint_statuses": {key: value.get("status") for key, value in ledger.get("checkpoints", {}).items()},
+        "model_profile": load(root / "pro_config.json").get("model_profile", {}),
+        "reasoning_profile": load(root / "pro_config.json").get("reasoning_profile", {}),
         "artifact_hashes": hashes,
         "failure_history": failure_history[-30:],
         "blocked": bool(args.blocker) or (bool(failure_history) and failure_history[-1].get("consecutive_count", 0) >= 3),

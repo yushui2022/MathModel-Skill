@@ -9,6 +9,11 @@ description: "MathModel Pro P7-P9 正式论文写作与 Word/PDF 交付。仅基
 冻结证据、来源账本、图表和表格，从整体论证出发写
 `paper_output_pro/final_paper_source.md`。正式主稿不得由微单元或旧草稿拼接。
 
+先读取 `pro_config.json.reasoning_profile.phase_effort.authoring`。平台支持分阶段调节时
+使用该档位；否则保留并记录当前档位。长篇正文只正式生成一次：推理用于检查证据、
+结构、符号和论证，不得先完整暗写一遍正文再重复输出。通用自检由下列门禁完成，
+不要在五角色 review board 之外增加无明确失败假设的重复审稿轮次。
+
 - 所有数值、图表、结论和外部声明必须有冻结 claim ID。
 - 论文语言跟随题面和用户要求，默认中文竞赛论文。
 - 假设、符号、模型、求解、验证、不确定性、局限和结论形成完整闭环。
