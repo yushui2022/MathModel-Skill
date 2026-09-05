@@ -1,136 +1,125 @@
 <div align="center">
-  <img src="./assets/mathe-skill-logo.svg" alt="MathModel Lite logo" width="132" height="132" />
+  <img src="./assets/mathe-skill-logo.svg" alt="MathModel Skill Lite" width="120" height="120" />
 
 # MathModel Skill Lite
 
-### 面向普通模型、较旧模型和短上下文的单入口数学建模 Skill
+### 一个入口、六步流程，完成基础数学建模报告
 
-#### 支持 Codex、Claude Code 和 Trae
-
-[![Version](https://img.shields.io/badge/version-2.2.1--lite.3-111827)](#下载)
+[![Version](https://img.shields.io/badge/version-2.2.1--lite.3-0f766e)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.2.1-lite.3)
+[![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
+[![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
 </div>
 
-这是 MathModel Skill 的 **Lite 分支**，推荐普通模型、较旧模型、上下文较短或工具调用稳定性一般的模型使用。本分支只包含 Lite，不包含 Standard 的总控、正式论文、证据门禁或其他协作 Skills。用户下载本分支或 Lite 发布包后，只会发现一个入口：`mathmodel-lite`。
+MathModel Skill 帮助编程 Agent 从赛题和附件出发，分析问题、运行建模代码、整理真实结果并生成论文或报告。**Lite 2.2.1-lite.3** 是其中面向普通、较旧或短上下文模型的简易版本，只提供一个 `mathmodel-lite` 入口，减少流程选择和中间文件负担。
 
-## 版本选择
+Lite 会产出建模代码、计算结果、图表、Markdown 与基础 Word 报告，并检查输入和运行结果是否发生变化。它不提供原生 Word 公式、严格引文审计或 PDF 渲染验收，不能把基础报告检查通过当作约 20 页正式竞赛论文验收。
 
-| 模型与目标 | 建议版本 | 分支 |
-|---|---|---|
-| Claude Fable 5 / GPT-5.6 Sol Ultra，允许高计算成本，追求最高可验证质量 | Pro | [`pro`](https://github.com/yushui2022/MathModel-Skill/tree/pro) |
-| 强模型、长上下文、复杂工具调用稳定，需要正式竞赛论文 | Standard | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
-| 普通模型、较旧模型、上下文较短，希望流程简单稳定 | **Lite（当前分支）** | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
+## 小红书
 
-Pro 位于 `pro` 分支，面向 Claude Fable 5、GPT-5.6 Sol Ultra 和不计成本的高验证流程；Standard 位于默认分支 `master`，面向强模型和正式竞赛；Lite 用固定六步降低普通模型的上下文与决策负担。
-
-**一个比赛项目只安装一个版本。** 不要把 Pro、Standard 和 Lite 的 ZIP 解压到同一目录。
+作者：**Orlando Liu（奥兰多）**，小红书号：[`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。点击图片进入主页，也可以扫码找到我。
 
 <p align="center">
-  <a href="./assets/orlando-liu-social.jpg">
-    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
+  <a href="https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb">
+    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu 小红书主页与二维码" width="480" />
   </a>
 </p>
 
-## 为什么有 Lite
+## 快速导入使用
 
-Standard 推荐强模型和正式比赛交付使用，但多 Skill 路由、长上下文和复杂契约可能让普通模型或较旧模型承担过高负担。Lite 将流程压缩为一个 Skill、三个确定性脚本和固定六步，同时保留最重要的真实性底线：
+### 1. 下载一个 Lite 安装包
 
-- 记录输入文件大小和 SHA-256。
-- 必须真实运行一个 `model.py`。
-- 记录代码、输入、结果和证据文件哈希。
-- 拒绝输入或代码在运行后被修改。
-- 拒绝空答案、非有限指标、缺失证据和占位正文。
-- 只有 `lite_report.json.status=PASS` 才生成并交付 Word。
+**一个项目只安装一个版本、一个平台包。** 普通模型、基础报告选择当前 Lite；正式竞赛写作可选 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/master)，需要高计算投入和独立复算可选 [Pro 预发布版](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
 
-Lite 不提供原生 Word OMML 公式、严格正文引文审计、LibreOffice 渲染或 Standard 的完整 S0-S8 证据链。
+从 [Lite 2.2.1-lite.3 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.2.1-lite.3) 下载：
 
-**lite.3 加固：** 默认基础报告至少 1500 有效字符，每个问题独立标题下至少 150 字符，并出现对应计算指标。新增运行超时（默认 300 秒，可调整）、路径越界检查、计划变更失效、旧结果复用拦截、DOCX 重开验证和真实图片嵌入。仍然只有一个 Skill、六步流程，不增加多代理或复杂检查点。
-
-Lite 的 `PASS` 仅表示基础报告检查通过，不等于 20 页正式竞赛稿验收。短报告和测试须在 `plan.json.delivery` 中说明范围，详见[流程说明](docs/lite-workflow.md)。需要正式公式、分页和竞赛论文审查，请用 Standard 或 Pro。
-
-## 固定流程
-
-```text
-problem_files/
--> lite_preflight.py
--> plan.json
--> 单个 code/model.py
--> lite_run.py
--> results.json
--> paper.md
--> lite_finalize.py
--> paper.docx + lite_report.json
-```
-
-全部运行产物写入 `paper_output_lite/`。
-
-## 下载
-
-只下载与你的平台对应的一个 ZIP：
-
-| 平台 | 发布包 | 安装入口 |
+| 平台 | 直接下载 | 解压后的 Skill 目录 |
 |---|---|---|
-| Codex | `dist/MathModel-Skill-Lite-Codex.zip` | `.agents/skills/mathmodel-lite/SKILL.md` |
-| Claude Code | `dist/MathModel-Skill-Lite-Claude-Code.zip` | `.claude/skills/mathmodel-lite/SKILL.md` |
-| Trae | `dist/MathModel-Skill-Lite-Trae.zip` | `.trae/skills/mathmodel-lite/SKILL.md` |
+| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Codex.zip) | `.agents/skills/` |
+| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Claude-Code.zip) | `.claude/skills/` |
+| Trae | [Trae 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Trae.zip) | `.trae/skills/` |
 
-当前版本下载本分支 `dist/` 内的包；历史 Release 不会自动更新。解压到未安装 Standard 或 Pro 的项目根目录，不覆盖用户的 `AGENTS.md` / `CLAUDE.md`，然后安装依赖：
+使用这些平台安装包，不要把 GitHub 的仓库源码 ZIP 当作安装包。可用 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/SHA256SUMS.txt) 核对下载文件。
+
+### 2. 解压并准备环境
+
+在独立的建模项目目录中解压，保留完整 Skill 文件夹，不覆盖用户已有 `AGENTS.md` / `CLAUDE.md`。确认隐藏的 Skill 目录已解压，再用对应 Agent 打开项目。
+
+使用 Python **3.11 或 3.12**，在项目根目录运行：
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+python -m pip check
 ```
 
-## 使用
+Lite 只使用精简 Python 依赖，**不需要 LibreOffice 或 TeX**。
 
-在项目根目录创建：
+### 3. 放入题目，启动 Agent
+
+创建 `problem_files/`，放入赛题和附件。例如 Codex 项目：
 
 ```text
-problem_files/
+your-project/
+├── .agents/skills/mathmodel-lite/
+├── requirements.txt
+└── problem_files/
+    ├── 赛题.pdf
+    └── 附件.xlsx
 ```
 
-放入赛题和附件后，对 Agent 说：
+题面由 Agent 读取；遇到无法读取的扫描件或附件时，先补充可读文本或文件，不猜测内容。然后对 Agent 说：
 
 ```text
-请使用 MathModel Lite，只读取 mathmodel-lite。
-严格按固定六步执行，所有产物写入 paper_output_lite/。
-必须真实运行 model.py，只有 lite_report.json 为 PASS 时才能交付 paper.docx。
+请使用 $mathmodel-lite，赛题和附件已经放在 problem_files/。
+按固定六步完成：预检、计划、建模脚本、真实运行、写报告、检查并生成 Word。
+所有产物写入 paper_output_lite/，不要读取其他版本的旧结果。
+每个问题分别说明方法、关键数值、检验和局限，允许分多轮写完整基础稿。
+除非我明确要求，不改成短报告或安装测试模式。
+只有 lite_report.json 为 PASS 后，才交付对应范围的 paper.docx。
 ```
 
-完整提示词见 [Lite Starter Prompt](docs/lite-starter-prompt.md)，详细流程见 [Lite Workflow](docs/lite-workflow.md)。
+若 Agent 没有识别入口，让它先读取所安装目录中的 `mathmodel-lite/SKILL.md`。正常使用不需要逐条运行脚本；更多说明见 [Lite 启动提示词](docs/lite-starter-prompt.md)。
 
-## 三个脚本
+完成后查看 `paper_output_lite/paper.docx`、`paper.md` 和 `lite_report.json`；代码、结果和图表也保留在同一输出目录。
 
-以 Codex 为例：
+## 原理介绍
 
-```bash
-python .agents/skills/mathmodel-lite/scripts/lite_preflight.py
-python .agents/skills/mathmodel-lite/scripts/lite_run.py --timeout 300
-python .agents/skills/mathmodel-lite/scripts/lite_finalize.py
+### 一条线性流程
+
+```text
+赛题与附件
+→ 输入预检 → 最小计划 → 一个 model.py → 真实运行
+→ 根据 results.json 写报告 → 最终检查与 Word 导出
 ```
 
-Claude Code 将 `skills/` 替换为 `.claude/skills/`，Trae 替换为 `.trae/skills/`。
+三个用户命令分别是 `lite_preflight.py`、`lite_run.py` 和 `lite_finalize.py`。其他共享脚本服务于这些命令，不增加新的模型决策步骤或多 Skill 路由。
 
-## 开发与发布
+### 用脚本守住真实性底线
 
-Claude Code 目录是 canonical payload，Codex 和 Trae 由同步脚本生成：
+预检记录附件清单和 SHA-256，运行时绑定计划、代码、输入与输出。输入、计划或代码发生变化后必须重新预检或运行；每次运行清除旧 `results.json`，不能用空操作冒充新计算。
+
+执行默认超时 300 秒，可根据算法显式调整；文件路径必须留在项目内。这些是运行与文件完整性保护，不是针对任意代码的安全沙箱。
+
+### 基础报告不等于竞赛终稿
+
+默认基础报告至少 1500 有效字符，每问独立标题下至少 150 字符，数值指标必须出现在对应问题的正文中。脚本还检查空答案、非有限指标、占位内容、重复正文和缺失证据。
+
+图片必须对应运行记录，导出时真正嵌入 DOCX，之后重新打开核对。它不检查原生 Word OMML、严格正文引文或最终 PDF 排版。
+
+只有用户明确要求时才声明短报告或测试范围，并说明理由。篇幅门槛用于拦截过短或不完整报告，不证明建模假设正确或论文优秀。
+
+## 验证状态与详细文档
+
+- 发布提交通过 15 项本地自动测试；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940773858) 覆盖 Windows/Ubuntu、Python 3.11/3.12 与确定性安装包检查。
+- [安装指南](docs/agent-install-guide.md) · [固定流程与范围说明](docs/lite-workflow.md) · [启动提示词](docs/lite-starter-prompt.md)
+- 当前分支只维护 Lite，不包含 Standard 或 Pro 的工作流。分支 `dist/` 随提交更新，Release 保留固定发布快照。
+
+开发者可在仓库中执行：
 
 ```bash
-python scripts/sync_platform_packages.py
 python scripts/sync_platform_packages.py --check
-```
-
-运行测试并生成三个确定性发布包：
-
-```bash
 python tests/run_lite_tests.py
-python scripts/build_release_packages.py --clean
 python scripts/build_release_packages.py --verify
 ```
 
-每个 ZIP 都包含 `VERSION`、`LICENSE`、`MATHMODEL_EDITION.json` 和
-`MATHMODEL_BUILD.json`，可校验逐文件 SHA-256 与聚合 payload SHA-256；
-`dist/SHA256SUMS.txt` 记录三个安装包的发布哈希。
-
-## 许可证
-
-MIT License，Copyright (c) 2026 yushui2022。
+[MIT License](LICENSE)，Copyright (c) 2026 yushui2022.
