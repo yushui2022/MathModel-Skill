@@ -10,7 +10,7 @@ from pathlib import Path, PureWindowsPath
 from typing import Any, Iterable
 
 
-SCHEMA_VERSION = "3.2"
+SCHEMA_VERSION = "3.3"
 OUTPUT_DIR_NAME = "paper_output_pro"
 REQUIRED_META = {
     "schema_version",

@@ -1,6 +1,6 @@
 # Pro Machine Contracts
 
-Use schema `3.2`. Every contract has `schema_version`, `created_at_utc` (UTC),
+Use schema `3.3`. Every contract has `schema_version`, `created_at_utc` (UTC),
 `producer_role`, `input_hashes` and `status`. Duplicate JSON keys, nonfinite numbers,
 absolute artifact paths and path escapes are rejected. Artifact paths are relative to
 `paper_output_pro/`; original input paths are relative to the project. The configuration
@@ -12,6 +12,9 @@ binds approvals to that project location. Do not migrate or rewrite old PASS env
   idempotent. Modifying, adding or removing originals invalidates approval, even without
   re-running P0. Configuration records declared model, model profile, reasoning profile,
   capabilities, instruction precedence and execution policy.
+- `pro_config.json.paper_delivery` records mode, contest, target_pages,
+  minimum_body_characters and scope_reason, plus the selected counting rules.
+  It is part of CP1 approval. Missing policy requires a new P0, not an implicit short mode.
 - `instruction_audit.json`: current `instruction_manifest_sha256`; `reviewed_files`
   covering every locator/hash exactly once; resolved `conflicts`; empty
   `unresolved_conflicts`; exact `active_execution_contract` from the manifest.
@@ -115,8 +118,12 @@ Metric references are objects such as `{"run_id":"base-primary","metric":"cost"}
 
 ## Manuscript and Review
 
-`paper_plan.json` contains `title/language/target_characters`, ordered `sections[]`
-(`section_id/title/minimum_characters`) and `figures[]` (`path/sha256`).
+`paper_plan.json` contains `title/language/target_characters/delivery_mode`, ordered
+`sections[]` (`section_id/title/minimum_characters/kind`) and `figures[]` (`path/sha256`).
+Its input_hashes equal config, consensus and freeze hashes. Competition mode also
+requires `subproblem_coverage[]` mapping every confirmed question to body section IDs,
+frozen claim IDs and six argument paragraph anchors. See the formal writer's
+`references/competition-authoring.md` for all fields and applicable page profiles.
 Write one `final_paper_source.md`, with real headings, explicit Markdown tables/images,
 native-convertible math and removable `<!-- claim:C1 -->` markers in the corresponding
 evidence paragraphs. Figures must be frozen. Use numeric displays with declared precision.
@@ -125,10 +132,12 @@ Run `pro_paper_audit.py`; avoid padding to satisfy the 80% minimum-length guard.
 `pro_collect_reviews.py --round 1 --prepare` creates PENDING requests, not approvals.
 Each real isolated reviewer fills its own `reviews/round-1/<role>.json`:
 `role/isolated_context/checks_performed/assessment/findings`, current
-`input_hashes` of source, freeze and plan; `execution` with
+`input_hashes` of source, freeze, plan, config and consensus; `execution` with
 `mode:subagent|fresh-session/context_id/model/record_path/record_sha256`.
 Findings use `finding_id/severity/evidence/disposition`; resolved CRITICAL/MAJOR
 items also require `resolution_evidence`. Preserve the actual host execution record.
+Competition reviews include `subproblem_assessments` for every question with
+`subproblem_id/verdict/evidence`. An unsupported or INADEQUATE verdict blocks acceptance.
 Collect without --prepare. The final round needs all five distinct contexts on the
 same current inputs. Same-user writable records do not cryptographically prove
 honesty; neither synthetic fixtures nor same-conversation role labels count as real reviews.
@@ -145,6 +154,11 @@ Run `pro_format_check.py --project-root <project>` and `pro_gate.py`. These comm
 regenerate expected DOCX structure from the formal source, compare text in both
 directions against PDF and verify sections, numerical tokens, formulas, images and
 current visual reviews. Formatting cannot be approved by manually writing PASS.
+Actual PDF section positions determine page counts; default complete papers below
+the approved lower target block delivery. Contest caps use their declared scope,
+not an assumed universal 20-page rule. Final reports also bind config/consensus.
+The final gate reports COMPETITION_REPORT_CHECKED, SHORT_REPORT_ONLY,
+ENGINEERING_SMOKE_ONLY or NOT_ACCEPTED, never conflating a short fixture with a full paper.
 Actual scientific merit still requires the five-role assessment and real-task evaluation.
 
 ## Recovery

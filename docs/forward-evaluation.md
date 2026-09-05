@@ -18,5 +18,18 @@ For every run, all three checkpoints must be explicit, all critical numbers must
 two paths, final review must have zero unresolved Critical/Major findings, and the
 DOCX/PDF final gate must PASS. A failed run remains in the evaluation archive.
 
+Use `paper_delivery.mode=competition` with the actual multi-question contest task
+and current event rules. Record the confirmed page range, actual counted PDF pages,
+per-question argument coverage and all five question-level reviews. At least one
+complete long paper near the approved 20-page planning target is required to claim
+long-form readiness. A report shortened at user request validates only that smaller
+scope, not the default long-paper workflow.
+
+The five-page `examples/pro-3.2-optimization` paper is an engineering smoke example,
+not long-form acceptance. `run_forward_benchmark.py` now selects `smoke-test`
+explicitly. Synthetic 20-page pagination fixtures validate counting only; they are
+not mathematical papers or a substitute for the above real-contest evaluation.
+This upgrade does not claim that a fresh real-contest long-paper evaluation is complete.
+
 The project may describe a profile as supported after synthetic tests pass. Describe it
 as Pro-qualified only after its required forward cases pass without relaxing gates.

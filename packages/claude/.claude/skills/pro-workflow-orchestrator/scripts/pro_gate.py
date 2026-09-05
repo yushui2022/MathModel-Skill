@@ -30,6 +30,7 @@ def check_documents(root: Path, report: dict) -> list[str]:
     expected = {n: sha256_file(root / n) for n in (
         "final_paper_source.md", "final_paper.docx", "final_paper.pdf",
         "paper_plan.json", "render_manifest.json", "visual_review.json",
+        "pro_config.json", "problem_consensus.json",
     )}
     if report.get("input_hashes") != expected or report.get("status") != "PASS":
         errors.append("final format report is stale or not PASS")
@@ -60,14 +61,23 @@ def main() -> int:
             found = [f"{name}: invalid or missing artifact: {exc}"]
         checks[name] = "BLOCKED" if found else "PASS"
         errors += found
+    try:
+        mode = read_json(root / "pro_config.json").get("paper_delivery", {}).get("mode", "unknown")
+    except (ValueError, AttributeError):
+        mode = "unknown"
+    if not isinstance(mode, str):
+        mode = "unknown"
+    scope = {"competition": "COMPETITION_REPORT_CHECKED", "short-report": "SHORT_REPORT_ONLY",
+             "smoke-test": "ENGINEERING_SMOKE_ONLY"}.get(mode, "UNKNOWN")
     write_json(root / "pro_gate_report.json", contract(
         producer_role="pro-final-gate", status="BLOCKED" if errors else "PASS",
         input_hashes={n: sha256_file(root / n) for n in CONTRACTS if (root / n).is_file()},
-        errors=sorted(set(errors)), checks=checks,
+        errors=sorted(set(errors)), checks=checks, delivery_mode=mode,
+        acceptance_scope=scope if not errors else "NOT_ACCEPTED",
     ))
     for error in sorted(set(errors)):
         print(f"[BLOCKED] {error}")
-    print(f"[{'BLOCKED' if errors else 'PASS'}] Pro final gate")
+    print(f"[{'BLOCKED' if errors else 'PASS'}] Pro final gate ({scope}; not a prize or model qualification)")
     return 1 if errors else 0
 
 

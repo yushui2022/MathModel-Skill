@@ -383,11 +383,15 @@ def check_freeze(root: Path, data: dict) -> list[str]:
 
 
 def review_inputs(root: Path) -> dict[str, str]:
-    return {name: sha256_file(root / name) for name in ("final_paper_source.md", "evidence_freeze.json", "paper_plan.json")}
+    return {name: sha256_file(root / name) for name in (
+        "final_paper_source.md", "evidence_freeze.json", "paper_plan.json", "pro_config.json", "problem_consensus.json")}
 
 
 def check_review(root: Path, data: dict) -> list[str]:
+    from pro_authoring_policy import read_policy, indexed
     errors = []
+    full_paper = read_policy(root)["mode"] == "competition"
+    questions = indexed(read_json(root / "problem_consensus.json").get("subproblems"), "subproblem_id") if full_paper else {}
     rounds = objects(data.get("rounds"), "review rounds")
     expected = review_inputs(root)
     current = rounds[-1]
@@ -418,6 +422,16 @@ def check_review(root: Path, data: dict) -> list[str]:
             errors.extend(check_hashes(root, {execution["record_path"]: execution.get("record_sha256")}))
         if not detail.get("checks_performed") or not detail.get("assessment"):
             errors.append(f"{role}: empty review assessment")
+        if full_paper:
+            try:
+                assessments = indexed(detail.get("subproblem_assessments"), "subproblem_id")
+                if set(assessments) != set(questions):
+                    errors.append(f"{role}: review must assess every confirmed subproblem")
+                for qid, assessment in assessments.items():
+                    if assessment.get("verdict") != "ADEQUATE" or not isinstance(assessment.get("evidence"), str) or len(assessment["evidence"].strip()) < 40:
+                        errors.append(f"{role}/{qid}: unresolved or unsupported argument-depth assessment")
+            except ValueError as exc:
+                errors.append(f"{role}: {exc}")
         for finding in objects(detail.get("findings", []), "findings", empty=True):
             if finding.get("severity") not in {"CRITICAL", "MAJOR", "MINOR", "NOTE"} or not all(finding.get(k) for k in ("finding_id", "evidence", "disposition")):
                 errors.append(f"{role}: malformed finding")

@@ -3,6 +3,9 @@
 Agent 写 `paper_output_pro/final_paper_source.md` 时可参考此结构，按实际子问题合并或
 删减章节，并与 `paper_plan.json` 一致。不要机械填充不存在的子问题或保留占位符。
 关键结论段落加入冻结 claim 标记；引用使用来源账本的 `[S1]` 等编号。
+先按 [competition-authoring.md](competition-authoring.md) 确定已确认的交付范围和逐问论证，
+本模板的空标题不算完成。`paper_plan.sections` 只对应 `##` 一级章节，子问可以放在
+其中的 `###` 小节；用独立论证锚点建立映射，不必为每个维度新增模板标题。
 
 ```markdown
 # {{论文题目}}

@@ -91,7 +91,7 @@ def manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
     for name, file_hash in hashes.items():
         digest.update(name.encode("utf-8") + b"\0" + file_hash.encode("ascii") + b"\n")
     payload = {
-        "schema_version": "3.2",
+        "schema_version": "3.3",
         "edition": "pro",
         "package": spec.name,
         "version": version(),

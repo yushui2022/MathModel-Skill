@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pro_contracts import check_hashes, contract, output_root, read_json, safe_path, sha256_file, write_json
 from pro_validation import objects, unique
+from pro_authoring_policy import check_authoring_scope, prose
 
 
 def visible_text(text: str) -> str:
@@ -24,18 +25,20 @@ def check_paper(root: Path) -> list[str]:
     if not plan.get("title") or not plan.get("language"):
         errors.append("paper plan needs title and language")
     target = plan.get("target_characters")
-    length = len(re.sub(r"\s+", "", visible_text(text)))
+    length = len(prose(text))
     if type(target) is not int or target < 1000 or length < target * 0.8:
         errors.append("manuscript is shorter than 80% of its declared substantive length")
     if re.search(r"TODO|TBD|lorem ipsum|待补充|待完善|图片文件未找到|图片无法插入|表格数据文件暂不可读取|checkpoint_ledger|pro_gate_report", text, re.I):
         errors.append("manuscript contains placeholders or internal workflow text")
-    headings = [(m.start(), m.group(2).strip(), len(m.group(1))) for m in re.finditer(r"^(#{1,6})\s+(.+)$", text, re.M)]
+    # Keep offsets stable while excluding headings in comments and fenced code.
+    heading_text = re.sub(r"<!--.*?-->|```.*?```|~~~.*?~~~", lambda m: re.sub(r"[^\n]", " ", m.group()), text, flags=re.S)
+    headings = [(m.start(), m.group(2).strip(), len(m.group(1))) for m in re.finditer(r"^(#{1,6})\s+(.+)$", heading_text, re.M)]
     if [title for _, title, level in headings if level == 1] != [plan.get("title")]:
         errors.append("formal manuscript title does not match its writing plan")
     spans = {}
     previous = -1
     for section_id, section in sections.items():
-        matches = [i for i, (_, title, _) in enumerate(headings) if title == section.get("title")]
+        matches = [i for i, (_, title, level) in enumerate(headings) if title == section.get("title") and level == 2]
         if len(matches) != 1:
             errors.append(f"missing or duplicate paper section: {section_id}")
             continue
@@ -46,8 +49,14 @@ def check_paper(root: Path) -> list[str]:
             errors.append("paper sections do not follow the declared order")
         previous = start
         spans[section_id] = text[start:end]
-        if len(re.sub(r"\s+", "", visible_text(spans[section_id]))) < section.get("minimum_characters", 50):
+        if len(prose(spans[section_id])) < section.get("minimum_characters", 50):
             errors.append(f"paper section is underdeveloped: {section_id}")
+    if [title for _, title, level in headings if level == 2] != [s.get("title") for s in sections.values()]:
+        errors.append("all top-level manuscript sections must be accounted for in the writing plan")
+    try:
+        errors.extend(check_authoring_scope(root, plan, spans, claims))
+    except (ValueError, TypeError, KeyError) as exc:
+        errors.append(str(exc))
     markers = re.findall(r"<!--\s*claim:([A-Za-z0-9_.-]+)\s*-->", text)
     if set(markers) != set(claims):
         errors.append("manuscript claim markers do not cover exactly the frozen claims")
@@ -130,7 +139,7 @@ def main() -> int:
         errors.append(str(exc))
     write_json(root / "paper_audit.json", contract(
         producer_role="pro-paper-auditor", status="BLOCKED" if errors else "PASS",
-        input_hashes={n: sha256_file(root / n) for n in ("final_paper_source.md", "paper_plan.json", "evidence_freeze.json") if (root / n).is_file()},
+        input_hashes={n: sha256_file(root / n) for n in ("final_paper_source.md", "paper_plan.json", "evidence_freeze.json", "pro_config.json", "problem_consensus.json") if (root / n).is_file()},
         errors=errors,
     ))
     for error in errors:

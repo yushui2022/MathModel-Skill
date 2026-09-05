@@ -263,9 +263,11 @@ def add_center_paragraph(document: Document, text: str, font_name: str = "宋体
     apply_run_font(run, font_name, size, bold)
 
 
-def add_heading(document: Document, text: str, level: int) -> None:
+def add_heading(document: Document, text: str, level: int, *, page_break_before: bool = False) -> None:
     level = max(1, min(level, 3))
     paragraph = document.add_heading(clean_inline_markdown(text), level=level)
+    if page_break_before:
+        paragraph.paragraph_format.page_break_before = True
     paragraph.paragraph_format.first_line_indent = None
     for run in paragraph.runs:
         apply_run_font(run, "黑体", {1: 15, 2: 13, 3: 12}[level], True)
@@ -486,6 +488,15 @@ def render_markdown(
         "formula_fallbacks": [],
     }
     lines = re.sub(r"<!--.*?-->", "", text, flags=re.S).splitlines()
+    plan = load_json(OUTPUT_DIR / "paper_plan.json")
+    break_titles = set()
+    previous_kind = None
+    if isinstance(plan, dict) and plan.get("delivery_mode") == "competition":
+        for section in plan.get("sections", []):
+            kind = section.get("kind")
+            if previous_kind and kind != previous_kind and (previous_kind == "abstract" or kind in {"appendix", "ai-disclosure"}):
+                break_titles.add(section.get("title"))
+            previous_kind = kind
     idx = 0
     in_code = False
     code_lines: list[str] = []
@@ -611,7 +622,8 @@ def render_markdown(
         heading = re.match(r"^(#{1,6})\s+(.+)$", stripped)
         if heading:
             level = min(len(heading.group(1)), 3)
-            add_heading(document, heading.group(2), level)
+            add_heading(document, heading.group(2), level,
+                        page_break_before=len(heading.group(1)) == 2 and heading.group(2) in break_titles)
             stats["headings"] += 1
             idx += 1
             continue

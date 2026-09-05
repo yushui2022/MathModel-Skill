@@ -45,6 +45,11 @@ P0 生成 `instruction_manifest.json` 后，读取其中每个项目指令和 Pr
 
 读取 `pro_config.json`、`input_manifest.json` 和指令审计。确认附件逐文件 SHA-256 和角色：
 题面、原始数据、结果模板、参考材料或未分类附件。结果模板不得当作原始数据。
+默认 `paper_delivery.mode=competition`，以约 20 页完整论文规划（18-24 页目标），
+正文有效字符下限 8000 仅用于拦截极短稿，不表示优秀标准或字符到页数的换算。
+按赛题选 `--contest cumcm-2026|mcm-2026|generic`，年份不同须核对规则，不套用旧上限。
+短报告/工程测试必须显式使用 `--paper-mode short-report|smoke-test --scope-reason "<原因>"`。
+自定义篇幅使用 `--target-pages <下限> <目标上限> --minimum-body-characters <下限>` 并说明原因。
 
 ### P1 多路审题
 
@@ -52,7 +57,8 @@ P0 生成 `instruction_manifest.json` 后，读取其中每个项目指令和 Pr
 发起全部独立角色，主 Agent 同时准备综合框架。综合角色写
 `problem_consensus.json`，包含共识、分歧、假设、子问题边界和附件用途。
 
-到此必须停下，请用户确认。确认后运行：
+到此展示题意、逐问任务、交付模式、页数计数范围和目标，让用户一并确认。
+正常完整论文不得自行降为短报告；确认后运行：
 
 ```bash
 python .agents/skills/pro-workflow-orchestrator/scripts/pro_checkpoint.py approve --checkpoint 1 --decision "<用户原意摘要>"
@@ -92,12 +98,14 @@ python .agents/skills/pro-workflow-orchestrator/scripts/pro_checkpoint.py approv
 ### P7-P9 写作与评审
 
 只基于新鲜冻结证据全局撰写 `final_paper_source.md`，不得用微单元拼接正式主稿。
-先写 `paper_plan.json`，明确论文问题、论证主线、章节、目标篇幅和冻结图表。
+先读正式写作 Skill 的 `references/competition-authoring.md`，再写 `paper_plan.json`，
+绑定配置、共识和冻结哈希，明确逐问论证映射、章节类型、目标篇幅和冻结图表。
 以完整章节组织内容，允许局部修订；主稿始终只有一个。关键结论段落加入
 `<!-- claim:C1 -->` 等可移除证据标记，数值按证据声明的精度显示。
-执行 `pro_paper_audit.py` 检查章节、关键数值、图表和重复正文。
+执行 `pro_paper_audit.py` 检查逐问覆盖、论证段落、正文篇幅、关键数值、图表和重复正文。
 长篇正式写作默认采用模型档案的 `authoring` 档位；推理阶段只确定证据和结构，正文
-完整写出一次，避免在推理与正式输出中重复生成整篇论文。
+分章节多轮写入唯一主稿并全局统一，避免在推理与正式输出中重复生成整篇论文；
+单次输出限制不是缩短论文的理由。缺少证据必须回算，不靠文字填充。
 调用 `pro-review-board` 执行数学、复现、来源、表达、对抗质疑五个隔离评审角色，
 每个角色使用真实独立上下文并保存执行记录，审稿绑定当前主稿、计划和冻结证据哈希。
 普通文字修改可先局部检查；最终交付前五个角色必须全部审阅同一最新版本，且无
@@ -114,6 +122,8 @@ python .agents/skills/pro-workflow-orchestrator/scripts/pro_gate.py
 
 必须检查 PDF 页数、可提取文本、公式、图表、分页和 DOCX/PDF 引用一致性，再运行
 最终 Pro gate。Word 或 PDF 任一门禁失败都不得称为正式交付。
+页数按真实 PDF 章节位置计算，遵守比赛上限；不足已确认下限时补充实质内容或重新
+确认范围。测试与短报告的 PASS 必须同时展示 acceptance_scope，不算完整竞赛长文验收。
 渲染器生成 `render_manifest.json` 和每页 PNG；逐页实际打开检查后写
 `visual_review.json`，逐页记录哈希、观察和未解决问题。不得自动填充视觉 PASS。
 

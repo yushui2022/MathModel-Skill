@@ -13,7 +13,7 @@ from pathlib import Path
 from pro_contracts import contract, hash_paths, output_root, read_json, sha256_file, write_json
 
 
-VERSION = "3.2.0-pro.1"
+VERSION = "3.3.0-pro.1"
 MODEL_CATALOG_PATH = Path(__file__).resolve().parents[1] / "references" / "model-profiles.json"
 MODEL_SUFFIXES = {"low", "medium", "high", "xhigh", "max", "ultra", "preview", "latest"}
 EXPECTED_EDITION = "pro"
@@ -220,10 +220,28 @@ def main() -> int:
     parser.add_argument("--network", choices=("available", "unavailable", "unknown"), default="unknown")
     parser.add_argument("--parallel-tools", choices=("available", "unavailable", "unknown"), default="unknown")
     parser.add_argument("--async-tools", choices=("available", "unavailable", "unknown"), default="unknown")
+    parser.add_argument("--paper-mode", choices=("competition", "short-report", "smoke-test"))
+    parser.add_argument("--contest", choices=("generic", "cumcm-2026", "mcm-2026"))
+    parser.add_argument("--target-pages", type=int, nargs=2, metavar=("MIN", "TARGET_MAX"))
+    parser.add_argument("--minimum-body-characters", type=int)
+    parser.add_argument("--scope-reason", help="User-requested short/test scope or reason for a custom length; confirm at checkpoint 1.")
     args = parser.parse_args()
 
     project_root = args.project_root.resolve()
     out = output_root(project_root, args.output_root)
+    from pro_authoring_policy import make_policy
+    previous = read_json(out / "pro_config.json").get("paper_delivery", {}) if (out / "pro_config.json").is_file() else {}
+    mode_changed = args.paper_mode is not None and args.paper_mode != previous.get("mode")
+    try:
+        paper_delivery = make_policy(
+            args.paper_mode or previous.get("mode", "competition"),
+            args.contest or previous.get("contest", "generic"),
+            args.target_pages if args.target_pages is not None else (None if mode_changed else previous.get("target_pages")),
+            args.minimum_body_characters if args.minimum_body_characters is not None else (None if mode_changed else previous.get("minimum_body_characters")),
+            args.scope_reason if args.scope_reason is not None else ("" if mode_changed else previous.get("scope_reason", "")),
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     problem_root = project_root / "problem_files"
     files = sorted((path for path in problem_root.rglob("*") if path.is_file()), key=lambda p: p.as_posix()) if problem_root.is_dir() else []
     installations = mathmodel_installations(project_root)
@@ -377,6 +395,7 @@ def main() -> int:
         checkpoint_mode="required",
         research_policy="public_sources_only_without_explicit_authorization",
         delivery_formats=["docx", "pdf"],
+        paper_delivery=paper_delivery,
         output_root="paper_output_pro",
         capabilities={
             "python": platform.python_version(),
@@ -407,6 +426,7 @@ def main() -> int:
         ))
     print(f"[{'PASS' if not errors else 'BLOCKED'}] Pro preflight: {out}")
     print(f"[MODEL] {profile_public['display_name']} ({support_tier.upper()})")
+    print(f"[PAPER] {paper_delivery['mode']} / {paper_delivery['contest']}; target {paper_delivery['target_pages']} {paper_delivery['page_scope']} pages; confirm at checkpoint 1")
     for warning in warnings:
         print(f"[WARNING] {warning}")
     for error in errors:

@@ -5,6 +5,12 @@ model is appropriate, the prose is insightful, or the paper deserves a prize.
 
 ## Argument Before Length
 
+Default Pro authoring is a complete competition paper, not a short tool-chain
+demonstration. Read the formal writer's `references/competition-authoring.md` for
+checkpoint-bound scope, per-question argument maps and actual PDF page accounting.
+Typical project planning aims near 20 pages, but the current contest rules and
+the user's confirmed scope take precedence. Never inflate layout or repeat prose.
+
 - Answer every confirmed subproblem with a decision, evidence and limitations.
 - Separate supplied facts, estimated quantities, assumptions and optimized decisions.
 - State what the result changes compared with a meaningful baseline. Abstracts need
@@ -12,6 +18,8 @@ model is appropriate, the prose is insightful, or the paper deserves a prize.
 - Introduce symbols and units consistently; explain why constraints encode the task.
 - Report unsuccessful routes, binding constraints and plausible counterexamples.
 - Write one coherent manuscript. Do not inflate length with repeated methodology.
+- Maintain one source over multiple writing turns, then revise globally; response
+  length limits must not collapse a complete paper into an executive summary.
 
 ## Domain-Specific Checks
 

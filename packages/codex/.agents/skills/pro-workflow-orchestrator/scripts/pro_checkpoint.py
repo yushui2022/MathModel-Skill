@@ -135,6 +135,11 @@ def validate_checkpoint_artifacts(project_root: Path, root: Path, number: str) -
     if errors:
         return errors
     if number == "1":
+        from pro_authoring_policy import read_policy
+        try:
+            read_policy(root)
+        except ValueError as exc:
+            errors.append(str(exc))
         errors.extend(check_original_inputs(project_root, root))
         errors.extend(validate_instruction_audit(project_root, root))
         consensus = read_json(root / "problem_consensus.json")

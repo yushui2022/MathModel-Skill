@@ -27,6 +27,7 @@ from pro_validation import (
 from pro_format_check import text_coverage, check_paper
 import pro_preflight
 import pro_render_pdf
+from test_authoring_policy import AuthoringPolicyTests
 
 TEMP = Path(os.environ.get("MATHMODEL_TEST_TEMP", tempfile.gettempdir())).resolve()
 TEMP.mkdir(parents=True, exist_ok=True)
@@ -298,6 +299,43 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("[PASS]", result.stdout)
         values = [read_json(self.root / "experiments" / n / "metrics.json")["metrics"]["cost"] for n in ("base-milp", "base-enum")]
         self.assertAlmostEqual(*values)
+        self.assertEqual(read_json(self.root / "pro_gate_report.json")["acceptance_scope"], "ENGINEERING_SMOKE_ONLY")
+
+    def test_scope_change_invalidates_checkpoints_and_final_gate(self):
+        config = read_json(self.root / "pro_config.json")
+        from pro_authoring_policy import make_policy
+        config["paper_delivery"] = make_policy()
+        write_json(self.root / "pro_config.json", config)
+        self.assertNotEqual(run(SCRIPTS / "pro_gate.py", "--project-root", self.project, check=False).returncode, 0)
+        self.assertEqual(read_json(self.root / "checkpoint_ledger.json")["checkpoints"]["1"]["status"], "PENDING")
+
+    def test_full_paper_review_requires_per_question_assessment(self):
+        from pro_authoring_policy import make_policy
+        config = read_json(self.root / "pro_config.json")
+        config["paper_delivery"] = make_policy()
+        write_json(self.root / "pro_config.json", config)
+        write_test_reviews(self.root)
+        errors = check_review(self.root, read_json(self.root / "review_board_report.json"))
+        self.assertTrue(any("subproblem_id" in e for e in errors))
+
+    def test_missing_config_overwrites_old_final_pass_with_blocked(self):
+        (self.root / "pro_config.json").unlink()
+        self.assertNotEqual(run(SCRIPTS / "pro_gate.py", "--project-root", self.project, check=False).returncode, 0)
+        self.assertEqual(read_json(self.root / "pro_gate_report.json")["acceptance_scope"], "NOT_ACCEPTED")
+
+    def test_competition_abstract_and_appendix_have_real_docx_page_boundaries(self):
+        from pro_format_check import expected_docx
+        from lxml import etree
+        import io
+        plan = read_json(self.root / "paper_plan.json")
+        plan["delivery_mode"] = "competition"
+        plan["sections"][-1]["kind"] = "appendix"
+        write_json(self.root / "paper_plan.json", plan)
+        with zipfile.ZipFile(io.BytesIO(expected_docx(self.root))) as archive:
+            xml = etree.fromstring(archive.read("word/document.xml"))
+            ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+            titles = xml.xpath("//w:p[w:pPr/w:pageBreakBefore]//w:t/text()", namespaces=ns)
+            self.assertEqual(titles, ["Model", "Conclusion"])
 
     def test_libreoffice_renders_docx_when_required_by_ci(self):
         render = read_json(self.root / "render_manifest.json")
@@ -514,6 +552,7 @@ class PipelineTests(unittest.TestCase):
 if __name__ == "__main__":
     suite = unittest.TestSuite([
         unittest.defaultTestLoader.loadTestsFromTestCase(CoreTests),
+        unittest.defaultTestLoader.loadTestsFromTestCase(AuthoringPolicyTests),
         unittest.defaultTestLoader.loadTestsFromTestCase(PipelineTests),
     ])
     result = unittest.TextTestRunner(verbosity=2).run(suite)

@@ -18,7 +18,9 @@ def main():
         parser.error("round must be positive")
     root = output_root(args.project_root)
     try:
+        from pro_authoring_policy import read_policy
         inputs = review_inputs(root)
+        questions = read_json(root / "problem_consensus.json")["subproblems"] if read_policy(root)["mode"] == "competition" else []
         directory = root / "reviews" / f"round-{args.round}"
         directory.mkdir(parents=True, exist_ok=True)
         reports = []
@@ -27,7 +29,8 @@ def main():
             if args.prepare:
                 if not path.exists():
                     write_json(path, contract(producer_role=role, status="PENDING", input_hashes=inputs,
-                        role=role, isolated_context=False, execution={}, checks_performed=[], assessment="", findings=[]))
+                        role=role, isolated_context=False, execution={}, checks_performed=[], assessment="", findings=[],
+                        subproblem_assessments=[{"subproblem_id": q["subproblem_id"], "verdict": "PENDING", "evidence": ""} for q in questions]))
             else:
                 reports.append({"role": role, "report_path": path.relative_to(root).as_posix(),
                                 "report_sha256": sha256_file(path)})

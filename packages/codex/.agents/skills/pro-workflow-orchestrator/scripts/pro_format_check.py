@@ -13,6 +13,7 @@ from lxml import etree
 
 from pro_contracts import check_hashes, contract, output_root, read_json, sha256_file, write_json
 from pro_paper_audit import check_paper
+from pro_authoring_policy import check_page_counts, locate_pdf_sections, read_policy
 
 
 def normalized(text: str) -> str:
@@ -89,6 +90,12 @@ def inspect_documents(root: Path, *, require_visual: bool = True) -> tuple[list[
                 if block[0] < -1 or block[1] < -1 or block[2] > page.rect.width + 1 or block[3] > page.rect.height + 1:
                     errors.append(f"PDF page {index} has content outside page bounds")
             pages.append(index)
+        try:
+            page_errors, page_details = check_page_counts(read_policy(root), locate_pdf_sections(plan, pdf), len(pdf))
+            errors.extend(page_errors)
+        except (ValueError, KeyError, TypeError) as exc:
+            errors.append(f"paper page accounting failed: {exc}")
+            page_details = {}
     coverage, precision = text_coverage(docx_text, text)
     if not pages or coverage < 0.90 or precision < 0.85:
         errors.append("DOCX/PDF bidirectional text coverage failed")
@@ -120,7 +127,7 @@ def inspect_documents(root: Path, *, require_visual: bool = True) -> tuple[list[
                     or not item.get("observations") or item.get("issues") != []):
                 errors.append(f"page {item.get('page')}: visual review incomplete or has unresolved issues")
     return errors, {"page_count": len(pages), "docx_to_pdf_coverage": coverage, "pdf_to_docx_coverage": precision,
-                    "native_formulas": formula_count, "figures": figure_count}
+                    "native_formulas": formula_count, "figures": figure_count, "paper_scope": page_details}
 
 
 def main() -> int:
@@ -133,7 +140,7 @@ def main() -> int:
         errors, details = inspect_documents(root)
     except (ValueError, OSError, KeyError, TypeError, zipfile.BadZipFile, etree.XMLSyntaxError) as exc:
         errors = [str(exc)]
-    names = ("final_paper_source.md", "final_paper.docx", "final_paper.pdf", "paper_plan.json", "render_manifest.json", "visual_review.json")
+    names = ("final_paper_source.md", "final_paper.docx", "final_paper.pdf", "paper_plan.json", "render_manifest.json", "visual_review.json", "pro_config.json", "problem_consensus.json")
     write_json(root / "final_format_report.json", contract(
         producer_role="pro-format-verifier", status="BLOCKED" if errors else "PASS",
         input_hashes={n: sha256_file(root / n) for n in names if (root / n).is_file()}, details=details, errors=errors,

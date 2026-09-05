@@ -11,6 +11,7 @@ sys.path.insert(0, str(REPO / "tests"))
 from pro_fixture import prepare_evidence, approve, run, envelope, SCRIPTS
 from pro_contracts import read_json, write_json, sha256_file
 from pro_run_experiment import execute, refresh_manifest
+from pro_authoring_policy import plan_inputs
 
 
 def main():
@@ -49,11 +50,13 @@ def main():
                 ("discussion", "6 讨论与结论", 400)]
     figure = "experiments/chart/cost-and-capacity.png"
     write_json(root / "paper_plan.json", envelope("benchmark-authoring-plan",
+        input_hashes=plan_inputs(root), delivery_mode="smoke-test",
         title="容量约束下配送站点的选择与需求扰动分析", language="zh-CN", target_characters=3500,
-        sections=[{"section_id": i, "title": t, "minimum_characters": n} for i, t, n in sections],
+        sections=[{"section_id": i, "title": t, "kind": "abstract" if i == "abstract" else "body", "minimum_characters": n} for i, t, n in sections],
         figures=[{"path": figure, "sha256": sha256_file(root / figure)}]))
     write_json(project / "BENCHMARK_SCOPE.json", {
         "dataset": "constructed four-depot, five-customer instance; not a real contest",
+        "acceptance_scope": "ENGINEERING_SMOKE_ONLY",
         "simulated": ["P1 independent readers", "user checkpoint decisions"],
         "executed": ["six real independent solver runs", "chart from recorded outputs"],
         "not_yet_completed": ["five real isolated manuscript reviews", "DOCX/PDF rendering and actual page inspection"],

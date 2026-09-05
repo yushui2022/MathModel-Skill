@@ -24,6 +24,9 @@ description: "对 MathModel Pro 冻结证据和正式论文执行数学正确性
 使用总入口的 `pro_collect_reviews.py --project-root <项目> --round 1 --prepare`
 生成待审请求，按真实执行结果填写 `reviews/round-1/<role>.json`。每份报告必须保留
 实际上下文 ID、模型、宿主执行记录路径及哈希、执行过的检查和有内容的评价。
+完整竞赛模式下，每位评审都必须对每个确认子问题填写 `subproblem_assessments`：
+题号、`ADEQUATE/INADEQUATE`、具体段落与证据说明。篇幅达标或锚点齐全不能代替
+论证深度判断；缺答、推导跳步、结果没有解释、验证流于形式应列为 Major。
 审稿结束后去掉 `--prepare` 收集验证。不得把空模板或自动测试的模拟记录作为正式审稿。
 
 最终轮必须没有未解决 Critical/Major，才能将 `review_board_report.json` 标为 PASS。

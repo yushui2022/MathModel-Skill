@@ -27,12 +27,15 @@ def envelope(producer, **kwargs):
     return contract(producer_role=producer, status="PASS", **kwargs)
 
 
-def prepare(project: Path, model="gpt-6-astra") -> Path:
+def prepare(project: Path, model="gpt-6-astra", paper_mode="competition") -> Path:
     problem = project / "problem_files"
     problem.mkdir(parents=True, exist_ok=True)
     (problem / "task.md").write_text("# Capacitated distribution design\nChoose depots and assign each demand point to one depot. Compare all-open operation and a 20 percent demand stress. Minimize opening plus delivery cost.\n", encoding="utf-8")
     shutil.copyfile(REPO / "tests/fixtures/forward/optimization/facility_data.json", problem / "data.json")
-    run(SCRIPTS / "pro_preflight.py", "--project-root", project, "--platform", "codex", "--model", model, "--reasoning", "ultra")
+    extra = ["--paper-mode", paper_mode]
+    if paper_mode != "competition":
+        extra += ["--scope-reason", "Explicit synthetic engineering fixture; not competition-paper acceptance"]
+    run(SCRIPTS / "pro_preflight.py", "--project-root", project, "--platform", "codex", "--model", model, "--reasoning", "ultra", *extra)
     root = project / "paper_output_pro"
     complete_consensus(root)
     return root
@@ -76,7 +79,7 @@ def tournament():
 
 def prepare_evidence(project: Path) -> Path:
     from pro_run_experiment import execute, refresh_manifest
-    root = prepare(project)
+    root = prepare(project, paper_mode="smoke-test")
     approve(project, 1)
     write_json(root / "source_ledger.json", envelope("fixture-sources", sources=[], critical_claims=[]))
     write_json(root / "candidate_routes.json", candidates())
@@ -137,8 +140,10 @@ def write_test_paper(root: Path):
             for claim in read_json(root / "claim_evidence_map.json")["claims"]:
                 text += f"The objective for {claim['numeric_evidence'][0]['run_id']} is {claim['numeric_evidence'][0]['display']}. <!-- claim:{claim['claim_id']} -->\n\n"
     (root / "final_paper_source.md").write_text(text, encoding="utf-8")
+    from pro_authoring_policy import plan_inputs
     write_json(root / "paper_plan.json", envelope("fixture-paper-plan", title="Capacitated Distribution Design", language="en",
-        target_characters=2500, sections=[{"section_id": i, "title": t, "minimum_characters": 100} for i, t, _ in sections], figures=[]))
+        input_hashes=plan_inputs(root), delivery_mode="smoke-test",
+        target_characters=2500, sections=[{"section_id": i, "title": t, "kind": "abstract" if i == "abstract" else "body", "minimum_characters": 100} for i, t, _ in sections], figures=[]))
 
 
 def write_test_reviews(root: Path):
