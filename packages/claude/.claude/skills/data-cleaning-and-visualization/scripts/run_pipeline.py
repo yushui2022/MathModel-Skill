@@ -5,6 +5,11 @@ from pathlib import Path
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    os.environ["PYTHONUTF8"] = "1"
+    os.environ["PYTHONIOENCODING"] = "utf-8"
     root_dir = Path.cwd().resolve()
     os.chdir(root_dir)
 

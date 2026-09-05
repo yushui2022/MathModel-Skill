@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -222,6 +223,17 @@ class CoreTests(unittest.TestCase):
             self.assertEqual(module.main(), 0)
         self.assertTrue(commands.call_args_list)
         self.assertTrue(all(Path(call.args[0][1]).parent == path.parent for call in commands.call_args_list))
+
+    def test_data_pipeline_supports_western_windows_console(self):
+        path = SKILLS / "data-cleaning-and-visualization/scripts/run_pipeline.py"
+        spec = importlib.util.spec_from_file_location("tested_console_pipeline", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with io.TextIOWrapper(io.BytesIO(), encoding="cp1252") as console:
+            with mock.patch.object(sys, "stdout", console), mock.patch.dict(os.environ, {}, clear=False), mock.patch.object(module.subprocess, "run", return_value=mock.Mock(returncode=0)):
+                self.assertEqual(module.main(), 0)
+                self.assertEqual(console.encoding, "utf-8")
+                self.assertEqual(os.environ["PYTHONUTF8"], "1")
 
     def test_failure_success_resets_consecutive_counter(self):
         script = SKILLS / "context-memory-keeper/scripts/update_pro_memory.py"
