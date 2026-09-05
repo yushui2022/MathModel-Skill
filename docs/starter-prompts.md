@@ -1,4 +1,4 @@
-# Standard 2.2 Starter Prompts
+# Standard 2.3 Starter Prompts
 
 ## Formal Project
 
@@ -8,7 +8,8 @@
 先运行 preflight_check.py 和 workflow_guard.py --status，再按 S0-S8 推进。
 所有当前赛题代码写入 paper_output/code/，真实结果、图表、表格、证据和论文写入 paper_output/。
 S6 evidence gate 必须使用 official 模式并保持输入哈希新鲜。
-S7 使用 Standard 2.2 单一正式主线：写作计划、完整章节草稿、逐章审计、必要时排队局部修复、确定性合并、全文统一改写、最终 Markdown 审计。
+S7 使用 Standard 单一正式主线：写作计划、完整章节草稿、逐章审计、必要时排队局部修复、确定性合并、全文统一改写、最终 Markdown 审计。
+默认完整竞赛稿，可分多轮完成章节。核对当年赛题的页数限制，每个子问题充分展开推导、计算结果和验证；不要把单次回复当完整论文，也不要凑字凑页。除非我明确要求短稿，否则不改 short-report / smoke-test 或降低验收范围。
 不要把 quickstart、legacy 或机械微单元合并稿提升为正式稿。
 只有 authoring PASS 后才生成 final_paper.docx，并用 LibreOffice 执行 --render required。
 任一门禁失败时继续修复，不要声称已经完成。

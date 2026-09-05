@@ -75,7 +75,7 @@ python .agents/skills/paper-formal-writer/scripts/build_paper_outline.py
 python .agents/skills/paper-formal-writer/scripts/prepare_authoring.py --mode auto
 ```
 
-Normal competition papers use complete-section drafting. A short report may use global drafting. Audit every draft with `validate_authoring.py --section`; global repeated failure falls back to section mode. A section’s second repeated category creates a `micro-repair` route; only then may `$paper-micro-unit-generator` repair the queued location. The third repeated category blocks S7 and suggests Lite without switching automatically.
+Normal competition papers use complete-section drafting, possibly over several turns. Preserve the formal writer's declared competition scope; a short report needs an explicit user-requested scope and reason. Audit every draft with `validate_authoring.py --section`; global repeated failure falls back to section mode. A section’s second repeated category creates a `micro-repair` route; only then may `$paper-micro-unit-generator` repair the queued location. The third repeated category blocks S7 and suggests Lite without switching automatically.
 
 After every active unit passes:
 

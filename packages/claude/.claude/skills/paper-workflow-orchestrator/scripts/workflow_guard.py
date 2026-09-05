@@ -483,6 +483,18 @@ def check_s8() -> dict[str, Any]:
     if isinstance(report, dict) and str(report.get("status") or "").upper() != "PASS":
         failures.append("format_check_report.json status 不是 PASS。")
     if isinstance(report, dict):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "paper-formal-writer" / "scripts"))
+        from paper_scope import render_delivery_errors
+        plan = check_json_file(OUTPUT_DIR / "plan" / "writing_plan.json", failures)
+        try:
+            render = report.get("render_qa") or {}
+            failures.extend(render_delivery_errors(plan or {}, render))
+            if render.get("status") == "PASS":
+                pdf = resolve_authoring_path(render.get("pdf"))
+                if not pdf.is_file() or sha256_file(pdf) != render.get("pdf_sha256"):
+                    failures.append("rendered PDF is missing or changed since format audit")
+        except (ValueError, TypeError, AttributeError) as exc:
+            failures.append(str(exc))
         input_hashes = report.get("input_hashes")
         if not isinstance(input_hashes, dict) or not input_hashes:
             failures.append("format_check_report.json 缺少 input_hashes，无法判断格式门禁报告是否过期。")

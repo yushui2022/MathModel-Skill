@@ -32,7 +32,10 @@ def transformed_bytes(path: Path, source_prefix: str, target_prefix: str) -> byt
     except UnicodeDecodeError:
         return data
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    return text.replace(source_prefix, target_prefix).encode("utf-8")
+    # Preserve all platform roots in the installation scanner.
+    if path.name != "preflight_check.py":
+        text = text.replace(source_prefix, target_prefix)
+    return text.encode("utf-8")
 
 
 def normalized_existing_bytes(path: Path) -> bytes:

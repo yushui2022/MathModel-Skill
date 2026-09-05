@@ -262,11 +262,17 @@ def validate_document(project_root: Path, scope: str, plan: dict[str, Any], stat
     }
     text = path.read_text(encoding="utf-8")
     issues, metrics = validate_common(text, merged_section, scope.upper(), require_marker=False)
+    from paper_scope import scope_errors
+    try:
+        for message in scope_errors(text, plan):
+            issues.append(issue("paper-scope", message, section_id=scope.upper()))
+    except ValueError as exc:
+        issues.append(issue("paper-scope", str(exc), section_id=scope.upper()))
     for message in approved_draft_errors(project_root, plan, state):
         issues.append(issue("stale-section", message, section_id=scope.upper()))
     for section in sections:
         title = str(section.get("title") or "").strip()
-        if title and title not in text:
+        if title and not re.search(r"(?m)^\s*#{1,6}\s+(?:\d+(?:\.\d+)*\s+)?" + re.escape(title) + r"\s*$", text):
             issues.append(issue("section-coverage", f"document does not contain required section title: {title}", section_id=scope.upper()))
     if scope == "final":
         try:

@@ -76,7 +76,7 @@ def safe_relative_path(project_root: Path, value: object) -> Path:
         or candidate.is_absolute()
         or text.startswith("/")
         or text.startswith("//")
-        or re.match(r"^[A-Za-z]:/", text)
+        or re.match(r"^[A-Za-z]:", text)
         or ".." in text.split("/")
     ):
         raise ValueError(f"Path must stay inside the project root: {value!r}")
@@ -192,6 +192,13 @@ def authoring_pass_errors(project_root: Path) -> list[str]:
     final_record = state.get("final") or {}
     if str(final_record.get("path") or "").replace("\\", "/") != "paper_output/final_paper_source.md":
         errors.append("formal source must be paper_output/final_paper_source.md")
+    from paper_scope import scope_errors
+    try:
+        source = out / "final_paper_source.md"
+        if source.is_file():
+            errors.extend(scope_errors(source.read_text(encoding="utf-8"), plan))
+    except ValueError as exc:
+        errors.append(str(exc))
     return sorted(set(errors))
 
 
@@ -214,7 +221,8 @@ def slug(value: object) -> str:
 
 
 def effective_chars(text: str) -> int:
-    visible = ALL_MATHMODEL_MARKERS.sub("", text)
+    from paper_scope import visible_prose
+    visible = visible_prose(text)
     return len(re.sub(r"\s+", "", visible))
 
 

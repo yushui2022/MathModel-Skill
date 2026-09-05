@@ -33,7 +33,7 @@ LEGACY_DOC_EXTS = {".doc"}
 DATA_EXTS = {".xlsx", ".xls", ".csv", ".tsv", ".json"}
 SUSPICIOUS_NAME_HINTS = ("result", "结果", "submit", "提交")
 EXPECTED_EDITION = "standard"
-SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".trae/skills", ".trae/skills")
+SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".claude/skills", ".trae/skills")
 LEGACY_ENTRY_EDITIONS = {
     "paper-workflow-orchestrator": "standard",
     "mathmodel-lite": "lite",

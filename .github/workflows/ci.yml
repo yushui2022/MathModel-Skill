@@ -43,6 +43,9 @@ jobs:
       - name: Run test suite
         run: python -u tests/run_tests.py
 
+      - name: Check complete-paper scope regressions
+        run: python tests/test_paper_scope.py
+
   render:
     name: LibreOffice render gate
     runs-on: ubuntu-latest

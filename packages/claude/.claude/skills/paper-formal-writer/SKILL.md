@@ -48,7 +48,9 @@ python .claude/skills/paper-formal-writer/scripts/build_paper_outline.py
 python .claude/skills/paper-formal-writer/scripts/prepare_authoring.py --mode auto
 ```
 
-`auto` selects `global` only when the ideal body target is at most 6000 effective characters. Normal competition papers use `section`. Use explicit `global` only for a user-requested short report.
+Default delivery is `competition`: plan at least 14000 effective characters, with a main-paper floor of 8000 and at least 18 rendered pages before appendices. These are adjustable project defaults, not contest rules. Verify the actual contest's page cap and counting rules before writing. `auto` therefore selects `section`; a short report needs `--delivery short-report --scope-reason "user-requested scope"`. Custom floors use `--min-pages` / `--min-body-chars` with a reason; never lower them merely to turn a failed check green.
+
+Read [references/competition-scope.md](references/competition-scope.md) when preparing scope or repairing a short manuscript. Several authoring turns may produce one coherent chapter; preserve evidence and notation between turns instead of compressing the paper into one response.
 
 The authoritative S7 contracts are:
 

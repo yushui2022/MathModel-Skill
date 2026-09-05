@@ -5,10 +5,15 @@ from pathlib import Path
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+    os.environ["PYTHONUTF8"] = "1"
+    os.environ["PYTHONIOENCODING"] = "utf-8"
     root_dir = Path.cwd().resolve()
     os.chdir(root_dir)
 
-    scripts_dir = Path(".agents/skills/data-cleaning-and-visualization/scripts")
+    scripts_dir = Path(__file__).resolve().parent
 
     print("=== Step 0: 附件读取诊断 ===")
     loader_script = scripts_dir / "robust_loader.py"

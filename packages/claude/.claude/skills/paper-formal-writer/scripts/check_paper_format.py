@@ -592,6 +592,11 @@ def render_docx_qa(path: Path, mode: str, source_content_chars: int) -> tuple[di
         report["page_count"] = page_count
         report["extracted_text_chars"] = extracted_chars
         report["text_preview"] = extracted[:240]
+        from paper_scope import check_rendered_scope
+        writing_plan = load_json(WRITING_PLAN)
+        scope_failures, scope_report = check_rendered_scope([(page.extract_text() or "") for page in reader.pages], writing_plan)
+        failures.extend(scope_failures)
+        report["paper_scope"] = scope_report
     except Exception as exc:
         failures.append(f"渲染 PDF 无法读取：{type(exc).__name__}: {exc}")
         report["status"] = "FAIL"
@@ -631,6 +636,11 @@ def evaluate(render_mode: str = "auto") -> dict[str, Any]:
     warnings.extend(citation_warnings)
 
     counts = char_count(text)
+    from paper_scope import scope_errors
+    try:
+        failures.extend(scope_errors(text, load_json(WRITING_PLAN)))
+    except ValueError as exc:
+        failures.append(str(exc))
     target_words = outline.get("target_words", {}) if isinstance(outline, dict) else {}
     min_words = int(target_words.get("min", 10000) or 10000)
     max_words = int(target_words.get("max", 22000) or 22000)
@@ -731,6 +741,14 @@ def evaluate(render_mode: str = "auto") -> dict[str, Any]:
     render_qa, render_failures, render_warnings = render_docx_qa(DOCX_FILE, render_mode, counts["content"])
     failures.extend(render_failures)
     warnings.extend(render_warnings)
+    from paper_scope import checked_scope, render_delivery_errors
+    delivery_mode = "unknown"
+    try:
+        plan = load_json(WRITING_PLAN)
+        delivery_mode = checked_scope(plan)["mode"]
+        failures.extend(render_delivery_errors(plan, render_qa))
+    except ValueError as exc:
+        failures.append(str(exc))
 
     input_paths = [
         source,
@@ -747,12 +765,16 @@ def evaluate(render_mode: str = "auto") -> dict[str, Any]:
         for path in input_paths
         if path.exists() and path.is_file()
     }
+    if render_qa.get("status") == "PASS":
+        input_hashes[render_qa["pdf"]] = render_qa["pdf_sha256"]
 
     return {
         "schema_version": "1.0",
         "generated_by": "paper-formal-writer/scripts/check_paper_format.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "status": "PASS" if not failures else "FAIL",
+        "delivery_mode": delivery_mode,
+        "acceptance_scope": "NOT_ACCEPTED" if failures else ("STANDARD_COMPETITION_CHECKS" if delivery_mode == "competition" else delivery_mode.upper().replace("-", "_") + "_ONLY"),
         "source": rel(source),
         "docx": rel(DOCX_FILE),
         "counts": counts,
@@ -795,6 +817,7 @@ def write_reports(report: dict[str, Any]) -> None:
         "# Formal Paper Format Check Report",
         "",
         f"- Status: `{report['status']}`",
+        f"- Acceptance scope: `{report['acceptance_scope']}`",
         f"- Generated at: `{report['generated_at']}`",
         f"- Source: `{report['source']}`",
         f"- DOCX: `{report['docx']}`",

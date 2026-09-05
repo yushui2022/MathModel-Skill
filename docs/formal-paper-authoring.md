@@ -1,4 +1,4 @@
-# Standard 2.2 Formal Paper Authoring
+# Standard 2.3 Formal Paper Authoring
 
 `paper-formal-writer` is the sole formal author. `paper-micro-unit-generator` is limited to queued local repair and explicit legacy/quickstart scaffolds.
 
@@ -17,7 +17,15 @@ python .claude/skills/paper-formal-writer/scripts/prepare_authoring.py --mode au
 
 Replace `.claude/skills` with `.agents/skills` for Codex or `.trae/skills` for Trae.
 
-`auto` selects global drafting only for a target of at most 6000 effective characters. Normal competition papers use section mode.
+Default `competition` delivery sets a planning target of at least 14000 effective characters and routes `auto` to section mode. The final checks require 8000 main-paper characters and 18 rendered pages before appendices. These are project defaults, not universal contest rules; verify the actual competition's cap and page-count scope. Comments, fenced code and appendices cannot fill the main-paper floor. Each question needs its own substantive `5.1`, `5.2`, ... section.
+
+A user-requested short report can use:
+
+```bash
+python .claude/skills/paper-formal-writer/scripts/prepare_authoring.py --mode auto --delivery short-report --scope-reason "User requested a short technical report"
+```
+
+Custom `--min-pages` and `--min-body-chars` also require `--scope-reason`. Do not lower them just to bypass a failure. `smoke-test` is only for installation fixtures. All scope changes invalidate downstream hashes and require renewed authoring/format audits. Read the installed formal writer's `references/competition-scope.md` for expansion and boundary handling; old plans without scope must be prepared again.
 
 ## Draft Sections
 

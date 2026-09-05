@@ -42,6 +42,9 @@ TRAE_WORKFLOW_GUARD = TRAE_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
 
 
 def run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    # Existing tiny fixtures test plumbing, not competition-paper acceptance.
+    if len(cmd) > 1 and Path(cmd[1]) == PREPARE_AUTHORING and "--delivery" not in cmd:
+        cmd = [*cmd, "--delivery", "smoke-test", "--scope-reason", "Synthetic regression fixture"]
     return subprocess.run(
         cmd,
         cwd=str(cwd),
@@ -297,7 +300,7 @@ def stage_workflow(output: Path, through_step: str) -> None:
         result = run([sys.executable, str(EVIDENCE_GATE)], cwd)
         assert_true(result.returncode == 0, f"staged evidence gate should pass\n{result.stdout}")
     if limit >= order.index("S7"):
-        source = "# Title\n\n# 摘要\n\nFormal computed abstract.\n\n# 1 Problem Restatement\n\nFormal computed content with a complete explanation for the staged workflow.\n"
+        source = "# Title\n\n# 摘要\n\nFormal computed abstract.\n\n# 1 Problem Restatement\n\nFormal computed content with a complete explanation for the staged workflow. The regression checks state transitions rather than competition quality.\n"
         write_json(output / "plan" / "paper_outline.json", {"target_words": {"min": 10, "max": 5000}, "questions": [{"question_id": "Q1"}]})
         prepare_authoring_pass(cwd, output, source)
         result = run([sys.executable, str(FORMAT_DOCX)], cwd)
@@ -826,7 +829,7 @@ def test_format_formal_docx_after_evidence_gate() -> None:
                 "Problem restatement.",
                 "",
                 "# 5.1 问题一模型",
-                "Model section.",
+                "Model section with enough explanatory prose to exercise the declared smoke-test scope.",
             ]
     )
     (output / "final_paper_source.md").write_text(source, encoding="utf-8")
@@ -1306,7 +1309,7 @@ def test_release_packages_are_isolated_and_deterministic() -> None:
         assert_true(not any(path.startswith("skills/") for path in names), "Codex archive should not retain legacy skills root")
         assert_true(".agents/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Codex archive should contain edition marker")
         assert_true("AGENTS.md" not in names and "CLAUDE.md" not in names, "Codex archive should not overwrite root instructions")
-        assert_true(archive.read("VERSION").decode("utf-8").strip() == "2.2.0", "Codex archive should report Standard 2.2.0")
+        assert_true(archive.read("VERSION").decode("utf-8").strip() == (REPO_ROOT / "VERSION").read_text().strip(), "Codex archive should report the current version")
     with zipfile.ZipFile(first / archives["Claude"]) as archive:
         names = set(archive.namelist())
         assert_true(".claude/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Claude archive should contain edition marker")
@@ -1354,8 +1357,8 @@ def test_platform_packages_stay_synced() -> None:
             assert_true(codex_path.read_bytes() == claude_bytes, f"codex binary payload drift: {rel}")
             assert_true(trae_path.read_bytes() == claude_bytes, f"trae binary payload drift: {rel}")
             continue
-        assert_true(codex_text == claude_text.replace(".claude/skills", ".agents/skills"), f"codex payload drift: {rel}")
-        assert_true(trae_text == claude_text.replace(".claude/skills", ".trae/skills"), f"trae payload drift: {rel}")
+        assert_true(codex_text == (claude_text if Path(rel).name == "preflight_check.py" else claude_text.replace(".claude/skills", ".agents/skills")), f"codex payload drift: {rel}")
+        assert_true(trae_text == (claude_text if Path(rel).name == "preflight_check.py" else claude_text.replace(".claude/skills", ".trae/skills")), f"trae payload drift: {rel}")
 
 
 def main() -> int:

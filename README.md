@@ -5,7 +5,7 @@
 
 ### 强模型使用的可复现数学建模与正式论文工作流
 
-[![Version](https://img.shields.io/badge/version-2.2.0-0f766e)](./VERSION)
+[![Version](https://img.shields.io/badge/version-2.3.0-0f766e)](./VERSION)
 [![Workflow](https://img.shields.io/badge/workflow-S0--S8-2563eb)](#standard-22-主线)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#安装)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
@@ -16,12 +16,18 @@
 
 Standard 2.2 保留 S0-S6 可复现证据链与 S8 Word/PDF 门禁，重点重建 S7 写作：完整章节是默认写作单位，微单元只在单章连续失败后进行局部修复。所有章节通过后，必须先确定性合并，再由 Agent 做一次全文统一改写，不能把章节或微单元简单拼接后直接交付。
 
+**2.3.0 更新：完整论文与短报告分开验收。** 默认按完整竞赛稿规划，正文目标至少 14000 有效字符，主稿至少 8000 有效字符、渲染后附录前至少 18 页；这是可说明理由调整的项目默认值，不是所有比赛的统一规则。代码块、注释和附录不计入主稿字符，每个问题必须有独立的建模与结果正文。章节可分多轮写完，再统一改写，不能把单次回复长度当作论文长度。
+
+正式赛题的页数上限、摘要和附录计页规则仍须按当年赛题核对。不要放大字号、插空页或重复段落凑篇幅；短报告使用 `--delivery short-report --scope-reason "用户要求的短报告范围"`，具体见[写作指南](docs/formal-paper-authoring.md)。脚本通过只代表所列检查通过，不代表获奖水平或已完成真实赛题实战验收。
+
+完整稿和短报告都不能用 `--render skip` 完成 S8，渲染 PDF 变化后验收失效。只有明确的 `smoke-test` 可跳过渲染，报告会标记 `SMOKE_TEST_ONLY`。
+
 ## 版本选择
 
 | 模型与目标 | 推荐版本 | 分支 |
 |---|---|---|
 | Claude Fable 5、GPT-5.6 Sol Ultra 等最高档模型，允许高成本、多路线与独立复算 | Pro | [`pro`](https://github.com/yushui2022/MathModel-Skill/tree/pro) |
-| 强模型、长上下文、稳定工具调用、正式竞赛论文 | **Standard 2.2（当前分支）** | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
+| 强模型、长上下文、稳定工具调用、正式竞赛论文 | **Standard 2.3（当前分支）** | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
 | 普通或较旧模型、短上下文、优先简单稳定 | Lite | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
 
 **一个比赛项目只安装一个版本。** 不要把 Standard、Lite、Pro 解压到同一目录。三版 preflight 都会扫描现代与历史 Skill 路径并阻止混装。
@@ -74,7 +80,7 @@ S7 只有一条正式主线：
 
 ## 安装
 
-从 GitHub Release 下载与你的平台对应的一个 ZIP，并解压到数学建模项目根目录：
+当前 2.3.0 安装包位于本分支的 `dist/`；历史 GitHub Release 不会随分支更新。下载与你的平台对应的一个 ZIP，并解压到数学建模项目根目录：
 
 | 平台 | 安装包 | 解压后的 Skill 目录 |
 |---|---|---|

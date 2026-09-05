@@ -59,6 +59,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Prepare the Standard 2.2 adaptive authoring contracts.")
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--mode", choices=("auto", "global", "section"), default="auto")
+    parser.add_argument("--delivery", choices=("competition", "short-report", "smoke-test"), default="competition")
+    parser.add_argument("--scope-reason", default="")
+    parser.add_argument("--min-pages", type=int)
+    parser.add_argument("--min-body-chars", type=int)
     args = parser.parse_args()
     project_root = args.project_root.resolve()
     out = output_root(project_root)
@@ -77,7 +81,14 @@ def main() -> int:
         print(f"[BLOCKED] {exc}", file=sys.stderr)
         return 1
     sections = build_sections(outline)
+    from paper_scope import delivery_scope
+    try:
+        delivery = delivery_scope(args.delivery, args.scope_reason, args.min_pages, args.min_body_chars)
+    except ValueError as exc:
+        parser.error(str(exc))
     ideal = int((outline.get("target_words") or {}).get("ideal") or sum(item["target_chars"] for item in sections))
+    if delivery["mode"] == "competition":
+        ideal = max(ideal, 14000)
     mode = args.mode
     reason = "explicit user or operator selection"
     if mode == "auto":
@@ -97,9 +108,11 @@ def main() -> int:
         status="PASS",
         input_hashes=input_hashes,
         requested_mode=args.mode,
+        delivery=delivery,
+        question_ids=[str(q.get("question_id")) for q in outline.get("questions", []) if isinstance(q, dict) and q.get("question_id")],
         mode=mode,
         mode_reason=reason,
-        target_chars=outline.get("target_words") or {"ideal": ideal},
+        target_chars={**(outline.get("target_words") or {}), "ideal": ideal},
         evidence_gate_sha256=sha256_file(out / "qa" / "evidence_gate_report.json"),
         evidence_marker="<!-- mathmodel-evidence: evidence-id-1, evidence-id-2 -->",
         global_constraints={
