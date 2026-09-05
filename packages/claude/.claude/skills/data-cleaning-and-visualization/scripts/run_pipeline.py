@@ -8,7 +8,7 @@ def main() -> int:
     root_dir = Path.cwd().resolve()
     os.chdir(root_dir)
 
-    scripts_dir = Path(".claude/skills/data-cleaning-and-visualization/scripts")
+    scripts_dir = Path(__file__).resolve().parent
 
     print("=== Step 0: 附件读取诊断 ===")
     loader_script = scripts_dir / "robust_loader.py"

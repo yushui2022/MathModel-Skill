@@ -212,6 +212,16 @@ class CoreTests(unittest.TestCase):
         with mock.patch.object(pro_render_pdf.shutil, "which", return_value=None), mock.patch.object(Path, "is_file", return_value=False):
             self.assertIsNone(pro_render_pdf.find_soffice(None))
 
+    def test_data_pipeline_resolves_helpers_from_its_own_installation(self):
+        path = SKILLS / "data-cleaning-and-visualization/scripts/run_pipeline.py"
+        spec = importlib.util.spec_from_file_location("tested_data_pipeline", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with mock.patch.object(module.os, "chdir"), mock.patch.object(module.subprocess, "run", return_value=mock.Mock(returncode=0)) as commands:
+            self.assertEqual(module.main(), 0)
+        self.assertTrue(commands.call_args_list)
+        self.assertTrue(all(Path(call.args[0][1]).parent == path.parent for call in commands.call_args_list))
+
     def test_failure_success_resets_consecutive_counter(self):
         script = SKILLS / "context-memory-keeper/scripts/update_pro_memory.py"
         for failed in (True, False, True, False, True, False):

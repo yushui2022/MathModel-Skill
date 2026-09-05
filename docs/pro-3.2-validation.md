@@ -19,7 +19,7 @@
 
 ## 本地验证
 
-Windows / Python 3.11.1：53项回归测试通过，包含真实求解和LibreOffice渲染集成。
+Windows / Python 3.11.1：54项回归测试通过，包含真实求解和LibreOffice渲染集成。
 两端共20个SKILL入口通过Skill Creator校验；最长入口139行。Python编译、依赖
 `pip check`、两端同步、安装包逐字节校验与两次构建一致性通过。
 
