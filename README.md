@@ -13,7 +13,7 @@
 
 MathModel Skill 帮助编程 Agent 完成题意分析、建模代码、真实计算和论文写作。当前 `Latex` 分支在旧版工作流上提供额外的 LaTeX 导出：复用正式 Markdown 源稿与计算证据，生成 `.tex`，并可通过 XeLaTeX 编译 PDF。
 
-**这是旧版实验性分支，不是当前 Standard 或 Pro 的 LaTeX 模式。** 本次发布为 `latex-2026.09.05` 日期快照，重点加固导出完整性；未完成真实 XeLaTeX 编译验收。普通正式论文任务优先使用 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/master)，高计算投入与独立复算选择 [Pro](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
+**这是旧版实验性分支，不是当前 Standard 或 Pro 的 LaTeX 模式。** 本次发布为 `latex-2026.09.05` 日期快照，重点加固导出完整性；未完成真实 XeLaTeX 编译验收。普通正式论文任务优先使用 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)，高计算投入与独立复算选择 [Pro](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
 
 **能力档位：入门 → 标准 → 旗舰**
 
@@ -22,7 +22,7 @@ MathModel Skill 帮助编程 Agent 完成题意分析、建模代码、真实计
 | 档位与版本 | 推荐模型示例 | 流程与交付能力 |
 |---|---|---|
 | **1 · 入门档** [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | **DeepSeek 等模型**；优先低负担运行 | **基础建模报告**：一个入口、六步流程，真实计算与基础 Word 导出；不含严格引文、原生 Word 公式和 PDF 验收。 |
-| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/master) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
+| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
 | **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)** 等前沿模型；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
 
 这是本项目的推荐搭配，不是对同品牌所有模型的固定排名，也不代表已完成实战认证；最终看具体型号、推理档位与工具能力。
