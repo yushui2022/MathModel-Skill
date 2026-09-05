@@ -1,242 +1,146 @@
 <div align="center">
-  <img src="./assets/mathe-skill-logo.svg" alt="MathModel Skill" width="120" height="120" />
+  <img src="./assets/mathe-skill-logo.svg" alt="MathModel Skill Standard" width="120" height="120" />
 
 # MathModel Skill Standard
 
-### 强模型使用的可复现数学建模与正式论文工作流
+### 从赛题分析、真实计算到可复现的数学建模论文
 
-[![Version](https://img.shields.io/badge/version-2.3.0-0f766e)](./VERSION)
-[![Workflow](https://img.shields.io/badge/workflow-S0--S8-2563eb)](#standard-22-主线)
-[![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#安装)
+[![Version](https://img.shields.io/badge/version-2.3.0-0f766e)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0)
+[![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
 </div>
 
-这是 MathModel Skill 的默认 `master` 分支。Standard 适合上下文较长、复杂推理与工具调用稳定的强模型，用于完成正式竞赛论文，同时控制流程复杂度与计算成本。
+MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛题与附件放入项目后，Agent 按工作流分析问题、选择模型、编写并运行代码、整理图表和证据，再撰写与检查论文；它不只是让模型直接生成一篇文章的提示词。
 
-Standard 2.2 保留 S0-S6 可复现证据链与 S8 Word/PDF 门禁，重点重建 S7 写作：完整章节是默认写作单位，微单元只在单章连续失败后进行局部修复。所有章节通过后，必须先确定性合并，再由 Agent 做一次全文统一改写，不能把章节或微单元简单拼接后直接交付。
+当前是默认 `master` 分支的 **Standard 2.3.0**，适合长上下文、推理和工具调用稳定的强模型。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
 
-**2.3.0 更新：完整论文与短报告分开验收。** 默认按完整竞赛稿规划，正文目标至少 14000 有效字符，主稿至少 8000 有效字符、渲染后附录前至少 18 页；这是可说明理由调整的项目默认值，不是所有比赛的统一规则。代码块、注释和附录不计入主稿字符，每个问题必须有独立的建模与结果正文。章节可分多轮写完，再统一改写，不能把单次回复长度当作论文长度。
+## 小红书
 
-正式赛题的页数上限、摘要和附录计页规则仍须按当年赛题核对。不要放大字号、插空页或重复段落凑篇幅；短报告使用 `--delivery short-report --scope-reason "用户要求的短报告范围"`，具体见[写作指南](docs/formal-paper-authoring.md)。脚本通过只代表所列检查通过，不代表获奖水平或已完成真实赛题实战验收。
-
-完整稿和短报告都不能用 `--render skip` 完成 S8，渲染 PDF 变化后验收失效。只有明确的 `smoke-test` 可跳过渲染，报告会标记 `SMOKE_TEST_ONLY`。
-
-## 版本选择
-
-| 模型与目标 | 推荐版本 | 分支 |
-|---|---|---|
-| Claude Fable 5、GPT-5.6 Sol Ultra 等最高档模型，允许高成本、多路线与独立复算 | Pro | [`pro`](https://github.com/yushui2022/MathModel-Skill/tree/pro) |
-| 强模型、长上下文、稳定工具调用、正式竞赛论文 | **Standard 2.3（当前分支）** | [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) |
-| 普通或较旧模型、短上下文、优先简单稳定 | Lite | [`lite`](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
-
-**一个比赛项目只安装一个版本。** 不要把 Standard、Lite、Pro 解压到同一目录。三版 preflight 都会扫描现代与历史 Skill 路径并阻止混装。
+作者：**Orlando Liu（奥兰多）**，小红书号：[`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。点击图片进入主页，也可以扫码找到我。
 
 <p align="center">
-  <a href="./assets/orlando-liu-social.jpg">
-    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu social media profile" width="480" />
+  <a href="https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb">
+    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu 小红书主页与二维码" width="480" />
   </a>
 </p>
 
-## Standard 2.2 主线
+## 快速导入使用
 
-```text
-S0 输入与安装预检
--> S1 题意结构化
--> S2 模型与评分路线
--> S3 数据和图表计划
--> S4 赛题专用代码
--> S5 真实运行与结果契约
--> S6 证据门禁
--> S7 自适应正式写作
--> S8 Word/PDF 格式门禁
-```
+### 1. 选择版本与安装包
 
-S7 只有一条正式主线：
+**一个比赛项目只安装一个版本、一个平台包。** 不要把 Standard、Lite、Pro 或 LaTeX 包混在同一目录。
 
-```text
-证据门禁 PASS
--> writing_plan.json
--> 完整章节草稿
--> 逐章审计
--> 必要时局部微单元修复
--> assembled_draft.md
--> Agent 全文统一改写
--> final_paper_source.md 审计
--> final_paper.docx
--> LibreOffice PDF 渲染门禁
-```
+| 你的使用需求 | 选择 |
+|---|---|
+| 强模型，正式论文，需要控制流程复杂度 | **Standard（当前版本）** |
+| 普通或较旧模型，希望简单完成基础建模报告 | [Lite](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
+| 高能力模型，接受高计算投入和三个用户确认点 | [Pro 预发布版](https://github.com/yushui2022/MathModel-Skill/tree/pro) |
+| 需要旧版实验性 LaTeX 导出 | [LaTeX 预发布版](https://github.com/yushui2022/MathModel-Skill/tree/Latex) |
 
-### 自适应模式
+从 [Standard 2.3.0 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0) 下载与你的 Agent 对应的一个安装包：
 
-| 模式 | 使用条件 | 行为 |
+| 平台 | 直接下载 | 解压后的 Skill 目录 |
 |---|---|---|
-| `section` | 正常竞赛论文，默认 | 按完整章节写作、审计、修复和合并 |
-| `global` | 正文目标不超过 6000 有效字符，或用户明确要求短报告 | 先写完整短稿；同类失败连续两次后降为 `section` |
-| `micro-repair` | 单个章节同类失败连续两次 | 只修复 `repair_queue.json` 指定位置，不接管全文 |
-| `legacy` | 安装测试、旧模型紧急兜底 | 输出非正式 scaffold，不得使用正式文件名 |
+| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Codex.zip) | `.agents/skills/` |
+| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Claude-Code.zip) | `.claude/skills/` |
+| Trae | [Trae 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Trae.zip) | `.trae/skills/` |
 
-单章同类问题第三次仍失败时，S7 标记 `BLOCKED` 并说明原因。系统可以建议用户改用 Lite，但不会自动切换分支或版本。
+上面的安装包不同于 GitHub 的 `Code → Download ZIP` 仓库源码。需要核验下载时，使用 Release 中的 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/SHA256SUMS.txt)。
 
-## 安装
+### 2. 导入项目并准备环境
 
-当前 2.3.0 安装包位于本分支的 `dist/`；历史 GitHub Release 不会随分支更新。下载与你的平台对应的一个 ZIP，并解压到数学建模项目根目录：
+在一个独立的数学建模项目目录中解压安装包，不要只复制 `SKILL.md`，也不要覆盖用户已有的 `AGENTS.md` 或 `CLAUDE.md`。确认隐藏目录里的 Skills 已完整解压，再用对应 Agent 打开这个项目。
 
-| 平台 | 安装包 | 解压后的 Skill 目录 |
-|---|---|---|
-| Codex | `MathModel-Skill-Codex.zip` | `.agents/skills/` |
-| Claude Code | `MathModel-Skill-Claude-Code.zip` | `.claude/skills/` |
-| Trae | `MathModel-Skill-Trae.zip` | `.trae/skills/` |
-
-安装包不会创建或覆盖项目根目录的 `AGENTS.md`、`CLAUDE.md`。每个 ZIP 都包含 `VERSION`、`MATHMODEL_BUILD.json`、逐文件 SHA-256、平台 README、依赖与启动提示词。
-
-安装依赖：
+使用 Python **3.11 或 3.12**，在项目根目录安装依赖：
 
 ```bash
 python -m pip install -r requirements.txt
 python -m pip check
 ```
 
-正式 S8 需要 LibreOffice，用于把 DOCX 渲染为 PDF 并检查页数和可提取文本。没有 LibreOffice 时可以开发和生成草稿，但不能通过最终 `--render required` 门禁。
+正式交付还需要安装 **LibreOffice**，并使 `soffice` 或 `libreoffice` 可用。没有它可以进行前期工作，但不能通过最终 PDF 渲染检查。
 
-创建输入目录：
+### 3. 放入赛题与附件
+
+在项目根目录创建 `problem_files/`，放入赛题、官方附件与数据。例如 Codex 项目：
 
 ```text
 your-project/
-├── problem_files/       # 赛题、官方附件、数据
+├── .agents/skills/
 ├── requirements.txt
-└── <平台 Skill 目录>/
+└── problem_files/
+    ├── 赛题.pdf
+    └── 附件.xlsx
 ```
 
-## 首次提示词
+Claude Code 或 Trae 使用上表中自己的 Skill 目录，输入目录保持不变。
 
-安装后直接对 Agent 说：
+### 4. 对 Agent 说
 
 ```text
 请使用 $paper-workflow-orchestrator 完成这个数学建模项目。
 赛题和官方附件已放在 problem_files/。
-先运行 preflight 和 workflow_guard --status，再严格按 S0-S8 继续。
-所有赛题专用代码写入 paper_output/code/，所有结果、证据和论文写入 paper_output/。
-S6 证据门禁通过后，按 Standard 2.2 的章节写作主线执行 S7；只有修复队列明确要求时才使用微单元。
-全部章节通过后先确定性合并，再进行一次全文统一改写，然后生成正式 DOCX 并执行 required PDF 渲染门禁。
-任何门禁失败都不要把产物称为最终稿。
+先预检输入，再按 S0-S8 执行，必须真实运行代码并保留结果证据。
+采用完整章节写作，允许分多轮完成，最后统一全文，不要只输出摘要或拼接微单元。
+请核对当年赛题的篇幅和格式规则，不自行降低为短报告。
+所有赛题产物写入 paper_output/；证据、写作与 Word/PDF 检查未通过，不要称为最终稿。
 ```
 
-更多可复制提示词见 [docs/starter-prompts.md](docs/starter-prompts.md)。
+正常使用不需要手工执行整套脚本。若 Agent 没有识别入口，让它先读取所安装目录中的 `paper-workflow-orchestrator/SKILL.md`。继续上次任务、修复章节的提示词见 [启动与恢复提示词](docs/starter-prompts.md)。
 
-## 常用命令
+完成后先查看：
 
-以下以 Claude Code 路径为例。Codex 将 `.claude/skills` 替换为 `.agents/skills`，Trae 替换为 `.trae/skills`。
+| 产物 | 位置 |
+|---|---|
+| 正式 Word | `paper_output/final_paper.docx` |
+| 正式 Markdown 源稿 | `paper_output/final_paper_source.md` |
+| 渲染 PDF | `paper_output/qa/rendered/final_paper.pdf` |
+| 代码、结果与图表 | `paper_output/code/`、`results/`、`figures/`、`tables/` |
+| 最终检查报告 | `paper_output/format_check_report.json` |
 
-检查或恢复阶段：
+## 原理介绍
 
-```bash
-python .claude/skills/paper-workflow-orchestrator/scripts/preflight_check.py
-python .claude/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --status
-```
+### 先计算、后成文
 
-证据门禁：
-
-```bash
-python .claude/skills/quality-assurance-auditor/scripts/evidence_gate.py --mode official
-```
-
-S7 正式写作：
-
-```bash
-python .claude/skills/paper-formal-writer/scripts/build_paper_outline.py
-python .claude/skills/paper-formal-writer/scripts/prepare_authoring.py --mode auto
-python .claude/skills/paper-formal-writer/scripts/validate_authoring.py --section <section-id>
-python .claude/skills/paper-formal-writer/scripts/assemble_sections.py
-python .claude/skills/paper-formal-writer/scripts/validate_authoring.py --assembled
-python .claude/skills/paper-formal-writer/scripts/validate_authoring.py --final
-```
-
-Word 与 S8：
-
-```bash
-python .claude/skills/paper-formal-writer/scripts/format_formal_docx.py
-python .claude/skills/paper-formal-writer/scripts/check_paper_format.py --render required
-```
-
-`quickstart_run.py` 只验证安装和基础脚本。它的全部草稿都写入 `paper_output/quickstart/`，不会产生正式命名文件。
-
-## 关键契约
+Standard 保留 S0-S8 单一工作流。不同 Skills 各自负责一个环节，用实际文件和证据交接，而不是仅依赖对话记忆。
 
 ```text
-paper_output/
-├── preflight_report.json
-├── input_manifest.json
-├── step1/problem_analysis.json
-├── plan/
-│   ├── model_route.json
-│   ├── rubric_alignment.json
-│   ├── paper_outline.json
-│   └── writing_plan.json
-├── code/                         # 当前赛题专用代码
-├── results/
-│   ├── run_manifest.json
-│   ├── model_results.json
-│   ├── metrics.json
-│   └── conclusions.json
-├── qa/
-│   ├── evidence_gate_report.json
-│   ├── draft_audit.json
-│   └── repair_queue.json
-├── context/
-│   ├── authoring_state.json
-│   └── workflow_memory.json
-├── drafts/
-│   ├── sections/
-│   ├── repairs/
-│   ├── legacy/
-│   └── assembled_draft.md
-├── final_paper_source.md
-├── final_paper.docx
-└── format_check_report.json
+S0 输入与安装预检 → S1 题意分析 → S2 模型路线
+→ S3 数据与图表计划 → S4 编写代码 → S5 真实运行
+→ S6 证据检查 → S7 自适应正式写作 → S8 Word/PDF 检查
 ```
 
-所有机器契约都使用输入 SHA-256 判断新鲜度。证据、计划、已审计章节、合并稿或最终源稿发生变化后，下游 PASS 自动失效。
+脚本、输入和输出都记录 SHA-256。证据或已审计文件变化后，依赖它们的通过状态会失效，必须重新计算或验证。安装目录只保存通用能力，当前赛题代码始终写到 `paper_output/code/`。
 
-## 10 个 Skills
+### 章节写作与局部修复
 
-| Skill | 职责 |
-|---|---|
-| `paper-workflow-orchestrator` | S0-S8 总入口、路由、恢复 |
-| `problem-doc-model-selector` | 题面、附件、子问题和约束结构化 |
-| `modeling-paper-rubric-and-model-selector` | 模型路线与评分证据 |
-| `authoritative-data-harvester` | 必要的公开权威数据 |
-| `data-cleaning-and-visualization` | 数据读取、清洗、图表计划与索引 |
-| `model-code-and-result-generator` | 赛题专用代码、运行账本与结果契约 |
-| `quality-assurance-auditor` | S6 证据门禁 |
-| `paper-formal-writer` | 唯一正式主笔、S7/S8 |
-| `paper-micro-unit-generator` | 排队后的局部修复；legacy/quickstart scaffold |
-| `context-memory-keeper` | 长任务断点与恢复状态 |
+`paper-formal-writer` 是唯一正式主笔：先制定写作计划，再按完整章节写作与审计；全部章节通过后确定性合并，由 Agent 全文统一改写，最后生成 DOCX。
 
-## 验证与打包
+默认完整竞赛稿使用 `section` 模式。明确要求的短报告可使用 `global`，同类问题连续两次失败后转为章节写作。单章同类问题连续两次失败才启用局部 `micro-repair`；第三次仍失败则阻塞并报告原因，不自动切换版本。旧微单元与 quickstart 只保留为非正式草稿。
 
-本地回归：
+### 篇幅、证据与渲染检查
+
+默认完整稿规划至少 14000 有效字符，检查主稿至少 8000 有效字符、附录前渲染页数至少 18 页。**这些是防止极短稿的项目默认值，不是所有比赛的统一规定，也不是优秀论文标准。** 具体比赛的页数上限和计页方式仍要单独核对。
+
+每问需要实质性的建模、计算结果与解释；注释、代码块和附录不能用于填补主稿长度。范围调整或短报告必须明确说明理由，不用空页、放大排版或重复正文凑数。
+
+正式稿要求新鲜的证据与写作检查、可编辑的 Word OMML 公式和真实 LibreOffice 渲染。完整稿和短报告不能通过 `--render skip` 完成最终检查；仅明确的安装测试允许豁免，并标记为 `SMOKE_TEST_ONLY`。
+
+## 验证状态与详细文档
+
+- 发布提交已通过原有 42 项回归和新增 14 项范围与渲染检查；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940797268) 覆盖 Windows/Ubuntu、Python 3.11/3.12，并含 LibreOffice 渲染任务。
+- 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
+- [安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md)
+- 分支 `dist/` 是随提交维护的构建包；上面的 Release 是固定版本快照，不会随 README 更新而被覆盖。
+
+开发者可在仓库中执行：
 
 ```bash
-python -m compileall -q packages scripts tests
 python scripts/sync_platform_packages.py --check
 python -u tests/run_tests.py
+python tests/test_paper_scope.py
 python scripts/build_release_packages.py --verify
 ```
 
-CI 覆盖 Windows/Ubuntu、Python 3.11/3.12，并在 Ubuntu 3.11 安装 LibreOffice 执行强制渲染测试。打包器固定 ZIP 时间戳、文本 LF 与文件顺序；`dist/SHA256SUMS.txt` 用于发布资产校验。
-
-## 示例说明
-
-`examples/cumcm2024-b-demo/` 保留原有 B 题工程产物，未在本次升级中重生成。它可用于查看历史 Word、证据和代码组织方式，但不代表已经通过 Standard 2.2 新增的 `writing_plan.json`、`authoring_state.json` 与章节哈希门禁。新赛题应完整执行当前 S0-S8。
-
-## 分支边界
-
-- `master`：Standard 2.2，默认分支。
-- `lite`：独立 Lite 产品，不与 Standard 同装或合并工作流。
-- `pro`：独立高成本 Pro 产品，不与 Standard 同装或合并工作流。
-- `Latex`：可选 LaTeX 输出实验分支，不改变主分支 Word 默认交付。
-
-## License
-
-[MIT](LICENSE), Copyright (c) 2026 yushui2022.
+[MIT License](LICENSE)，Copyright (c) 2026 yushui2022.
