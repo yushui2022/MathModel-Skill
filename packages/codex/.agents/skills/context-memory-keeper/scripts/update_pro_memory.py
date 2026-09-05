@@ -4,8 +4,12 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pro-workflow-orchestrator" / "scripts"))
+from pro_contracts import SCHEMA_VERSION, write_json
 
 
 def utc_now() -> str:
@@ -46,8 +50,12 @@ def main() -> int:
     failure_history = previous.get("failure_history", []) if isinstance(previous.get("failure_history"), list) else []
     if args.failure:
         signature = normalize_failure(args.failure)
-        prior_count = failure_history[-1].get("consecutive_count", 0) if failure_history and failure_history[-1].get("signature") == signature else 0
+        active = previous.get("active_failure", {})
+        prior_count = active.get("count", 0) if active.get("signature") == signature and active.get("phase") == args.phase else 0
         failure_history.append({"signature": signature, "message": args.failure, "at_utc": utc_now(), "consecutive_count": prior_count + 1})
+        active_failure = {"signature": signature, "phase": args.phase, "count": prior_count + 1}
+    else:
+        active_failure = {}
     ledger = load(root / "checkpoint_ledger.json")
     tracked_names = (
         "pro_config.json", "input_manifest.json", "instruction_manifest.json", "instruction_audit.json",
@@ -58,7 +66,7 @@ def main() -> int:
     )
     hashes = {name: sha256(root / name) for name in tracked_names if (root / name).is_file()}
     payload = {
-        "schema_version": "3.0",
+        "schema_version": SCHEMA_VERSION,
         "updated_at_utc": utc_now(),
         "current_phase": args.phase,
         "next_action": args.next_action,
@@ -67,10 +75,11 @@ def main() -> int:
         "reasoning_profile": load(root / "pro_config.json").get("reasoning_profile", {}),
         "artifact_hashes": hashes,
         "failure_history": failure_history[-30:],
-        "blocked": bool(args.blocker) or (bool(failure_history) and failure_history[-1].get("consecutive_count", 0) >= 3),
+        "active_failure": active_failure,
+        "blocked": bool(args.blocker) or active_failure.get("count", 0) >= 3,
         "blocker": args.blocker or None,
     }
-    memory_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_json(memory_path, payload)
     lines = [
         "# MathModel Pro workflow memory",
         "",

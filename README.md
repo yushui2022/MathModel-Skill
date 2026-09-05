@@ -5,7 +5,7 @@
 
 ### 不计成本、强调独立复算与可审计证据的高算力数学建模工作流
 
-[![Version](https://img.shields.io/badge/version-3.1.0--pro.1-111827)](#安装)
+[![Version](https://img.shields.io/badge/version-3.2.0--pro.1-111827)](#安装)
 [![Skills](https://img.shields.io/badge/skills-10-2563eb)](#技能组成)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code-16a34a)](#安装)
 [![Output](https://img.shields.io/badge/output-DOCX%20%2B%20PDF-b91c1c)](#交付门禁)
@@ -34,7 +34,7 @@ Pro 预检发现混装时会阻止运行。Pro 使用独立 `paper_output_pro/`�
 
 ## 前沿模型适配
 
-Pro 3.1 使用可维护的模型能力档案，不再仅靠模型名称片段判断。P0 会记录规范模型 ID、
+Pro 使用可维护的模型能力档案，不再仅靠模型名称片段判断。P0 会记录规范模型 ID、
 支持档位、推理档位别名、分阶段建议、官方来源和运行环境能力：
 
 | 档位 | 模型 | Pro 策略 |
@@ -56,6 +56,22 @@ P0 同时生成项目指令与所有 Pro `SKILL.md` 的哈希清单。检查点 
 支持并行/异步工具时会批量发起独立任务；不支持时按隔离上下文顺序执行。
 
 ## 三个检查点
+
+### 3.2 的实质升级
+
+- 实验由脚本实际执行并记录，独立复算读取真实指标；不再信任手填的 `PASS`。
+- 原始附件、完整证据目录和论文版本绑定哈希；修改或新增上游文件会使批准失效。
+- 正式写作增加章节、证据段落、关键数值、公式、重复正文与图表检查。
+- 五角色必须来自真实独立上下文，且审查同一版论文；不能把五个角色名称当作五次独立审稿。
+- DOCX 对照正式源稿重新构建校验，PDF 双向核对正文，并要求实际逐页查看渲染图。
+
+**升级须重新预检、计算和审批。** 3.2 使用新机器契约，不能复用旧版的结果或批准。
+机器门禁证明的是可追踪性和具体检查项，不保证建模假设正确、论文优秀或竞赛获奖。
+真实题意、论证质量和适用边界仍须通过独立评审与赛题前向测试。
+
+已完成53项本地回归测试，并以一篇实际求解、独立审稿及逐页检查的五页中文论文
+验证交付链。查看[验收记录与样例](docs/pro-3.2-validation.md)，其中明确区分真实执行
+和测试模拟，不将构造算例当作竞赛认证。
 
 Pro 在检查点之间自动执行，但必须等待用户确认：
 
@@ -109,6 +125,7 @@ Python 需要 3.11 或 3.12。安装依赖：
 
 ```bash
 python -m pip install -r requirements.txt
+python -m pip check
 ```
 
 最终 PDF 必须由 LibreOffice 渲染。安装并确保 `libreoffice` 或 `soffice` 可用；
@@ -165,6 +182,8 @@ paper_output_pro/pro_gate_report.json
 引用一致，且所有冻结哈希仍新鲜。
 
 ## 开发验证
+
+以下命令在代码仓库中运行；完整渲染测试需要设置 `REQUIRE_LIBREOFFICE=1`。
 
 ```bash
 python scripts/sync_platform_packages.py --check

@@ -6,7 +6,8 @@ description: "对 MathModel Pro 冻结证据和正式论文执行数学正确性
 # Pro Review Board
 
 仅在检查点 3 新鲜批准且 `evidence_freeze.json` 有效后运行。五个角色必须相互隔离
-完成一整轮后才能汇总；多代理不可用时，用五个隔离上下文顺序执行，不得合并角色。
+完成一整轮后才能汇总；多代理不可用时，用五个全新隔离会话顺序执行，不得合并角色。
+同一会话中切换五个角色名称不算隔离。宿主无法提供独立上下文时报告能力阻塞。
 
 ## 五个角色
 
@@ -17,8 +18,13 @@ description: "对 MathModel Pro 冻结证据和正式论文执行数学正确性
 5. `adversarial_challenge`
 
 每个 finding 记录 ID、级别、证据、修复要求、责任对象和处置状态。级别只能是
-Critical、Major、Minor 或 Note。全部角色完成后统一修复，再重新运行完整五角色，
-不能只复查提出问题的角色。
+`CRITICAL`、`MAJOR`、`MINOR` 或 `NOTE`。局部修改时可定向复查；最终一轮必须
+让五个角色检查同一版本的主稿、写作计划和冻结证据，不能沿用旧稿审稿结论。
+
+使用总入口的 `pro_collect_reviews.py --project-root <项目> --round 1 --prepare`
+生成待审请求，按真实执行结果填写 `reviews/round-1/<role>.json`。每份报告必须保留
+实际上下文 ID、模型、宿主执行记录路径及哈希、执行过的检查和有内容的评价。
+审稿结束后去掉 `--prepare` 收集验证。不得把空模板或自动测试的模拟记录作为正式审稿。
 
 最终轮必须没有未解决 Critical/Major，才能将 `review_board_report.json` 标为 PASS。
 同一规范化失败连续 3 轮出现时记录阻塞；否则继续修复，不设成本或时间预算。

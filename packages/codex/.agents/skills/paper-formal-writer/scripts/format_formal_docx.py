@@ -19,12 +19,15 @@ from docx.shared import Cm, Pt, RGBColor
 
 from formula_omml import FormulaConversionError, display_omml, inline_formula_tokens, latex_to_omml, source_formula_tokens
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pro-workflow-orchestrator" / "scripts"))
+from pro_contracts import safe_path, read_json
+
 
 BASE_DIR = Path.cwd()
 OUTPUT_DIR = BASE_DIR / "paper_output_pro"
 SOURCE_FILE = OUTPUT_DIR / "final_paper_source.md"
 FALLBACK_SOURCE_FILE = OUTPUT_DIR / "final_paper.md"
-OUTLINE_FILE = OUTPUT_DIR / "plan" / "paper_outline.json"
+OUTLINE_FILE = OUTPUT_DIR / "paper_plan.json"
 FIGURE_INDEX_FILE = OUTPUT_DIR / "figure_index.json"
 TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
 EVIDENCE_GATE_REPORT = OUTPUT_DIR / "evidence_freeze.json"
@@ -48,7 +51,7 @@ def load_json(path: Path) -> Any:
     if not path.exists():
         return {}
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return read_json(path)
     except Exception:
         return {}
 
@@ -61,12 +64,10 @@ def rel(path: Path) -> str:
 
 
 def resolve_path(path_text: str) -> Path:
-    normalized = path_text.strip().strip("<>")
-    foreign_separator = "\\" if os.sep == "/" else "/"
-    path = Path(normalized.replace(foreign_separator, os.sep)).expanduser()
-    if path.is_absolute():
-        return path
-    return BASE_DIR / path
+    normalized = path_text.strip().strip("<>").replace("\\", "/")
+    if normalized.startswith("paper_output_pro/"):
+        return safe_path(BASE_DIR, normalized)
+    return safe_path(BASE_DIR / "paper_output_pro", normalized)
 
 
 def set_cell_shading(cell, fill: str) -> None:
@@ -126,6 +127,14 @@ def configure_document(document: Document) -> None:
     section.bottom_margin = Cm(2.54)
     section.left_margin = Cm(2.8)
     section.right_margin = Cm(2.6)
+    section.page_width = Cm(21)
+    section.page_height = Cm(29.7)
+    footer = section.footer.paragraphs[0]
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer.paragraph_format.first_line_indent = None
+    page_number = OxmlElement("w:fldSimple")
+    page_number.set(qn("w:instr"), "PAGE")
+    footer._p.append(page_number)
 
     styles = document.styles
     normal = styles["Normal"]
@@ -313,16 +322,15 @@ def add_table_from_rows(
 ) -> int:
     native_count = 0
     if not rows:
-        if caption:
-            add_center_paragraph(document, caption, bold=True)
-        add_body_paragraph(document, "表格数据文件暂不可读取，正式提交前需检查表格索引和源 CSV 文件。")
-        return native_count
+        raise ValueError("empty or unreadable paper table")
     if caption:
         add_center_paragraph(document, caption, bold=True)
+        document.paragraphs[-1].paragraph_format.keep_with_next = True
     col_count = max(len(row) for row in rows)
     table = document.add_table(rows=len(rows), cols=col_count)
     table.alignment = WD_ALIGN_PARAGRAPH.CENTER
     table.autofit = True
+    compact = len(rows) <= 10 and all(len(cell) <= 40 for row in rows for cell in row)
     for row_idx, row in enumerate(rows):
         row_properties = table.rows[row_idx]._tr.get_or_add_trPr()
         cant_split = OxmlElement("w:cantSplit")
@@ -343,6 +351,7 @@ def add_table_from_rows(
             for paragraph_index, paragraph in enumerate(cell.paragraphs):
                 paragraph.paragraph_format.first_line_indent = None
                 paragraph.paragraph_format.space_after = Pt(0)
+                paragraph.paragraph_format.keep_with_next = compact and row_idx < len(rows) - 1
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER if len(value) <= 16 else WD_ALIGN_PARAGRAPH.LEFT
                 if paragraph_index == 0:
                     native_count += add_inline_content(
@@ -428,8 +437,7 @@ def add_index_table(document: Document, table_id: str, table_lookup: dict[str, d
 
 def add_image(document: Document, path: Path, caption: str | None = None) -> bool:
     if not path.exists():
-        add_body_paragraph(document, f"图片文件未找到：{rel(path)}。正式提交前需补齐图像文件。")
-        return False
+        raise ValueError(f"missing paper figure: {path}")
     paragraph = document.add_paragraph()
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.paragraph_format.first_line_indent = None
@@ -440,8 +448,7 @@ def add_image(document: Document, path: Path, caption: str | None = None) -> boo
         try:
             run.add_picture(str(path), width=Cm(12.8))
         except Exception:
-            add_body_paragraph(document, f"图片无法插入：{rel(path)}。")
-            return False
+            raise ValueError(f"unreadable paper figure: {path}")
     if caption:
         add_center_paragraph(document, caption, bold=True)
     return True
@@ -458,9 +465,7 @@ def add_index_figure(document: Document, figure_id: str, figure_lookup: dict[str
 
 
 def source_path() -> Path:
-    if SOURCE_FILE.exists():
-        return SOURCE_FILE
-    return FALLBACK_SOURCE_FILE
+    return SOURCE_FILE
 
 
 def render_markdown(
@@ -480,11 +485,12 @@ def render_markdown(
         "native_math": 0,
         "formula_fallbacks": [],
     }
-    lines = text.splitlines()
+    lines = re.sub(r"<!--.*?-->", "", text, flags=re.S).splitlines()
     idx = 0
     in_code = False
     code_lines: list[str] = []
     in_formula = False
+    formula_end = "$$"
     formula_lines: list[str] = []
 
     while idx < len(lines):
@@ -520,12 +526,13 @@ def render_markdown(
             idx += 1
             continue
 
-        if stripped.startswith("$$") and not in_formula:
+        if (stripped.startswith("$$") or stripped == r"\[") and not in_formula:
             in_formula = True
+            formula_end = r"\]" if stripped == r"\[" else "$$"
             formula_lines = [stripped[2:]] if stripped[2:] else []
             idx += 1
             continue
-        if in_formula and stripped.endswith("$$"):
+        if in_formula and stripped.endswith(formula_end):
             before_end = stripped[:-2]
             if before_end:
                 formula_lines.append(before_end)
@@ -650,6 +657,21 @@ def render_markdown(
             raise FormulaConversionError(message)
         stats["formula_fallbacks"].append(message)
         add_center_paragraph(document, "\n".join(formula_lines), font_name="Cambria Math", size=10.5)
+    # Keep short table captions with their table, and equations/figures with captions.
+    body = list(document.element.body)
+    for index, node in enumerate(body):
+        if node.tag != qn("w:p"):
+            continue
+        paragraph_text = "".join(node.itertext())
+        following = body[index + 1] if index + 1 < len(body) else None
+        is_caption = re.match(r"^(?:表\s*\d|Table\s+\d)", paragraph_text, re.I)
+        if is_caption and following is not None and following.tag == qn("w:tbl"):
+            node.get_or_add_pPr().append(OxmlElement("w:keepNext"))
+        if following is not None and following.tag == qn("w:p"):
+            next_text = "".join(following.itertext())
+            has_math_or_image = bool(node.xpath(".//m:oMath | .//w:drawing"))
+            if has_math_or_image and re.match(r"^(?:式\s*[（(\d]|图\s*\d|Figure\s+\d|Equation\s+\d)", next_text, re.I):
+                node.get_or_add_pPr().append(OxmlElement("w:keepNext"))
     return stats
 
 
@@ -672,7 +694,7 @@ def write_report(stats: dict[str, Any], source: Path, outline: Any) -> None:
         f"- Formula text fallbacks: `{len(stats.get('formula_fallbacks', []))}`",
         "- Render QA: `render_skipped`",
         "",
-        "LibreOffice 渲染不是本脚本的强依赖；若本机 LibreOffice 可用，可在最终交付前另行渲染 PNG/PDF 做视觉检查。",
+        "此报告只证明 DOCX 已生成。正式交付必须由 pro_render_pdf.py 使用 LibreOffice 渲染，逐页检查并通过 pro_format_check.py 和 pro_gate.py。",
     ]
     REPORT_MD.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
 
@@ -699,7 +721,17 @@ def check_evidence_gate() -> tuple[bool, str]:
             return False, f"冻结证据已缺失：{rel(path)}。"
         if sha256_file(path) != str(expected_hash or "").strip().lower():
             return False, f"冻结证据已变化：{rel(path)}。请重新计算并批准检查点 3。"
-    return True, ""
+    from pro_checkpoint import require_checkpoints
+    from pro_validation import check_freeze, check_review
+    from pro_paper_audit import check_paper
+    try:
+        errors = require_checkpoints(BASE_DIR, OUTPUT_DIR, 3)
+        errors += check_freeze(OUTPUT_DIR, data)
+        errors += check_paper(OUTPUT_DIR)
+        errors += check_review(OUTPUT_DIR, load_json(OUTPUT_DIR / "review_board_report.json"))
+        return not errors, "; ".join(errors)
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        return False, str(exc)
 
 
 def main() -> int:

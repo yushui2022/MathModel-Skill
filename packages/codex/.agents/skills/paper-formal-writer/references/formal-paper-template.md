@@ -1,6 +1,8 @@
 # 正式论文 Markdown 模板
 
-Agent 写 `paper_output_pro/final_paper_source.md` 时按此模板展开。不要机械保留占位符。
+Agent 写 `paper_output_pro/final_paper_source.md` 时可参考此结构，按实际子问题合并或
+删减章节，并与 `paper_plan.json` 一致。不要机械填充不存在的子问题或保留占位符。
+关键结论段落加入冻结 claim 标记；引用使用来源账本的 `[S1]` 等编号。
 
 ```markdown
 # {{论文题目}}
@@ -74,7 +76,7 @@ Step 1：...
 
 ## 8 参考文献
 
-[1] ...
+[S1] ...
 
 ## 附录
 ```

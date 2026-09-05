@@ -14,7 +14,9 @@ capability.
   failure occurring three consecutive times.
 - Launch independent readers, model candidates, replications, and reviewers in parallel
   when the harness supports it. If parallel agents are unavailable, preserve role
-  isolation and run them sequentially.
+  isolation and run them sequentially in fresh sessions. Merely renaming the active
+  role in one conversation is not isolation. If the host cannot provide separate
+  contexts, report that capability gap instead of producing simulated approvals.
 - Keep the lead agent productive while delegated work runs. Wait only when the next
   action depends on a delegated result.
 - Treat platform and system instructions as highest priority. Preserve explicit user
@@ -58,4 +60,5 @@ An unknown model is warned, not blocked. If public network access is available, 
 its canonical ID, current status, reasoning controls, context/output limits, tool use,
 and multi-agent behavior using official vendor documentation. Record the URLs and the
 date in `pro_config.json` or a companion capability note. Do not relax Pro gates when a
-capability is unavailable; use isolated sequential roles instead.
+capability is unavailable; use genuinely isolated sequential sessions when supported,
+or report the missing capability. Model names do not establish runtime permissions.

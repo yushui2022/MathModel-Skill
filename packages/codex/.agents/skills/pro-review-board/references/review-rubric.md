@@ -14,8 +14,9 @@ paper but not another reviewer's conclusions until the round is complete.
 - `adversarial_challenge`: leakage, hidden assumptions, cherry-picking, counterexamples,
   failure regimes, alternate explanations, and likely judge objections.
 
-Classify findings as Critical, Major, Minor, or Note. Every finding has an ID, evidence,
+Classify findings as CRITICAL, MAJOR, MINOR, or NOTE. Every finding has an ID, evidence,
 required repair, owner, and disposition. Apply repairs only after all five reviews in a
-round are complete, then rerun all five roles. Final PASS requires zero unresolved
+round are complete. Local draft repairs may be rechecked locally, but the final
+complete round must put all five roles on the same current manuscript. Final PASS requires zero unresolved
 Critical or Major findings in the final complete round. Repeating the same normalized
 failure for three consecutive repair rounds is a recorded blocker.

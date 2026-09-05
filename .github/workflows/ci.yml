@@ -31,6 +31,9 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install -r requirements.txt
 
+      - name: Check dependency compatibility
+        run: python -m pip check
+
       - name: Install LibreOffice on Ubuntu
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libreoffice-writer
@@ -60,6 +63,9 @@ jobs:
         run: python tests/run_pro_tests.py
         env:
           REQUIRE_LIBREOFFICE: "1"
+
+      - name: Verify committed Pro packages before rebuilding
+        run: python scripts/build_release_packages.py --verify
 
       - name: Build deterministic Pro packages
         run: python scripts/build_release_packages.py --output-dir tests/ci-release

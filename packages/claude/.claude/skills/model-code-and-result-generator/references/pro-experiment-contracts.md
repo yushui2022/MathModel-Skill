@@ -1,18 +1,25 @@
-# Pro experiment contract details
+# Pro Experiment Contracts
 
-Each `experiment_manifest.json` run records a stable `run_id`, `route_id`, command,
-working directory, environment lock or package inventory, distinct seeds, exit code,
-status, failure reason when applicable, and path-to-SHA-256 objects for scripts, inputs,
-and outputs. Paths are relative to `paper_output_pro/`.
+Use schema 3.2. The complete field specification and run-spec example are in
+`pro-workflow-orchestrator/references/pro-contracts.md`.
 
-`replication_report.json` identifies each critical result and two independent
-`implementation_id` values, their outputs, the preregistered comparison rule, tolerance
-or distribution criterion, and `agreement_status`.
+1. Preregister result IDs and comparison rules in the approved tournament.
+2. Write separate primary and verification code under code/. Declare all local helpers.
+3. Execute each specification with pro_run_experiment.py. Actual receipts record
+   environment, command arguments, seeds, script/input/output hashes and exit codes.
+   Failed attempts stay on disk. No manually authored successful execution receipts.
+4. Collect all receipts with --refresh-manifest after the parallel batch completes.
+   Manifest runs contain run_id, receipt_path and receipt_sha256.
+5. Reference real metrics by run_id and metric. Replication paths need independent
+   implementations and matching preregistered rules, not merely matching PASS strings.
+6. Robustness measurements include their recorded value and interpretation. Summaries
+   of stochastic runs must cover all successful randomized runs, at least ten distinct
+   seeds and a numerically verified confidence interval/precision target.
+7. Claim numeric references must belong to the replication evidence they cite. Retain
+   source links for external claims; register critical external claims for cross-validation.
+8. Freeze only after a new explicit checkpoint 3 decision.
 
-`robustness_report.json` contains non-empty baseline comparisons, sensitivity tests,
-constraint stress tests, and stochastic method summaries. Every stochastic summary has
-at least 10 unique seeds, mean, variance, confidence interval, interval stability, and
-an expansion record when unstable.
-
-`ablation_report.json` contains component/effect records or a defensible
-`not_applicable_reason`. Failed and rejected runs remain in the experiment manifest.
+A duplicate optimum can yield different valid assignments; compare exact discrete
+invariants only when the task actually requires a unique discrete answer. For numerical
+objectives, separately verify feasibility and objective accounting. Scenario sensitivity
+and seed variability are not substitutes for out-of-sample validation.

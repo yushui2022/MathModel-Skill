@@ -14,6 +14,8 @@ from pro_contracts import (
     utc_now,
     validate_envelope,
     write_json,
+    check_original_inputs,
+    safe_path,
 )
 
 
@@ -101,8 +103,14 @@ def invalidate_stale(project_root: Path, root: Path, ledger: dict) -> list[str]:
     for number in ("1", "2", "3"):
         entry = ledger["checkpoints"][number]
         approval_stale = entry.get("status") == "APPROVED" and not approval_is_fresh(root, entry)
+        if entry.get("status") == "APPROVED":
+            try:
+                approval_stale = approval_stale or checkpoint_hashes(root, number) != entry.get("artifact_hashes")
+            except (ValueError, OSError, KeyError, TypeError):
+                approval_stale = True
         instructions_stale = number == "1" and entry.get("status") == "APPROVED" and not instruction_sources_are_fresh(project_root, root)
-        stale_seen = stale_seen or approval_stale or instructions_stale
+        inputs_stale = number == "1" and bool(check_original_inputs(project_root, root))
+        stale_seen = stale_seen or approval_stale or instructions_stale or inputs_stale
         if stale_seen and entry.get("status") != "PENDING":
             entry.update({
                 "status": "PENDING",
@@ -127,6 +135,7 @@ def validate_checkpoint_artifacts(project_root: Path, root: Path, number: str) -
     if errors:
         return errors
     if number == "1":
+        errors.extend(check_original_inputs(project_root, root))
         errors.extend(validate_instruction_audit(project_root, root))
         consensus = read_json(root / "problem_consensus.json")
         analyses = consensus.get("independent_analyses")
@@ -136,31 +145,56 @@ def validate_checkpoint_artifacts(project_root: Path, root: Path, number: str) -
             role_ids = set()
             for item in analyses:
                 role_ids.add(item.get("role_id"))
-                path = root / Path(item.get("path", ""))
+                path = safe_path(root, item.get("path", ""))
                 if not path.is_file() or item.get("sha256") != sha256_file(path):
                     errors.append(f"independent analysis missing or stale: {item.get('path')}")
+                else:
+                    analysis = read_json(path)
+                    errors.extend(validate_envelope(path, {"PASS"}))
+                    if analysis.get("isolated_context") is not True or not analysis.get("summary"):
+                        errors.append("independent analysis is empty or not isolated")
             if len(role_ids) < 3 or None in role_ids:
                 errors.append("checkpoint 1 requires three distinct analysis roles")
-        for field in ("consensus", "disagreements", "assumptions", "subproblems", "attachment_roles"):
+        for field in ("consensus", "assumptions", "subproblems", "attachment_roles"):
             if not consensus.get(field):
                 errors.append(f"problem_consensus.json requires {field}")
+        if not isinstance(consensus.get("disagreements"), list):
+            errors.append("disagreements must be an array; an empty array is allowed")
         manifest = read_json(root / "input_manifest.json")
         manifest_roles = {item.get("path"): item.get("role") for item in manifest.get("files", [])}
         consensus_roles = {item.get("path"): item.get("role") for item in consensus.get("attachment_roles", [])}
         if manifest_roles != consensus_roles:
             errors.append("problem consensus attachment roles differ from the input manifest")
     elif number == "2":
-        from pro_gate import check_sources, check_tournament
+        from pro_validation import check_sources, check_tournament
 
-        errors.extend(check_sources(read_json(root / "source_ledger.json")))
-        errors.extend(check_tournament(read_json(root / "candidate_routes.json"), read_json(root / "tournament_report.json")))
+        errors.extend(check_sources(root, read_json(root / "source_ledger.json")))
+        errors.extend(check_tournament(read_json(root / "candidate_routes.json"), read_json(root / "tournament_report.json"), read_json(root / "problem_consensus.json")))
     elif number == "3":
-        from pro_gate import check_ablation, check_experiments, check_replication, check_robustness
+        from pro_validation import check_ablation, receipts, check_replication, check_robustness, check_claims
 
-        errors.extend(check_experiments(root, read_json(root / "experiment_manifest.json")))
-        errors.extend(check_replication(read_json(root / "replication_report.json")))
-        errors.extend(check_robustness(read_json(root / "robustness_report.json")))
-        errors.extend(check_ablation(read_json(root / "ablation_report.json")))
+        runs, execution_errors = receipts(root, read_json(root / "experiment_manifest.json"))
+        errors.extend(execution_errors)
+        errors.extend(check_replication(root, read_json(root / "replication_report.json"), runs, read_json(root / "tournament_report.json")))
+        errors.extend(check_robustness(root, read_json(root / "robustness_report.json"), runs))
+        errors.extend(check_ablation(root, read_json(root / "ablation_report.json"), runs))
+        errors.extend(check_claims(root, read_json(root / "claim_evidence_map.json"), runs, read_json(root / "replication_report.json"), read_json(root / "source_ledger.json")))
+    return errors
+
+
+def require_checkpoints(project_root: Path, root: Path, through: int) -> list[str]:
+    errors = []
+    try:
+        ledger = load_ledger(root)
+        if invalidate_stale(project_root, root, ledger):
+            write_json(root / "checkpoint_ledger.json", ledger)
+        for number in range(1, through + 1):
+            entry = ledger["checkpoints"].get(str(number), {})
+            if entry.get("status") != "APPROVED" or not approval_is_fresh(root, entry):
+                errors.append(f"checkpoint {number} must be freshly approved")
+            errors.extend(validate_checkpoint_artifacts(project_root, root, str(number)))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        errors.append(f"invalid checkpoint artifact: {exc}")
     return errors
 
 
@@ -177,17 +211,24 @@ def main() -> int:
     ledger_path = root / "checkpoint_ledger.json"
     ledger = load_ledger(root)
     invalidated = invalidate_stale(project_root, root, ledger)
+    if invalidated:
+        write_json(ledger_path, ledger)
 
     if args.action in {"approve", "reject"} and not args.checkpoint:
         parser.error("--checkpoint is required for approve/reject")
     if args.action == "approve":
         number = args.checkpoint
         assert number is not None
+        if not args.decision.strip():
+            raise SystemExit("[BLOCKED] --decision must record the user's explicit checkpoint decision")
         for prior in range(1, int(number)):
             entry = ledger["checkpoints"][str(prior)]
             if entry.get("status") != "APPROVED" or not approval_is_fresh(root, entry):
                 raise SystemExit(f"[BLOCKED] Checkpoint {prior} must be freshly approved before checkpoint {number}")
-        validation_errors = validate_checkpoint_artifacts(project_root, root, number)
+        try:
+            validation_errors = validate_checkpoint_artifacts(project_root, root, number)
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            validation_errors = [f"invalid checkpoint contract: {exc}"]
         if validation_errors:
             for error in validation_errors:
                 print(f"[BLOCKED] {error}")
@@ -195,7 +236,7 @@ def main() -> int:
         hashes = checkpoint_hashes(root, number)
         ledger["checkpoints"][number] = {
             "status": "APPROVED",
-            "decision": args.decision or "approved by user",
+            "decision": args.decision,
             "decided_at_utc": utc_now(),
             "artifact_hashes": hashes,
             "approval_hash": canonical_json_hash(hashes),
@@ -229,6 +270,15 @@ def main() -> int:
         print(f"[INVALIDATED] stale checkpoints: {', '.join(invalidated)}")
     for number in ("1", "2", "3"):
         print(f"checkpoint {number}: {ledger['checkpoints'][number]['status']}")
+    if args.action == "validate":
+        through = int(args.checkpoint) if args.checkpoint else max(
+            (int(n) for n, item in ledger["checkpoints"].items() if item.get("status") == "APPROVED"), default=1)
+        validation_errors = require_checkpoints(project_root, root, through)
+        for error in validation_errors:
+            print(f"[BLOCKED] {error}")
+        if not validation_errors:
+            print(f"[VALIDATED THROUGH] checkpoint {through}; later pending states are not approvals")
+        return int(bool(invalidated or validation_errors))
     return 0 if args.action in {"approve", "reject", "status"} or not invalidated else 1
 
 

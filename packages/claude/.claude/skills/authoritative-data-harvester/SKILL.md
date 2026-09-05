@@ -12,7 +12,8 @@ description: "MathModel Pro 公开来源研究与权威数据溯源。用于 P2 
 优先政府、国际组织、官方数据库、标准机构、原始论文和数据发布者。关键外部数据
 尽量由两个独立权威发布者交叉验证；若客观上只有单一权威源，记录例外理由和风险。
 
-下载的公开数据写入 `crawled_data/`，保留原文件和哈希。每个来源写入
+用总入口的 `pro_capture_source.py --url <URL> --source-id <S1>` 将公开响应保存到
+`paper_output_pro/research/`，保留检索回执、原文件和哈希。每个来源写入
 `paper_output_pro/source_ledger.json`，包含 URL、标题、发布者、UTC 访问时间、
 内容 SHA-256、公开访问状态、用途和论文 claim ID。每个关键 claim 记录来源 ID、
 是否需要双源验证以及差异处置。

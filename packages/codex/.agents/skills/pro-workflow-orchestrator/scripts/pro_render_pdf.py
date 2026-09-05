@@ -8,6 +8,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from pro_contracts import contract, sha256_file, write_json
+
 
 def find_soffice(explicit: str | None) -> Path | None:
     candidates = [
@@ -40,6 +42,7 @@ def main() -> int:
     if soffice is None:
         print("[BLOCKED] LibreOffice is required to produce and verify the final PDF")
         return 1
+    input_hash = sha256_file(docx)
     output_dir.mkdir(parents=True, exist_ok=True)
     pdf = output_dir / f"{docx.stem}.pdf"
     if pdf.exists():
@@ -73,6 +76,25 @@ def main() -> int:
         print(completed.stderr)
         print("[BLOCKED] LibreOffice did not create a non-empty PDF")
         return 1
+    if sha256_file(docx) != input_hash:
+        print("[BLOCKED] DOCX changed during rendering")
+        return 1
+    import pymupdf
+    pages = []
+    page_dir = output_dir / "qa" / "pages"
+    page_dir.mkdir(parents=True, exist_ok=True)
+    with pymupdf.open(pdf) as rendered:
+        for number, page in enumerate(rendered, 1):
+            path = page_dir / f"page-{number:03d}.png"
+            page.get_pixmap(matrix=pymupdf.Matrix(1.5, 1.5), alpha=False).save(path)
+            pages.append({"page": number, "path": path.relative_to(output_dir).as_posix(), "sha256": sha256_file(path)})
+    version_executable = soffice.with_suffix(".com") if os.name == "nt" and soffice.with_suffix(".com").is_file() else soffice
+    version = subprocess.run([str(version_executable), "--version"], capture_output=True, text=True, timeout=30, check=False)
+    write_json(output_dir / "render_manifest.json", contract(
+        producer_role="pro-libreoffice-renderer", status="PASS", exit_code=completed.returncode,
+        input_hashes={docx.name: input_hash, pdf.name: sha256_file(pdf)},
+        libreoffice_version=(version.stdout or version.stderr).strip(), pages=pages,
+    ))
     print(f"[PASS] Rendered {pdf}")
     return 0
 

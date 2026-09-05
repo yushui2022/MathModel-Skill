@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import zipfile
 from dataclasses import dataclass
@@ -36,6 +37,11 @@ COMMON_FILES = (
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
     (REPO_ROOT / "docs" / "pro-start-prompt.md", Path("START_HERE.md")),
     (REPO_ROOT / "docs" / "pro-contracts.md", Path("docs/pro-contracts.md")),
+    (REPO_ROOT / "docs" / "pro-start-prompt.md", Path("docs/pro-start-prompt.md")),
+    (REPO_ROOT / "docs" / "forward-evaluation.md", Path("docs/forward-evaluation.md")),
+    (REPO_ROOT / "docs" / "pro-3.2-validation.md", Path("docs/pro-3.2-validation.md")),
+    (REPO_ROOT / "assets" / "mathe-skill-logo.svg", Path("assets/mathe-skill-logo.svg")),
+    (REPO_ROOT / "assets" / "orlando-liu-social.jpg", Path("assets/orlando-liu-social.jpg")),
 )
 
 
@@ -85,7 +91,7 @@ def manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
     for name, file_hash in hashes.items():
         digest.update(name.encode("utf-8") + b"\0" + file_hash.encode("ascii") + b"\n")
     payload = {
-        "schema_version": "3.0",
+        "schema_version": "3.2",
         "edition": "pro",
         "package": spec.name,
         "version": version(),
@@ -98,10 +104,12 @@ def manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
 
 def write_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
     info = zipfile.ZipInfo(name, ZIP_TIMESTAMP)
-    info.compress_type = zipfile.ZIP_DEFLATED
+    # Stored entries avoid zlib-version differences across the CI operating systems.
+    info.compress_type = zipfile.ZIP_STORED
+    info.create_system = 3
     info.external_attr = 0o100644 << 16
     info.flag_bits |= 0x800
-    archive.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+    archive.writestr(info, data, compress_type=zipfile.ZIP_STORED)
 
 
 def expected(spec: PackageSpec) -> dict[str, bytes]:
@@ -125,6 +133,12 @@ def verify(spec: PackageSpec, output_dir: Path) -> list[str]:
         return [f"missing archive: {target}"]
     wanted = expected(spec)
     errors: list[str] = []
+    canonical = io.BytesIO()
+    with zipfile.ZipFile(canonical, "w") as archive:
+        for name, data in wanted.items():
+            write_entry(archive, name, data)
+    if target.read_bytes() != canonical.getvalue():
+        errors.append(f"{spec.name}: archive bytes or metadata are not canonical")
     with zipfile.ZipFile(target) as archive:
         names = sorted(item.filename for item in archive.infolist() if not item.is_dir())
         if names != sorted(wanted):

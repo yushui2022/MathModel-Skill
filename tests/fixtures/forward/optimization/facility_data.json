@@ -1,0 +1,7 @@
+{
+  "description": "Constructed capacitated distribution instance; not a real competition dataset",
+  "fixed_cost": [32, 28, 38, 24],
+  "capacity": [12, 15, 10, 13],
+  "demand": [4, 5, 3, 6, 4],
+  "unit_cost": [[2, 5, 4, 7, 6], [4, 2, 6, 3, 5], [6, 4, 2, 5, 3], [5, 6, 4, 2, 2]]
+}

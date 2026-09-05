@@ -45,12 +45,14 @@
 
 ## 结果证据
 
-正式正文必须优先使用：
+正式正文只能使用当前冻结清单内的证据，通过 claim ID 追踪到：
 
-- `paper_output_pro/results/model_results.json`
-- `paper_output_pro/results/metrics.json`
-- `paper_output_pro/results/conclusions.json`
-- `paper_output_pro/tables/table_index.json`
-- `paper_output_pro/figure_index.json`
+- `paper_output_pro/experiments/<run-id>/metrics.json` 及真实运行回执
+- `paper_output_pro/replication_report.json` 的独立复算
+- `paper_output_pro/claim_evidence_map.json` 的声明与数值映射
+- `paper_output_pro/source_ledger.json` 的外部来源快照
+- `paper_output_pro/evidence_freeze.json` 中记录的图表文件
 
-若证据状态不是 `ready` 或 `generated`，不得写成最终结论。
+`ready`、`generated` 或手填 `PASS` 都不能代替新鲜检查点3和实际复算。
+正式图表使用明确的 Markdown 图像路径和表格，不使用旧版索引占位标记。
+每张图需列入写作计划并绑定冻结哈希；按实际论文语言设置标题、单位与图例。

@@ -16,9 +16,14 @@ description: "MathModel Pro P3-P5 计算与验证。实现获选模型、独立�
 - 所有候选和失败运行保留在 manifest，含命令、退出码、原因和输出哈希。
 - 空指标、占位图表、手工改结果、损坏文件或无运行记录均视为失败。
 
+用总入口的 `pro_run_experiment.py --spec code/<run-spec>.json` 执行每次运行；批次完成后
+用 `--refresh-manifest` 汇总回执。独立实现不能只换文件名，需不同核心计算路径。
+报告通过 `run_id`、`metric` 引用 `metrics.json`，数值比较由统一校验器重新计算。
+比较容差及统计等效界限写入获批路线报告。随机样本需可追踪到不同种子的实际运行。
+
 必须输出 `experiment_manifest.json`、`replication_report.json`、
 `robustness_report.json`、`ablation_report.json` 和 `claim_evidence_map.json`。全部使用
-schema `3.0` 公共元数据并 PASS 后，回到总入口展示数值、不确定性和失败记录，
+schema `3.2` 公共元数据并 PASS 后，回到总入口展示数值、不确定性和失败记录，
 等待检查点 3。不得在检查点 3 前写正式论文。
 
 字段细节见 [references/pro-experiment-contracts.md](references/pro-experiment-contracts.md)。

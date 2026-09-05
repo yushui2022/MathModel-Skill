@@ -78,6 +78,11 @@ python .claude/skills/pro-workflow-orchestrator/scripts/pro_checkpoint.py approv
 `robustness_report.json` 和 `ablation_report.json`。离散结果精确比较；确定性数值
 按声明容差；统计结果按区间和分布一致性判断。
 
+每次计算使用 `pro_run_experiment.py --spec code/<run-spec>.json`，由脚本记录真实命令、
+退出码、输入输出哈希和环境。并行批次全部完成后运行该脚本的 `--refresh-manifest`。
+报告引用实际 `run_id` 和指标键，禁止手工代写运行回执。比较规则在检查点 2 前确定。
+公开来源用 `pro_capture_source.py` 保存原始响应和检索回执。
+
 ### P6 证据冻结
 
 先展示数值结果、不确定性、失败记录和适用范围，并停下等待用户确认。批准检查点
@@ -87,10 +92,17 @@ python .claude/skills/pro-workflow-orchestrator/scripts/pro_checkpoint.py approv
 ### P7-P9 写作与评审
 
 只基于新鲜冻结证据全局撰写 `final_paper_source.md`，不得用微单元拼接正式主稿。
+先写 `paper_plan.json`，明确论文问题、论证主线、章节、目标篇幅和冻结图表。
+以完整章节组织内容，允许局部修订；主稿始终只有一个。关键结论段落加入
+`<!-- claim:C1 -->` 等可移除证据标记，数值按证据声明的精度显示。
+执行 `pro_paper_audit.py` 检查章节、关键数值、图表和重复正文。
 长篇正式写作默认采用模型档案的 `authoring` 档位；推理阶段只确定证据和结构，正文
 完整写出一次，避免在推理与正式输出中重复生成整篇论文。
 调用 `pro-review-board` 执行数学、复现、来源、表达、对抗质疑五个隔离评审角色，
-修复后整轮重审，直到无 Critical/Major。
+每个角色使用真实独立上下文并保存执行记录，审稿绑定当前主稿、计划和冻结证据哈希。
+普通文字修改可先局部检查；最终交付前五个角色必须全部审阅同一最新版本，且无
+未解决 Critical/Major。工具不可创建独立上下文时明确报告能力缺失，不得用五个标签
+冒充五次独立执行。提示词和计数不能代替实际审阅。
 
 从同一源稿生成 `final_paper.docx`，再用 LibreOffice 渲染：
 
@@ -102,6 +114,8 @@ python .claude/skills/pro-workflow-orchestrator/scripts/pro_gate.py
 
 必须检查 PDF 页数、可提取文本、公式、图表、分页和 DOCX/PDF 引用一致性，再运行
 最终 Pro gate。Word 或 PDF 任一门禁失败都不得称为正式交付。
+渲染器生成 `render_manifest.json` 和每页 PNG；逐页实际打开检查后写
+`visual_review.json`，逐页记录哈希、观察和未解决问题。不得自动填充视觉 PASS。
 
 ## 检查点规则
 
@@ -121,3 +135,5 @@ python .claude/skills/pro-workflow-orchestrator/scripts/pro_gate.py
 
 详细字段、指令审计、哈希和停止条件见
 [references/pro-contracts.md](references/pro-contracts.md)。
+优秀论文的判断标准和各类问题的验证重点见
+[references/paper-quality.md](references/paper-quality.md)。

@@ -13,7 +13,7 @@ from pathlib import Path
 from pro_contracts import contract, hash_paths, output_root, read_json, sha256_file, write_json
 
 
-VERSION = "3.1.0-pro.1"
+VERSION = "3.2.0-pro.1"
 MODEL_CATALOG_PATH = Path(__file__).resolve().parents[1] / "references" / "model-profiles.json"
 MODEL_SUFFIXES = {"low", "medium", "high", "xhigh", "max", "ultra", "preview", "latest"}
 EXPECTED_EDITION = "pro"
@@ -251,6 +251,11 @@ def main() -> int:
     if len(versions) > 1:
         warnings.append("Multiple Pro versions are installed: " + ", ".join(versions))
     errors: list[str] = []
+    if any(version != VERSION for version in versions) or len([i for i in installations if i['edition'] == 'pro']) > 1:
+        errors.append("old or duplicate Pro installations detected; install one current Pro payload")
+    if any(not path.resolve().is_relative_to(project_root) for path in files):
+        errors.append("original input symlink escapes project root")
+        files = [path for path in files if path.resolve().is_relative_to(project_root)]
     if not files:
         errors.append("problem_files/ has no readable task or attachment files")
     if installed_conflicts:
@@ -309,8 +314,8 @@ def main() -> int:
         files=instruction_files,
         precedence=[
             "platform_system_and_safety",
-            "host_applied_project_instructions",
             "explicit_user_scope_and_checkpoint_decisions",
+            "host_applied_project_instructions",
             "pro_workflow_orchestrator",
             "phase_specific_pro_skills",
         ],
@@ -354,6 +359,7 @@ def main() -> int:
             "model-profiles.json": sha256_file(MODEL_CATALOG_PATH),
         },
         version=VERSION,
+        project_root=project_root.as_posix(),
         platform=args.platform,
         declared_model=args.model,
         recommended_model=model_recommended,
