@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from latex_integrity import sha256, safe_path, evidence_snapshot
 
 
 BASE_DIR = Path.cwd().resolve()
@@ -56,10 +57,7 @@ def rel(path: Path) -> str:
 
 
 def resolve_path(path_text: str) -> Path:
-    path = Path(str(path_text or "").strip().strip("<>"))
-    if path.is_absolute():
-        return path
-    return BASE_DIR / str(path).replace("\\", "/")
+    return safe_path(BASE_DIR, str(path_text or "").strip().strip("<>"))
 
 
 def source_path() -> Path:
@@ -78,6 +76,8 @@ def check_evidence_gate() -> tuple[bool, str]:
     status = str(data.get("status") or "").strip().upper()
     if status != "PASS":
         return False, f"证据门禁状态为 `{status or 'UNKNOWN'}`，正式 LaTeX 不得生成。"
+    if not data.get("input_hashes") or data["input_hashes"] != evidence_snapshot(BASE_DIR):
+        return False, "Evidence is missing or stale; rerun the evidence gate."
     return True, ""
 
 
@@ -402,11 +402,16 @@ def build_latex_document(markdown_text: str, outline: Any, table_index: Any, fig
 def compile_pdf(tex_file: Path, pdf_file: Path) -> dict[str, Any]:
     xelatex = shutil.which("xelatex")
     if not xelatex:
-        return {"status": "SKIPPED", "reason": "未检测到 xelatex；已生成 .tex，PDF 编译跳过。"}
+        return {"status": "FAIL", "reason": "xelatex unavailable; requested PDF was not compiled"}
+    safe_path(BASE_DIR, pdf_file.relative_to(BASE_DIR).as_posix())
+    if pdf_file.exists():
+        pdf_file.unlink()
+    tex_hash = sha256(tex_file)
     command = [
         xelatex,
         "-interaction=nonstopmode",
         "-halt-on-error",
+        "-no-shell-escape",
         "-output-directory",
         str(OUTPUT_DIR),
         str(tex_file),
@@ -414,12 +419,18 @@ def compile_pdf(tex_file: Path, pdf_file: Path) -> dict[str, Any]:
     runs = []
     status = "PASS"
     for _ in range(2):
-        result = subprocess.run(command, cwd=str(BASE_DIR), text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        try:
+            result = subprocess.run(command, cwd=str(BASE_DIR), text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False, timeout=300)
+        except subprocess.TimeoutExpired:
+            return {"status": "FAIL", "reason": "xelatex timeout", "command": command, "runs": runs}
         runs.append({"returncode": result.returncode, "output_tail": result.stdout[-4000:]})
         if result.returncode != 0:
             status = "FAIL"
             break
-    return {"status": status if pdf_file.exists() else "FAIL", "command": command, "pdf": rel(pdf_file), "runs": runs}
+    if not pdf_file.is_file() or pdf_file.stat().st_size == 0 or sha256(tex_file) != tex_hash:
+        status = "FAIL"
+    return {"status": status, "command": command, "pdf": rel(pdf_file), "runs": runs,
+            "tex_sha256": tex_hash, "pdf_sha256": sha256(pdf_file) if pdf_file.is_file() else None}
 
 
 def write_reports(report: dict[str, Any], json_path: Path, md_path: Path) -> None:
@@ -454,7 +465,7 @@ def main() -> int:
     configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Export final_paper_source.md to a CTeX LaTeX document.")
     parser.add_argument("--allow-draft", action="store_true", help="证据门禁未通过时生成 final_paper_draft.tex，不覆盖正式 LaTeX。")
-    parser.add_argument("--compile", action="store_true", help="若本机有 xelatex，则尝试编译 PDF。")
+    parser.add_argument("--compile", action="store_true", help="要求 xelatex 实际编译 PDF；不可用或失败则阻止交付。")
     args = parser.parse_args()
 
     gate_passed, gate_reason = check_evidence_gate()
@@ -501,8 +512,10 @@ def main() -> int:
         "status": "FAIL" if failures else "GENERATED",
         "mode": "draft" if draft_mode else "formal",
         "source": rel(source),
+        "input_hashes": {rel(p): sha256(p) for p in (source, OUTLINE_FILE, FIGURE_INDEX_FILE, TABLE_INDEX_FILE, EVIDENCE_GATE_REPORT) if p.is_file()},
+        "tex_sha256": sha256(tex_file),
         "tex": rel(tex_file),
-        "pdf": rel(pdf_file) if pdf_file.exists() else "",
+        "pdf": rel(pdf_file) if compile_report["status"] == "PASS" else "",
         "stats": stats,
         "compile": compile_report,
         "warnings": warnings,

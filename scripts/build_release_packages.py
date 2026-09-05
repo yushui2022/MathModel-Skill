@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import shutil
 import zipfile
 from dataclasses import dataclass
@@ -60,7 +61,7 @@ PACKAGE_SPECS = (
         archive_name="MathModel-Skill-Claude-Code.zip",
         roots=((REPO_ROOT / "packages" / "claude" / ".claude", Path(".claude")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "claude" / "CLAUDE.md", Path("CLAUDE.md")),
+            (REPO_ROOT / "packages" / "claude" / "CLAUDE.md", Path("docs/CLAUDE.example.md")),
             (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill.md")),
             (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
             (REPO_ROOT / "docs" / "starter-prompts.md", Path("docs/starter-prompts.md")),
@@ -78,7 +79,7 @@ PACKAGE_SPECS = (
         archive_name="MathModel-Skill-Codex.zip",
         roots=((REPO_ROOT / "packages" / "codex" / "skills", Path("skills")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "codex" / "AGENTS.md", Path("AGENTS.md")),
+            (REPO_ROOT / "packages" / "codex" / "AGENTS.md", Path("docs/AGENTS.example.md")),
             (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill.md")),
             (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
             (REPO_ROOT / "docs" / "starter-prompts.md", Path("docs/starter-prompts.md")),
@@ -114,11 +115,22 @@ def iter_files(root: Path) -> list[Path]:
     return sorted(files, key=lambda item: item.as_posix().lower())
 
 
+def write_entry(archive: zipfile.ZipFile, source: Path, name: str) -> None:
+    data = source.read_bytes()
+    if source.suffix.lower() in {".py", ".md", ".json", ".yaml", ".yml", ".txt", ".csv", ".tex", ".svg"}:
+        data = data.replace(b"\r\n", b"\n")
+    info = zipfile.ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+    info.create_system = 3
+    info.external_attr = 0o100644 << 16
+    info.compress_type = zipfile.ZIP_STORED
+    archive.writestr(info, data)
+
+
 def add_tree(archive: zipfile.ZipFile, source_root: Path, archive_root: Path) -> int:
     count = 0
     for path in iter_files(source_root):
         relative = path.relative_to(source_root)
-        archive.write(path, (archive_root / relative).as_posix())
+        write_entry(archive, path, (archive_root / relative).as_posix())
         count += 1
     return count
 
@@ -138,7 +150,7 @@ def build_package(spec: PackageSpec) -> tuple[Path, int]:
         for source_file, archive_path in spec.extra_files:
             if not source_file.exists():
                 raise FileNotFoundError(f"Missing extra file: {source_file}")
-            archive.write(source_file, archive_path.as_posix())
+            write_entry(archive, source_file, archive_path.as_posix())
             file_count += 1
 
     return output, file_count
@@ -171,6 +183,10 @@ def main() -> int:
         output, file_count = build_package(spec)
         size_kb = output.stat().st_size / 1024
         print(f"[+] {spec.name}: {output.relative_to(REPO_ROOT)} ({file_count} files, {size_kb:.1f} KB)")
+    (DIST_DIR / "SHA256SUMS.txt").write_text("".join(
+        f"{hashlib.sha256((DIST_DIR / spec.archive_name).read_bytes()).hexdigest()}  {spec.archive_name}\n"
+        for spec in sorted(PACKAGE_SPECS, key=lambda item: item.archive_name)
+    ), encoding="utf-8", newline="\n")
     return 0
 
 

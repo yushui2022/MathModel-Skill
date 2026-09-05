@@ -15,6 +15,12 @@
 
 </div>
 
+> **旧版实验性 LaTeX 分支，不是当前 Standard 或 Pro。** 本次只加固导出完整性，不迁入其他版本的产品流程；正式竞赛写作优先使用 [`master`](https://github.com/yushui2022/MathModel-Skill/tree/master) 或 [`pro`](https://github.com/yushui2022/MathModel-Skill/tree/pro)。一个项目只安装一个版本，保留用户已有根目录配置。当前修补包在本分支 `dist/`，历史 Release 不会自动更新。
+
+新增检查：证据输入快照、新鲜编译与源稿/PDF 哈希、编译超时、禁用 shell escape、非空可提取 PDF。仅检查 `.tex` 时状态为 `SOURCE_ONLY`，不能声称 PDF 已验收；必须运行 `--compile` 后再用 `check_latex_format.py --require-pdf`。默认完整稿最低 8000 主稿字符、18 页总 PDF，仍需人工核对正文/附录边界与当年比赛上限；短稿须在 outline 的 `delivery` 声明 `short-report` 或 `smoke-test` 并填写 `reason`。
+
+本轮自动化覆盖故障注入与导出完整性，未在本机安装 XeLaTeX 完成真实编译；旧 B 题示例未重新生成，也不代表通过新增门禁。
+
 MathModel Skill 是一套面向数学建模比赛的 Agent-native skill 工作流，不是黑盒一键论文生成器。它把常见流程固化为可复用的 Agent 原生能力，让 Codex、Claude Code、Trae 知道先读什么、代码写到哪里、结果如何沉淀、正文如何引用证据。
 
 ```text

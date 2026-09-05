@@ -7,6 +7,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from latex_integrity import sha256, safe_path
 
 
 BASE_DIR = Path.cwd().resolve()
@@ -19,7 +20,7 @@ TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
 REPORT_JSON = OUTPUT_DIR / "latex_check_report.json"
 REPORT_MD = OUTPUT_DIR / "latex_check_report.md"
 
-PLACEHOLDERS = ["TODO", "待补", "{{", "}}", "内容生成中", "关键词1"]
+PLACEHOLDERS = ["TODO", "待补", "内容生成中", "关键词1"]
 REQUIRED_TEXT = ["摘要", "关键词", "问题重述", "问题分析", "模型假设", "符号说明", "模型的建立与求解", "参考文献", "附录"]
 
 
@@ -56,6 +57,8 @@ def index_count(data: Any, key: str) -> int:
 def evaluate(tex_file: Path, require_pdf: bool) -> dict[str, Any]:
     failures: list[str] = []
     warnings: list[str] = []
+    pdf_file = tex_file.with_suffix(".pdf")
+    build = load_json(OUTPUT_DIR / ("latex_draft_report.json" if tex_file == DRAFT_TEX_FILE else "latex_build_report.json"))
     text = ""
     if not tex_file.exists():
         failures.append(f"缺少 LaTeX 文件：{rel(tex_file)}")
@@ -89,6 +92,8 @@ def evaluate(tex_file: Path, require_pdf: bool) -> dict[str, Any]:
                 failures.append(f"LaTeX 中存在占位符或待补文本：{placeholder}")
     else:
         section_count = subsection_count = subsubsection_count = includegraphics_count = longtable_count = formula_count = 0
+        if tex_file.exists():
+            failures.append("LaTeX source is empty")
 
     figure_index = load_json(FIGURE_INDEX_FILE)
     table_index = load_json(TABLE_INDEX_FILE)
@@ -105,17 +110,54 @@ def evaluate(tex_file: Path, require_pdf: bool) -> dict[str, Any]:
     elif longtable_count < expected_tables:
         warnings.append(f"LaTeX 表格数量少于 table_index.json：{longtable_count} < {expected_tables}")
 
-    if require_pdf and not PDF_FILE.exists():
-        failures.append(f"要求 PDF，但缺少：{rel(PDF_FILE)}")
+    page_count = 0
+    if require_pdf:
+        try:
+            from pypdf import PdfReader
+            if build.get("tex_sha256") != sha256(tex_file) or build.get("compile", {}).get("status") != "PASS":
+                failures.append("TeX/PDF lacks a successful current compile receipt")
+            if build.get("compile", {}).get("pdf_sha256") != sha256(pdf_file):
+                failures.append("PDF has changed since compilation")
+            if not build.get("input_hashes"):
+                failures.append("build lacks source/evidence input hashes")
+            for name, expected in build.get("input_hashes", {}).items():
+                if sha256(safe_path(BASE_DIR, name)) != expected:
+                    failures.append(f"build input changed: {name}")
+            pages = list(PdfReader(str(pdf_file)).pages)
+            page_count = len(pages)
+            extracted = "\n".join(page.extract_text() or "" for page in pages)
+            if not pages or len(re.sub(r"\s+", "", extracted)) < 100:
+                failures.append("PDF is empty or has insufficient extractable text")
+            outline = load_json(OUTPUT_DIR / "plan/paper_outline.json")
+            scope = outline.get("delivery", {"mode": "competition"})
+            short = scope.get("mode") in {"short-report", "smoke-test"} and bool(scope.get("reason"))
+            if not short and page_count < 18:
+                failures.append("complete competition report is below the 18-page planning minimum; explicitly declare a justified short scope if requested")
+            if not short:
+                warnings.append("Total PDF pages do not certify substantive body length or contest-specific page limits; inspect body/appendix boundaries manually.")
+                source = safe_path(BASE_DIR, build.get("source", "")).read_text(encoding="utf-8")
+                source = re.sub(r"<!--.*?-->|```.*?```|~~~.*?~~~", "", source, flags=re.S)
+                source = re.split(r"(?mi)^\s*#{1,6}\s+(?:附录|Appendix|Appendices)(?:\s|$)", source, maxsplit=1)[0]
+                source = re.sub(r"!\[[^\]]*\]\([^)]+\)|(?m:^\s*#{1,6}\s+.*$)", "", source)
+                if len(re.sub(r"\s+", "", source)) < 8000:
+                    failures.append("main manuscript is below the 8000-character completeness floor")
+            from format_formal_latex import check_evidence_gate
+            fresh, reason = check_evidence_gate()
+            if tex_file != DRAFT_TEX_FILE and not fresh:
+                failures.append(reason)
+        except Exception as exc:
+            failures.append(f"invalid PDF or build receipt: {exc}")
 
     return {
         "schema_version": "1.0",
         "generated_by": "paper-formal-writer/scripts/check_latex_format.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
-        "status": "PASS" if not failures else "FAIL",
+        "status": ("PASS" if require_pdf else "SOURCE_ONLY") if not failures else "FAIL",
+        "acceptance_scope": "LEGACY_LATEX_EXPORT_ONLY" if require_pdf and not failures else "NOT_ACCEPTED",
         "tex": rel(tex_file),
-        "pdf": rel(PDF_FILE) if PDF_FILE.exists() else "",
+        "pdf": rel(pdf_file) if pdf_file.exists() else "",
         "counts": {
+            "pages": page_count,
             "sections": section_count,
             "subsections": subsection_count,
             "subsubsections": subsubsection_count,
@@ -168,6 +210,9 @@ def main() -> int:
     print(f"LaTeX 检查报告：{rel(REPORT_MD)}")
     if report["status"] == "PASS":
         print("[LATEX CHECK PASS]")
+        return 0
+    if report["status"] == "SOURCE_ONLY":
+        print("[LATEX SOURCE ONLY] PDF delivery is not verified; run --require-pdf after compilation.")
         return 0
     print("[LATEX CHECK FAIL]")
     for failure in report["failures"][:12]:

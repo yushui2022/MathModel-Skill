@@ -23,7 +23,7 @@ claude/
 
 ## 安装方式
 
-把本目录下的 `CLAUDE.md` 和 `.claude/skills/` 复制到你的 Claude Code 项目根目录：
+只复制 `.claude/skills/` 到项目根目录，保留用户已有 `CLAUDE.md`。安装包里的入口示例在 `docs/CLAUDE.example.md`，不能直接覆盖用户配置。下方目录树展示历史仓库结构。本分支是实验性 LaTeX 导出，PDF 必须编译并通过 `check_latex_format.py --require-pdf`：
 
 ```text
 your-mathmodel-project/

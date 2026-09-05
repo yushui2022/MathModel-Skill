@@ -6,6 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "paper-formal-writer" / "scripts"))
+from latex_integrity import evidence_snapshot
+
 
 BASE_DIR = Path.cwd()
 OUTPUT_DIR = BASE_DIR / "paper_output"
@@ -260,6 +263,7 @@ def evaluate() -> dict[str, Any]:
         "generated_by": "quality-assurance-auditor/scripts/evidence_gate.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "status": "PASS" if not failures else "FAIL",
+        "input_hashes": evidence_snapshot(BASE_DIR.resolve()),
         "failures": failures,
         "warnings": warnings,
         "questions": question_reports,

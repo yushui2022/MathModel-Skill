@@ -45,7 +45,7 @@ description: "国赛数学建模正式论文范式、outline、Word/LaTeX 排版
   - Word 视觉 QA 至少检查 docx 能否打开、段落数、标题样式数量、图片数量和表格数量是否与索引大体匹配。
   - 输出 `paper_output/format_check_report.md` 与 `paper_output/format_check_report.json`。
 - `scripts/check_latex_format.py`
-  - 检查 `final_paper.tex` 的 LaTeX 基础结构、章节关键词、图表数量、占位符和可选 PDF 是否生成。
+  - 不要求 PDF 时只返回 `SOURCE_ONLY`，不是交付 PASS。`--require-pdf` 检查新鲜编译、源稿/证据/PDF 哈希、可提取文本和篇幅。
   - 输出 `paper_output/latex_check_report.md` 与 `paper_output/latex_check_report.json`。
 
 ## 正式工作流
@@ -71,8 +71,11 @@ description: "国赛数学建模正式论文范式、outline、Word/LaTeX 排版
    若要尝试生成 PDF：
    ```bash
    python .claude/skills/paper-formal-writer/scripts/format_formal_latex.py --compile
+   python .claude/skills/paper-formal-writer/scripts/check_latex_format.py --require-pdf
    ```
 6. 若格式检查失败，按报告补正文、图表解释、参考文献、附录或缺失章节。
+
+本分支为旧版实验性导出流程，不具备当前 Standard/Pro 全部门禁。完整稿默认检查 8000 主稿字符、18 页总 PDF，人工核对当年比赛上限与正文/附录边界。只有用户要求短稿或安装测试，才在 `paper_outline.json.delivery` 写明 `mode: short-report|smoke-test` 和 `reason`；不得为通过检查自行缩小范围。可分多轮写完一份完整源稿，不重复灌水。证据变更后重跑门禁和导出；缺 XeLaTeX、超时或编译失败时不得交付旧 PDF。
 
 ## 正式论文必须满足
 - 摘要按子问题展开，包含方法、模型、算法和关键结果。

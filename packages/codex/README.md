@@ -2,6 +2,8 @@
 
 这是 MathModel Skill 的 Codex 原生包。
 
+本分支是旧版实验性 LaTeX 导出，安装包只放 `skills/`，不覆盖用户的 `AGENTS.md`；入口示例仅保存在 `docs/AGENTS.example.md`，需按项目已有配置手工合并适用指令。下文目录树含仓库历史文件，不代表应该覆盖安装。正式 PDF 必须 `--compile` 后通过 `check_latex_format.py --require-pdf`；仅 `.tex` 结构检查不算 PDF 验收。
+
 本目录按完整 skill 包分发。每个 skill 都是一个文件夹，包含 `SKILL.md` 和可选的 `scripts/`、`references/`、`assets/` 等资源。
 
 ```text

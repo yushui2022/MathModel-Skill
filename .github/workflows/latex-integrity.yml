@@ -1,0 +1,21 @@
+name: LaTeX export integrity
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  integrity:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install "pypdf>=5,<7"
+      - run: python scripts/sync_latex_hotfix.py --check
+      - run: python tests/test_latex_integrity.py
