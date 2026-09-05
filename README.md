@@ -13,18 +13,21 @@
 
 MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛题与附件放入项目后，Agent 按工作流分析问题、选择模型、编写并运行代码、整理图表和证据，再撰写与检查论文；它不只是让模型直接生成一篇文章的提示词。
 
-当前是默认 `master` 分支的 **Standard 2.3.0**，适合长上下文、推理和工具调用稳定的强模型。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
+当前是默认 `master` 分支的 **Standard 2.3.0，定位标准档**，建议搭配 GPT-5.5、GPT-5.6 Sol 等具备稳定推理、长上下文和工具调用能力的模型。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
 
-**版本速览**
+**能力档位：入门 → 标准 → 旗舰**
 
-目前提供 **4 个独立版本**，分别在不同 Git 分支维护，不是安装后的四种切换模式：
+三个主版本按模型能力要求、流程复杂度与验证深度，从低到高分档；分别在独立 Git 分支维护，不是安装后的切换模式：
 
-| 版本与分支 | 适合谁 | 作用与主要区别 |
+| 档位与版本 | 推荐模型示例 | 流程与交付能力 |
 |---|---|---|
-| [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/master) | 强模型，希望兼顾正式写作与流程成本 | 完整章节写作、证据检查、原生公式 Word 与 PDF 渲染检查。 |
-| [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | 普通、较旧或短上下文模型 | 一个入口、六步流程，生成基础建模报告；不含严格引文、原生 Word 公式和 PDF 验收。 |
-| [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | 高能力模型，愿意投入更多时间与计算 | 多路线比较、独立复算、五角色审稿及 Word/PDF 检查；有三个用户确认点。 |
-| [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 需要 TeX 源文件、能自行配置 TeX 环境 | 旧版工作流的 LaTeX/PDF 导出分支，不等同于当前 Standard 或 Pro 的能力。 |
+| **1 · 入门档** [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | **DeepSeek 等模型**；优先低负担运行 | **基础建模报告**：一个入口、六步流程，真实计算与基础 Word 导出；不含严格引文、原生 Word 公式和 PDF 验收。 |
+| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/master) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
+| **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)** 等前沿模型；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
+
+这是本项目的推荐搭配，不是对同品牌所有模型的固定排名，也不代表已完成实战认证；最终看具体型号、推理档位与工具能力。
+
+另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是第四个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
 
 **一个项目只安装一个版本、一个平台包，不要混装。** 各版本的具体导入方法见下方快速使用说明。
 
