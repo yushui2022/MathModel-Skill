@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/mathmodel-banner.png" alt="MathModel Skill：Claude 与 GPT 协作研究数学建模赛题" width="100%" />
+  <img src="./assets/mathmodel-banner.png" alt="MathModel Skill：豆包坐镇指挥，Fable 推导模型，Astra 编写代码" width="100%" />
 
 # MathModel Skill Standard
 
