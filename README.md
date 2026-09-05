@@ -15,6 +15,19 @@ MathModel Skill 帮助编程 Agent 完成题意分析、建模代码、真实计
 
 **这是旧版实验性分支，不是当前 Standard 或 Pro 的 LaTeX 模式。** 本次发布为 `latex-2026.09.05` 日期快照，重点加固导出完整性；未完成真实 XeLaTeX 编译验收。普通正式论文任务优先使用 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/master)，高计算投入与独立复算选择 [Pro](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
 
+**版本速览**
+
+目前提供 **4 个独立版本**，分别在不同 Git 分支维护，不是安装后的四种切换模式：
+
+| 版本与分支 | 适合谁 | 作用与主要区别 |
+|---|---|---|
+| [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/master) | 强模型，希望兼顾正式写作与流程成本 | 完整章节写作、证据检查、原生公式 Word 与 PDF 渲染检查。 |
+| [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | 普通、较旧或短上下文模型 | 一个入口、六步流程，生成基础建模报告；不含严格引文、原生 Word 公式和 PDF 验收。 |
+| [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | 高能力模型，愿意投入更多时间与计算 | 多路线比较、独立复算、五角色审稿及 Word/PDF 检查；有三个用户确认点。 |
+| [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 需要 TeX 源文件、能自行配置 TeX 环境 | 旧版工作流的 LaTeX/PDF 导出分支，不等同于当前 Standard 或 Pro 的能力。 |
+
+**一个项目只安装一个版本、一个平台包，不要混装。** 各版本的具体导入方法见下方快速使用说明。
+
 ## 小红书
 
 作者：**Orlando Liu（奥兰多）**，小红书号：[`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。点击图片进入主页，也可以扫码找到我。
