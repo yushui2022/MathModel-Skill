@@ -23,7 +23,7 @@ Pro 输出正式 Markdown、原生公式 Word、渲染 PDF，以及代码、图�
 | 档位与版本 | 推荐模型示例 | 流程与交付能力 |
 |---|---|---|
 | **1 · 入门档** [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | **DeepSeek 等模型**；优先低负担运行 | **基础建模报告**：一个入口、六步流程，真实计算与基础 Word 导出；不含严格引文、原生 Word 公式和 PDF 验收。 |
-| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/master) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
+| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
 | **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)** 等前沿模型；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
 
 这是本项目的推荐搭配，不是对同品牌所有模型的固定排名，也不代表已完成实战认证；最终看具体型号、推理档位与工具能力。
@@ -46,7 +46,7 @@ Pro 输出正式 Markdown、原生公式 Word、渲染 PDF，以及代码、图�
 
 ### 1. 确认使用范围并下载
 
-Pro 适合能稳定执行长任务、复杂工具调用和隔离评审的模型。若希望控制复杂度，选择 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/master)；普通或较旧模型优先选择 [Lite](https://github.com/yushui2022/MathModel-Skill/tree/lite)。
+Pro 适合能稳定执行长任务、复杂工具调用和隔离评审的模型。若希望控制复杂度，选择 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)；普通或较旧模型优先选择 [Lite](https://github.com/yushui2022/MathModel-Skill/tree/lite)。
 
 **一个项目只安装一个版本、一个平台包。** Pro 只支持 Codex 与 Claude Code，不提供 Trae 包。从 [Pro 3.3.0-pro.1 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v3.3.0-pro.1) 下载：
 
