@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/mathe-skill-logo.svg" alt="MathModel Skill Lite" width="120" height="120" />
+  <img src="./assets/mathmodel-banner.png" alt="MathModel Skill：Claude 与 GPT 协作研究数学建模赛题" width="100%" />
 
 # MathModel Skill Lite
 
