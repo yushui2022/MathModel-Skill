@@ -15,6 +15,19 @@ MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛�
 
 当前是默认 `master` 分支的 **Standard 2.3.0**，适合长上下文、推理和工具调用稳定的强模型。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
 
+**版本速览**
+
+目前提供 **4 个独立版本**，分别在不同 Git 分支维护，不是安装后的四种切换模式：
+
+| 版本与分支 | 适合谁 | 作用与主要区别 |
+|---|---|---|
+| [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/master) | 强模型，希望兼顾正式写作与流程成本 | 完整章节写作、证据检查、原生公式 Word 与 PDF 渲染检查。 |
+| [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | 普通、较旧或短上下文模型 | 一个入口、六步流程，生成基础建模报告；不含严格引文、原生 Word 公式和 PDF 验收。 |
+| [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | 高能力模型，愿意投入更多时间与计算 | 多路线比较、独立复算、五角色审稿及 Word/PDF 检查；有三个用户确认点。 |
+| [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 需要 TeX 源文件、能自行配置 TeX 环境 | 旧版工作流的 LaTeX/PDF 导出分支，不等同于当前 Standard 或 Pro 的能力。 |
+
+**一个项目只安装一个版本、一个平台包，不要混装。** 各版本的具体导入方法见下方快速使用说明。
+
 ## 小红书
 
 作者：**Orlando Liu（奥兰多）**，小红书号：[`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。点击图片进入主页，也可以扫码找到我。
@@ -27,16 +40,9 @@ MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛�
 
 ## 快速导入使用
 
-### 1. 选择版本与安装包
+### 1. 下载 Standard 安装包
 
 **一个比赛项目只安装一个版本、一个平台包。** 不要把 Standard、Lite、Pro 或 LaTeX 包混在同一目录。
-
-| 你的使用需求 | 选择 |
-|---|---|
-| 强模型，正式论文，需要控制流程复杂度 | **Standard（当前版本）** |
-| 普通或较旧模型，希望简单完成基础建模报告 | [Lite](https://github.com/yushui2022/MathModel-Skill/tree/lite) |
-| 高能力模型，接受高计算投入和三个用户确认点 | [Pro 预发布版](https://github.com/yushui2022/MathModel-Skill/tree/pro) |
-| 需要旧版实验性 LaTeX 导出 | [LaTeX 预发布版](https://github.com/yushui2022/MathModel-Skill/tree/Latex) |
 
 从 [Standard 2.3.0 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0) 下载与你的 Agent 对应的一个安装包：
 
