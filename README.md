@@ -16,6 +16,19 @@ MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一
 
 Pro 输出正式 Markdown、原生公式 Word、渲染 PDF，以及代码、图表、证据与评审记录。正常流程有 **三个用户确认点**，其余已授权工作自动推进。当前为 **Preview 预发布**：工程测试通过，但真实多问赛题约 20 页长文的前向质量验收尚未完成，不承诺论文优秀或竞赛获奖。
 
+**版本速览**
+
+目前提供 **4 个独立版本**，分别在不同 Git 分支维护，不是安装后的四种切换模式：
+
+| 版本与分支 | 适合谁 | 作用与主要区别 |
+|---|---|---|
+| [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/master) | 强模型，希望兼顾正式写作与流程成本 | 完整章节写作、证据检查、原生公式 Word 与 PDF 渲染检查。 |
+| [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | 普通、较旧或短上下文模型 | 一个入口、六步流程，生成基础建模报告；不含严格引文、原生 Word 公式和 PDF 验收。 |
+| [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | 高能力模型，愿意投入更多时间与计算 | 多路线比较、独立复算、五角色审稿及 Word/PDF 检查；有三个用户确认点。 |
+| [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 需要 TeX 源文件、能自行配置 TeX 环境 | 旧版工作流的 LaTeX/PDF 导出分支，不等同于当前 Standard 或 Pro 的能力。 |
+
+**一个项目只安装一个版本、一个平台包，不要混装。** 各版本的具体导入方法见下方快速使用说明。
+
 ## 小红书
 
 作者：**Orlando Liu（奥兰多）**，小红书号：[`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。点击图片进入主页，也可以扫码找到我。
