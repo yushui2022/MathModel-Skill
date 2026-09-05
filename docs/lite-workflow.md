@@ -18,7 +18,7 @@ Lite 仍然要求真实运行建模代码，不允许占位结果冒充最终稿
 
 ## 安装隔离
 
-- Standard 位于默认分支 `master`，Lite 位于独立分支 `lite`；每个分支只分发自己的版本。
+- Standard 位于默认分支 `standard`，Lite 位于独立分支 `lite`；每个分支只分发自己的版本。
 - 一个比赛项目只能安装 Standard 或 Lite 其中之一，不要把两个分支的 ZIP 解压到同一个项目。
 - Lite preflight 在五种历史/现代 Skill 目录检测 Standard 和 Pro 的入口及 Edition marker；发现混装直接失败。
 - 切换时只清理旧 MathModel Skill，保留用户的 `CLAUDE.md` / `AGENTS.md` 和其他 Skills；旧文件中的 MathModel 专属指令需单独确认后调整。
@@ -77,4 +77,4 @@ paper_output_lite/paper.docx
 paper_output_lite/lite_report.json
 ```
 
-需要原生 Word 公式、严格参考文献审计、PDF 渲染或完整评分闭环时，改用默认分支 `master` 的 Standard。
+需要原生 Word 公式、严格参考文献审计、PDF 渲染或完整评分闭环时，改用默认分支 `standard` 的 Standard。

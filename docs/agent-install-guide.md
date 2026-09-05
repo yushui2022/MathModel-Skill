@@ -1,6 +1,6 @@
 # Lite 安装指南
 
-本分支只分发 MathModel Lite。Standard 位于默认分支 `master`。
+本分支只分发 MathModel Lite。Standard 位于默认分支 `standard`。
 
 | 平台 | 下载包 | 复制到项目 | Skill 入口 |
 |---|---|---|---|
