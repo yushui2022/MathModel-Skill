@@ -4,7 +4,7 @@
 
 | Need | Branch |
 |---|---|
-| Strong model and formal competition delivery | `master` (Standard) |
+| Strong model and formal competition delivery | `standard` (Standard) |
 | Ordinary/older model and simpler workflow | `lite` |
 | Top-tier model, high cost allowed, maximum verification | `pro` |
 
