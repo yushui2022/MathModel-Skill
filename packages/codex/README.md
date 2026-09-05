@@ -2,7 +2,7 @@
 
 这是面向较弱或较旧模型的低上下文版本，只包含一个 `mathmodel-lite` Skill 和三个固定脚本。
 
-只在没有安装 Standard 的项目中，将 `AGENTS.md` 与 `skills/` 复制到项目根目录。不要同时保留 Standard 的 `paper-workflow-orchestrator`。把赛题放进 `problem_files/`，然后说：
+只在没有安装 Standard 或 Pro 的项目中，解压 Lite Codex 包的 `.agents/skills/`。从源码安装时，将本目录的 `skills/mathmodel-lite` 放到项目的 `.agents/skills/mathmodel-lite`。保留用户已有 `AGENTS.md`，不要复制仓库里的历史入口文件。把赛题放进 `problem_files/`，然后说：
 
 ```text
 请使用 MathModel Lite，严格按固定六步完成，并在 lite_report.json 为 PASS 后交付 paper.docx。

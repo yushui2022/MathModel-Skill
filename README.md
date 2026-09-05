@@ -7,7 +7,7 @@
 
 #### 支持 Codex、Claude Code 和 Trae
 
-[![Version](https://img.shields.io/badge/version-2.2.1--lite.2-111827)](#下载)
+[![Version](https://img.shields.io/badge/version-2.2.1--lite.3-111827)](#下载)
 
 </div>
 
@@ -44,6 +44,10 @@ Standard 推荐强模型和正式比赛交付使用，但多 Skill 路由、长�
 
 Lite 不提供原生 Word OMML 公式、严格正文引文审计、LibreOffice 渲染或 Standard 的完整 S0-S8 证据链。
 
+**lite.3 加固：** 默认基础报告至少 1500 有效字符，每个问题独立标题下至少 150 字符，并出现对应计算指标。新增运行超时（默认 300 秒，可调整）、路径越界检查、计划变更失效、旧结果复用拦截、DOCX 重开验证和真实图片嵌入。仍然只有一个 Skill、六步流程，不增加多代理或复杂检查点。
+
+Lite 的 `PASS` 仅表示基础报告检查通过，不等于 20 页正式竞赛稿验收。短报告和测试须在 `plan.json.delivery` 中说明范围，详见[流程说明](docs/lite-workflow.md)。需要正式公式、分页和竞赛论文审查，请用 Standard 或 Pro。
+
 ## 固定流程
 
 ```text
@@ -66,11 +70,11 @@ problem_files/
 
 | 平台 | 发布包 | 安装入口 |
 |---|---|---|
-| Codex | `dist/MathModel-Skill-Lite-Codex.zip` | `skills/mathmodel-lite/SKILL.md` |
+| Codex | `dist/MathModel-Skill-Lite-Codex.zip` | `.agents/skills/mathmodel-lite/SKILL.md` |
 | Claude Code | `dist/MathModel-Skill-Lite-Claude-Code.zip` | `.claude/skills/mathmodel-lite/SKILL.md` |
 | Trae | `dist/MathModel-Skill-Lite-Trae.zip` | `.trae/skills/mathmodel-lite/SKILL.md` |
 
-解压到一个未安装 Standard 的比赛项目根目录，然后安装依赖：
+当前版本下载本分支 `dist/` 内的包；历史 Release 不会自动更新。解压到未安装 Standard 或 Pro 的项目根目录，不覆盖用户的 `AGENTS.md` / `CLAUDE.md`，然后安装依赖：
 
 ```bash
 pip install -r requirements.txt
@@ -99,9 +103,9 @@ problem_files/
 以 Codex 为例：
 
 ```bash
-python skills/mathmodel-lite/scripts/lite_preflight.py
-python skills/mathmodel-lite/scripts/lite_run.py
-python skills/mathmodel-lite/scripts/lite_finalize.py
+python .agents/skills/mathmodel-lite/scripts/lite_preflight.py
+python .agents/skills/mathmodel-lite/scripts/lite_run.py --timeout 300
+python .agents/skills/mathmodel-lite/scripts/lite_finalize.py
 ```
 
 Claude Code 将 `skills/` 替换为 `.claude/skills/`，Trae 替换为 `.trae/skills/`。

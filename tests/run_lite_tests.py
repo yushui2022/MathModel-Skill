@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -18,9 +19,9 @@ RUNNER = SKILL_ROOT / "scripts" / "lite_run.py"
 FINALIZER = SKILL_ROOT / "scripts" / "lite_finalize.py"
 
 
-def run(script: Path, cwd: Path) -> subprocess.CompletedProcess[str]:
+def run(script: Path, cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(script)],
+        [sys.executable, str(script), *args],
         cwd=str(cwd),
         text=True,
         encoding="utf-8",
@@ -54,7 +55,7 @@ def prepare(name: str) -> Path:
     output = cwd / "paper_output_lite"
     write_json(
         output / "plan.json",
-        {"questions": [{"id": "Q1", "task": "estimate slope", "model": "least squares", "output": "slope"}]},
+        {"delivery": {"mode": "smoke-test", "reason": "Synthetic regression fixture"}, "questions": [{"id": "Q1", "task": "estimate slope", "model": "least squares", "output": "slope"}]},
     )
     model_source = '''from pathlib import Path
 import json
@@ -87,7 +88,8 @@ result = {
                 "# 2 模型假设",
                 "观测误差独立且数据口径一致。",
                 "# 3 模型建立与求解",
-                "Q1 使用最小二乘模型。",
+                "## Q1 方法、结果与检验",
+                "Q1 使用最小二乘模型，斜率为 2.0。通过逐点代入原始数据验证拟合关系；这个构造算例没有测量噪声，不能据此宣称真实样本也有相同表现。",
                 "# 4 结果与检验",
                 "Q1 的斜率为 2.0，结果与原始数据一致。",
                 "# 5 模型评价",
@@ -202,8 +204,106 @@ def test_lite_release_packages_are_deterministic_and_marked() -> None:
             marker = next(item for item in entries if item.endswith("mathmodel-lite/MATHMODEL_EDITION.json"))
             marker_data = json.loads(archive.read(marker).decode("utf-8"))
             assert_true(marker_data["edition"] == "lite", "Lite marker edition should be present")
-            assert_true(marker_data["version"] == "2.2.1-lite.2", "Lite marker version should match")
+            assert_true(marker_data["version"] == (REPO_ROOT / "VERSION").read_text().strip(), "Lite marker version should match")
+            assert_true("AGENTS.md" not in entries and "CLAUDE.md" not in entries, "archives must not overwrite user instructions")
+            if "Codex" in name:
+                assert_true(marker.startswith(".agents/skills/"), "Codex must install in the modern skill root")
             assert_true("LICENSE" in entries, "Lite archive should include MIT license")
+
+
+def test_lite_body_and_numeric_coverage() -> None:
+    for name, edit in (
+        ("missing_q_heading", lambda t: t.replace("## Q1 方法、结果与检验", "## 方法")),
+        ("wrong_number", lambda t: t.replace("2.0", "9999")),
+        ("missing_body", lambda t: "# 摘要\n# Q1\n2.0\n# 问题重述\n# 假设\n# 模型\n# 检验\n# 评价\n# 结论\n"),
+    ):
+        cwd = prepare(name)
+        assert_true(run(RUNNER, cwd).returncode == 0, "runner should pass")
+        paper = cwd / "paper_output_lite/paper.md"
+        paper.write_text(edit(paper.read_text(encoding="utf-8")), encoding="utf-8")
+        assert_true(run(FINALIZER, cwd).returncode != 0, f"must reject {name}")
+
+
+def test_lite_default_scope_is_not_smoke() -> None:
+    cwd = prepare("default_scope")
+    plan = cwd / "paper_output_lite/plan.json"
+    data = json.loads(plan.read_text(encoding="utf-8"))
+    data.pop("delivery")
+    write_json(plan, data)
+    assert_true(run(RUNNER, cwd).returncode == 0, "run should pass")
+    assert_true(run(FINALIZER, cwd).returncode != 0, "a smoke fixture is not a basic report")
+
+
+def test_lite_plan_and_input_inventory_invalidation() -> None:
+    for name in ("plan", "added_input"):
+        cwd = prepare("changed_" + name)
+        assert_true(run(RUNNER, cwd).returncode == 0, "run should pass")
+        if name == "plan":
+            path = cwd / "paper_output_lite/plan.json"
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["questions"][0]["task"] = "Changed question"
+            write_json(path, data)
+        else:
+            (cwd / "problem_files/new.txt").write_text("new input", encoding="utf-8")
+        assert_true(run(FINALIZER, cwd).returncode != 0, "stale inputs must invalidate finalization")
+
+
+def test_lite_noop_does_not_reuse_results() -> None:
+    cwd = prepare("noop")
+    assert_true(run(RUNNER, cwd).returncode == 0, "first run should pass")
+    (cwd / "paper_output_lite/code/model.py").write_text("pass\n", encoding="utf-8")
+    assert_true(run(RUNNER, cwd).returncode != 0, "no-op run must fail")
+    assert_true(run(FINALIZER, cwd).returncode != 0, "old results cannot be delivered")
+
+
+def test_lite_timeout_records_failure() -> None:
+    cwd = prepare("timeout")
+    (cwd / "paper_output_lite/code/model.py").write_text("import time\ntime.sleep(30)\n", encoding="utf-8")
+    assert_true(run(RUNNER, cwd, "--timeout", "1").returncode != 0, "watchdog must stop the model")
+    report = json.loads((cwd / "paper_output_lite/run_manifest.json").read_text(encoding="utf-8"))
+    assert_true(report["status"] == "FAIL" and "exceeded" in report["failures"][0], "timeout must leave a failed receipt")
+
+
+def test_lite_rejects_escaping_paths() -> None:
+    sys.path.insert(0, str(SKILL_ROOT / "scripts"))
+    from lite_common import safe_path
+    for value in ("../outside", "/tmp/outside", "C:outside", "C:/outside", "a\\..\\outside"):
+        try:
+            safe_path(REPO_ROOT, value)
+        except ValueError:
+            continue
+        raise AssertionError(f"path accepted: {value}")
+
+
+def test_lite_duplicate_result_questions_rejected() -> None:
+    cwd = prepare("duplicate_questions")
+    model = cwd / "paper_output_lite/code/model.py"
+    text = model.read_text(encoding="utf-8").replace('(output / "results.json").write_text', 'result["questions"] *= 2\n(output / "results.json").write_text')
+    model.write_text(text, encoding="utf-8")
+    assert_true(run(RUNNER, cwd).returncode == 0, "run records the actual duplicate results")
+    assert_true(run(FINALIZER, cwd).returncode != 0, "duplicate IDs must fail")
+
+
+def test_lite_docx_contains_actual_image() -> None:
+    cwd = prepare("image")
+    model = cwd / "paper_output_lite/code/model.py"
+    model.write_text(model.read_text(encoding="utf-8") + '\nimport matplotlib\nmatplotlib.use("Agg")\nimport matplotlib.pyplot as plt\nplt.plot([1,2,3], [2,4,6])\nplt.savefig(output / "figures/q1.png")\n', encoding="utf-8")
+    assert_true(run(RUNNER, cwd).returncode == 0, "image run should pass")
+    paper = cwd / "paper_output_lite/paper.md"
+    paper.write_text(paper.read_text(encoding="utf-8") + "\n![Linear fit](paper_output_lite/figures/q1.png)\n", encoding="utf-8")
+    completed = run(FINALIZER, cwd)
+    assert_true(completed.returncode == 0, completed.stdout)
+    assert_true(len(Document(cwd / "paper_output_lite/paper.docx").inline_shapes) == 1, "image must be embedded, not replaced with a caption")
+
+
+def test_lite_non_utf8_host_console() -> None:
+    cwd = prepare("western_console")
+    model = cwd / "paper_output_lite/code/model.py"
+    model.write_text(model.read_text(encoding="utf-8") + '\nprint("中文计算日志")\n', encoding="utf-8")
+    env = {**os.environ, "PYTHONUTF8": "0", "PYTHONIOENCODING": "cp1252"}
+    for script in (RUNNER, FINALIZER):
+        result = subprocess.run([sys.executable, str(script)], cwd=cwd, env=env, capture_output=True, encoding="utf-8", errors="replace")
+        assert_true(result.returncode == 0, result.stdout + result.stderr)
 
 
 def main() -> int:
@@ -215,6 +315,15 @@ def main() -> int:
         test_lite_rejects_modified_input,
         test_lite_rejects_modified_model_after_run,
         test_lite_rejects_placeholder_paper,
+        test_lite_body_and_numeric_coverage,
+        test_lite_default_scope_is_not_smoke,
+        test_lite_plan_and_input_inventory_invalidation,
+        test_lite_noop_does_not_reuse_results,
+        test_lite_timeout_records_failure,
+        test_lite_rejects_escaping_paths,
+        test_lite_duplicate_result_questions_rejected,
+        test_lite_docx_contains_actual_image,
+        test_lite_non_utf8_host_console,
         test_lite_preflight_rejects_other_editions_in_all_skill_roots,
         test_lite_release_packages_are_deterministic_and_marked,
     ]

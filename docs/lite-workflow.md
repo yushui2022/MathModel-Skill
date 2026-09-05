@@ -20,8 +20,8 @@ Lite 仍然要求真实运行建模代码，不允许占位结果冒充最终稿
 
 - Standard 位于默认分支 `master`，Lite 位于独立分支 `lite`；每个分支只分发自己的版本。
 - 一个比赛项目只能安装 Standard 或 Lite 其中之一，不要把两个分支的 ZIP 解压到同一个项目。
-- Lite preflight 会检测 `paper-workflow-orchestrator`；发现 Standard 残留时直接失败。
-- 从 Standard 切换到 Lite 时，先在项目中删除 Standard 的 skill 目录及 `CLAUDE.md` / `AGENTS.md` 入口，再安装 Lite。
+- Lite preflight 在五种历史/现代 Skill 目录检测 Standard 和 Pro 的入口及 Edition marker；发现混装直接失败。
+- 切换时只清理旧 MathModel Skill，保留用户的 `CLAUDE.md` / `AGENTS.md` 和其他 Skills；旧文件中的 MathModel 专属指令需单独确认后调整。
 
 ## 使用方式
 
@@ -48,12 +48,22 @@ Lite 的依赖文件不包含 Standard 使用的 PDF、LaTeX 公式和严格格�
 三个脚本按顺序运行：
 
 ```bash
-python skills/mathmodel-lite/scripts/lite_preflight.py
-python skills/mathmodel-lite/scripts/lite_run.py
-python skills/mathmodel-lite/scripts/lite_finalize.py
+python .agents/skills/mathmodel-lite/scripts/lite_preflight.py
+python .agents/skills/mathmodel-lite/scripts/lite_run.py --timeout 300
+python .agents/skills/mathmodel-lite/scripts/lite_finalize.py
 ```
 
-Claude Code 将 `skills/` 替换为 `.claude/skills/`，Trae 替换为 `.trae/skills/`。
+Claude Code 将 `.agents/skills/` 替换为 `.claude/skills/`，Trae 替换为 `.trae/skills/`。
+
+## 基础稿范围
+
+默认 `plan.json.delivery.mode` 为 `basic-report`：有效正文至少 1500 字符，每个问题使用 `## Q1 ...` 等独立标题，标题内包含方法、计算结果、检验和局限（至少 150 字符）。每项数值指标必须出现在对应问题正文里；不能只在摘要提到问题 ID。可分多轮完成文章，但不要增加复杂流程。
+
+用户确实要求短报告时设置 `delivery: {"mode": "short-report", "reason": "用户要求的范围"}`（主稿 300、每问 80 字符）；安装测试使用 `smoke-test` 并说明理由（主稿 50、每问 30）。测试范围不能冒充正式竞赛验收。默认范围也只是基础报告，不保证比赛篇幅或学术水平。
+
+运行前必须完成 plan；变更输入清单、计划或代码后重新运行。每次运行清除旧 `results.json`，空操作不能复用旧结果。默认脚本超时 300 秒，可按实际算法使用 `--timeout` 调整；这是执行看门狗，不是对任意代码的安全沙箱。
+
+图片独占一行，使用 `![图说明](paper_output_lite/figures/q1.png)`，必须是模型运行记录内的文件。DOCX 嵌入图片后会重新打开核对；不会进行 Word 原生公式或 PDF 版式认证。
 
 ## 最终产物
 

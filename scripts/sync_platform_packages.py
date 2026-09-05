@@ -9,7 +9,7 @@ SYNC_GROUPS = (
     (
         REPO_ROOT / "packages" / "claude" / ".claude" / "skills",
         (
-            (REPO_ROOT / "packages" / "codex" / "skills", ".claude/skills", "skills"),
+            (REPO_ROOT / "packages" / "codex" / "skills", ".claude/skills", ".agents/skills"),
             (REPO_ROOT / "packages" / "trae" / ".trae" / "skills", ".claude/skills", ".trae/skills"),
         ),
     ),
@@ -36,7 +36,9 @@ def transformed_bytes(path: Path, source_prefix: str, target_prefix: str) -> byt
     except UnicodeDecodeError:
         return data
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    return text.replace(source_prefix, target_prefix).encode("utf-8")
+    if path.suffix.lower() == ".md":
+        text = text.replace(source_prefix, target_prefix)
+    return text.encode("utf-8")
 
 
 def normalized_existing_bytes(path: Path) -> bytes:

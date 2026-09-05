@@ -4,11 +4,11 @@
 
 | 平台 | 下载包 | 复制到项目 | Skill 入口 |
 |---|---|---|---|
-| Codex | `dist/MathModel-Skill-Lite-Codex.zip` | `skills/` + `AGENTS.md` | `skills/mathmodel-lite/SKILL.md` |
-| Claude Code | `dist/MathModel-Skill-Lite-Claude-Code.zip` | `.claude/skills/` + `CLAUDE.md` | `.claude/skills/mathmodel-lite/SKILL.md` |
+| Codex | `dist/MathModel-Skill-Lite-Codex.zip` | `.agents/skills/` | `.agents/skills/mathmodel-lite/SKILL.md` |
+| Claude Code | `dist/MathModel-Skill-Lite-Claude-Code.zip` | `.claude/skills/` | `.claude/skills/mathmodel-lite/SKILL.md` |
 | Trae | `dist/MathModel-Skill-Lite-Trae.zip` | `.trae/skills/` | `.trae/skills/mathmodel-lite/SKILL.md` |
 
-不要在已安装 Standard 的项目上覆盖安装。切换版本时，创建新项目最稳妥；否则先彻底删除旧版本的 skill 目录和入口文件。
+不要在已安装 Standard 或 Pro 的项目上覆盖安装。切换版本时优先使用新项目；需要原地切换时，只清理旧 MathModel Skill 目录，保留其他 Skills 和用户根目录配置。历史 `AGENTS.md` / `CLAUDE.md` 中的 MathModel 专属指令须单独确认后调整，不要删除整个文件。
 
 安装后运行：
 

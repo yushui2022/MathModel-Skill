@@ -12,7 +12,7 @@ description: "低上下文、单入口数学建模工作流。Use when 用户明
 - 用户明确选择 Lite，或模型上下文、推理能力和工具使用能力有限时使用。
 - 目标是得到可复核的基础建模方案、真实运行结果、结构完整的 Markdown 和 Word。
 - 需要完整评分闭环、多模型比较、原生 Word OMML 公式、正文引文审计、LibreOffice 渲染或严格比赛终稿时，改用 Standard。
-- Lite 与 Standard 不得安装在同一个项目；预检检测到 `paper-workflow-orchestrator` 时必须停止并清理混装。
+- Lite 与 Standard、Pro 不得混装；预检发现其他版本时停止，只清理确认的 MathModel Skill，保留用户根目录配置。
 
 ## 固定目录
 
@@ -104,7 +104,7 @@ python .claude/skills/mathmodel-lite/scripts/lite_preflight.py
 python .claude/skills/mathmodel-lite/scripts/lite_run.py
 ```
 
-该脚本运行 `model.py`，并记录脚本、输入、`results.json` 和证据文件的 SHA-256。运行失败时修复 `model.py` 后重跑，不要手工把状态改成 PASS。
+该脚本运行 `model.py`，记录计划、脚本、输入和输出的 SHA-256，清除旧 `results.json` 防止空操作复用。默认超时 300 秒，较长计算可显式使用 `--timeout 900`；这不是代码安全沙箱。运行失败时修复后重跑，不要手改状态。
 
 ### 5. 写基础论文
 
@@ -121,7 +121,11 @@ python .claude/skills/mathmodel-lite/scripts/lite_run.py
 # 6 结论
 ```
 
-每个 `Q*` 都必须出现，并给出方法、关键计算、结果和解释。公式可以保留为可读 LaTeX 文本；Lite 不承诺原生 Word 公式。不要出现“待补”“示例结果”“假设已经运行”等占位表述。
+每问使用独立的 `## Q1 ...` 标题，展开方法、关键计算、数值结果、检验和局限，指标必须出现在该问正文。默认全文至少 1500 有效字符，每问至少 150 字符；可分多轮写作，不要凑字。公式可保留可读 LaTeX；Lite 不承诺原生公式，不得用占位表述。
+
+默认 `plan.json.delivery.mode` 为 `basic-report`。用户要求短报告才设置 `{"mode":"short-report","reason":"用户要求的范围"}`（全文 300 / 每问 80 字符）；安装测试可用带理由的 `smoke-test`（50 / 30），不得冒充竞赛验收。不要为通过检查自行降低范围。
+
+图片独占一行：`![图说明](paper_output_lite/figures/q1.png)`，必须已被运行清单记录；最终脚本嵌入图片并重新打开 DOCX 核对内容。
 
 ### 6. 最终检查与 Word
 
@@ -129,7 +133,7 @@ python .claude/skills/mathmodel-lite/scripts/lite_run.py
 python .claude/skills/mathmodel-lite/scripts/lite_finalize.py
 ```
 
-只有退出码为 0 且 `lite_report.json.status` 为 `PASS`，`paper.docx` 才能称为 Lite 最终稿。失败时按 `failures` 修复，不要绕过门禁。
+只有退出码为 0 且 `lite_report.json.status` 为 `PASS`，`paper.docx` 才能称为对应范围的 Lite 最终稿；不是 20 页正式竞赛论文验收。失败时按 `failures` 修复，不要绕过门禁。
 
 ## Lite 底线
 

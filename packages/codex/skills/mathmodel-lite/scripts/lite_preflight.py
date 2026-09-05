@@ -12,7 +12,7 @@ INPUT_DIR = ROOT / "problem_files"
 OUTPUT_DIR = ROOT / "paper_output_lite"
 MANIFEST_FILE = OUTPUT_DIR / "input_manifest.json"
 EXPECTED_EDITION = "lite"
-SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", "skills", ".trae/skills")
+SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".claude/skills", ".trae/skills")
 LEGACY_ENTRY_EDITIONS = {
     "paper-workflow-orchestrator": "standard",
     "mathmodel-lite": "lite",
@@ -67,6 +67,15 @@ def detect_mathmodel_installations() -> list[dict[str, str | None]]:
 
 
 def main() -> int:
+    from lite_common import configure_stdio
+    configure_stdio()
+    from lite_common import safe_path
+    try:
+        safe_path(ROOT, "paper_output_lite")
+        safe_path(ROOT, "problem_files")
+    except ValueError as exc:
+        print(f"[FAIL] {exc}")
+        return 1
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     for name in ("code", "figures", "tables"):
         (OUTPUT_DIR / name).mkdir(parents=True, exist_ok=True)

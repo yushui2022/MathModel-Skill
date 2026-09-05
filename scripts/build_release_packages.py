@@ -67,7 +67,6 @@ PACKAGE_SPECS = (
         archive_name="MathModel-Skill-Lite-Claude-Code.zip",
         roots=((REPO_ROOT / "packages" / "claude" / ".claude", Path(".claude")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "claude" / "CLAUDE.md", Path("CLAUDE.md")),
             (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill-Lite.md")),
             *COMMON_DOCS,
         ),
@@ -75,9 +74,8 @@ PACKAGE_SPECS = (
     PackageSpec(
         name="Lite Codex",
         archive_name="MathModel-Skill-Lite-Codex.zip",
-        roots=((REPO_ROOT / "packages" / "codex" / "skills", Path("skills")),),
+        roots=((REPO_ROOT / "packages" / "codex" / "skills", Path(".agents/skills")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "codex" / "AGENTS.md", Path("AGENTS.md")),
             (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill-Lite.md")),
             *COMMON_DOCS,
         ),

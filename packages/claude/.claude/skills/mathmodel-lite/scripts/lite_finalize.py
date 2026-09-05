@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from docx import Document
-from docx.shared import Pt
+from docx.shared import Pt, Inches
+from lite_common import safe_path, paper_checks
 
 
 ROOT = Path.cwd()
@@ -52,8 +53,7 @@ def sha256_file(path: Path) -> str:
 
 
 def resolve(path_text: object) -> Path:
-    path = Path(str(path_text or ""))
-    return path if path.is_absolute() else ROOT / path
+    return safe_path(ROOT, path_text)
 
 
 def rel(path: Path) -> str:
@@ -108,12 +108,21 @@ def build_docx(text: str) -> None:
         line = raw.strip()
         if not line:
             continue
+        image = re.fullmatch(r"!\[([^]]*)\]\(([^)]+)\)", line)
+        if image:
+            document.add_picture(str(resolve(image.group(2))), width=Inches(6))
+            if image.group(1):
+                document.add_paragraph(image.group(1))
+            continue
         heading = re.match(r"^(#{1,6})\s+(.+)$", line)
         if heading:
             document.add_heading(clean_markdown(heading.group(2)), level=min(3, len(heading.group(1))))
         else:
             document.add_paragraph(clean_markdown(line))
     document.save(DOCX_FILE)
+    reopened = Document(DOCX_FILE)
+    if [p.text for p in reopened.paragraphs] != [p.text for p in document.paragraphs] or len(reopened.inline_shapes) != len(document.inline_shapes):
+        raise ValueError("DOCX failed the reopen/content check")
 
 
 def evaluate() -> dict[str, Any]:
@@ -130,13 +139,15 @@ def evaluate() -> dict[str, Any]:
         failures.append("缺少通过的 input_manifest.json。")
     else:
         failures.extend(validate_records(manifest.get("files"), "输入"))
+        from lite_run import input_failures
+        failures.extend(input_failures(manifest))
 
     questions = plan.get("questions") if isinstance(plan, dict) else None
     if not isinstance(questions, list) or not questions:
         failures.append("plan.json 缺少非空 questions 列表。")
         questions = []
     plan_ids = [str(item.get("id") or "").strip() for item in questions if isinstance(item, dict)]
-    if any(not qid for qid in plan_ids) or len(set(plan_ids)) != len(plan_ids):
+    if len(plan_ids) != len(questions) or any(not qid for qid in plan_ids) or len(set(plan_ids)) != len(plan_ids):
         failures.append("plan.json 的问题 ID 为空或重复。")
 
     if not isinstance(run, dict) or run.get("status") != "PASS":
@@ -146,6 +157,11 @@ def evaluate() -> dict[str, Any]:
             failures.append("model.py 在运行后已变化；请重新运行 lite_run.py。")
         failures.extend(validate_records(run.get("inputs"), "运行输入"))
         failures.extend(validate_records(run.get("outputs"), "运行输出"))
+        expected = {rel(p): sha256_file(p) for p in (MODEL_FILE, PLAN_FILE, MANIFEST_FILE) if p.is_file()}
+        if run.get("initial_hashes") != expected or len(expected) != 3:
+            failures.append("plan, script or input manifest changed since the run; rerun lite_run.py")
+        if not any(r.get("path") == rel(RESULTS_FILE) for r in run.get("outputs", [])):
+            failures.append("run manifest does not bind results.json")
 
     result_questions = results.get("questions") if isinstance(results, dict) else None
     if not isinstance(results, dict) or results.get("status") != "computed":
@@ -158,6 +174,8 @@ def evaluate() -> dict[str, Any]:
         for item in result_questions
         if isinstance(item, dict) and str(item.get("id") or "").strip()
     }
+    if len(result_map) != len(result_questions) or set(result_map) != set(plan_ids):
+        failures.append("results must cover exactly the planned question IDs without duplicates")
     for qid in plan_ids:
         item = result_map.get(qid)
         if not item:
@@ -182,11 +200,18 @@ def evaluate() -> dict[str, Any]:
         if placeholder.lower() in lowered:
             failures.append(f"paper.md 包含占位文本：{placeholder}")
     for section in REQUIRED_SECTIONS:
-        if section not in paper_text:
+        if not any(section in h for h in re.findall(r"(?m)^\s*#{1,6}\s+[^\n]+", paper_text)):
             failures.append(f"paper.md 缺少必要章节关键词：{section}")
     for qid in plan_ids:
         if qid not in paper_text:
             failures.append(f"paper.md 未明确覆盖 {qid}。")
+    if isinstance(plan, dict):
+        failures.extend(paper_checks(paper_text, plan, result_map))
+    recorded_outputs = {item.get("path") for item in run.get("outputs", [])} if isinstance(run, dict) else set()
+    for _, path_text in re.findall(r"!\[([^]]*)\]\(([^)]+)\)", paper_text):
+        path = resolve(path_text)
+        if rel(path) not in recorded_outputs or not path.is_file():
+            failures.append(f"paper image is not a recorded model output: {path_text}")
 
     status = "PASS" if not failures else "FAIL"
     return {
@@ -197,6 +222,7 @@ def evaluate() -> dict[str, Any]:
         "failures": failures,
         "warnings": warnings,
         "question_ids": plan_ids,
+        "acceptance_scope": "NOT_ACCEPTED" if failures else ("LITE_BASIC_REPORT_ONLY" if ((plan or {}).get("delivery") or {}).get("mode", "basic-report") == "basic-report" else "LITE_SHORT_OR_TEST_ONLY"),
         "input_hashes": {
             rel(path): sha256_file(path)
             for path in (MANIFEST_FILE, PLAN_FILE, MODEL_FILE, RUN_FILE, RESULTS_FILE, PAPER_FILE)
@@ -206,15 +232,27 @@ def evaluate() -> dict[str, Any]:
 
 
 def main() -> int:
+    from lite_common import configure_stdio
+    configure_stdio()
+    try:
+        safe_path(ROOT, "paper_output_lite")
+        for path in (MANIFEST_FILE, PLAN_FILE, MODEL_FILE, RUN_FILE, RESULTS_FILE, PAPER_FILE, DOCX_FILE, REPORT_FILE):
+            safe_path(ROOT, path.relative_to(ROOT).as_posix())
+    except ValueError as exc:
+        print(f"[FAIL] {exc}")
+        return 1
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    report = evaluate()
-    if report["status"] == "PASS":
-        build_docx(PAPER_FILE.read_text(encoding="utf-8"))
-        report["docx"] = {"path": rel(DOCX_FILE), "bytes": DOCX_FILE.stat().st_size, "sha256": sha256_file(DOCX_FILE)}
+    try:
+        report = evaluate()
+        if report["status"] == "PASS":
+            build_docx(PAPER_FILE.read_text(encoding="utf-8"))
+            report["docx"] = {"path": rel(DOCX_FILE), "bytes": DOCX_FILE.stat().st_size, "sha256": sha256_file(DOCX_FILE)}
+    except Exception as exc:
+        report = {"status": "FAIL", "acceptance_scope": "NOT_ACCEPTED", "failures": [f"invalid artifact or Word generation failed: {exc}"]}
     REPORT_FILE.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"Lite report: {rel(REPORT_FILE)}")
     if report["status"] == "PASS":
-        print("[PASS] Lite paper and Word are ready.")
+        print(f"[PASS] {report['acceptance_scope']}: basic Word report, not competition-format acceptance.")
         return 0
     for failure in report["failures"]:
         print(f"[FAIL] {failure}")

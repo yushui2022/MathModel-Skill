@@ -2,6 +2,6 @@
   "schema_version": "1.0",
   "product": "MathModel-Skill",
   "edition": "lite",
-  "version": "2.2.1-lite.2",
+  "version": "2.2.1-lite.3",
   "entry_skill": "mathmodel-lite"
 }
