@@ -31,7 +31,11 @@ def transformed_bytes(path: Path) -> bytes:
     except UnicodeDecodeError:
         return data
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    return text.replace(".claude/skills", ".agents/skills").encode("utf-8")
+    # Instructions contain platform-specific invocation paths. Runtime code must
+    # retain all platforms, especially the mixed-installation scanner's root list.
+    if path.suffix.lower() == ".md":
+        text = text.replace(".claude/skills", ".agents/skills")
+    return text.encode("utf-8")
 
 
 def normalized_bytes(path: Path) -> bytes:

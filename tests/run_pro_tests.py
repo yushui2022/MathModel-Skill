@@ -237,6 +237,20 @@ class CoreTests(unittest.TestCase):
                 self.assertTrue(any("pro_run_experiment.py" in n for n in names))
                 self.assertIn("assets/orlando-liu-social.jpg", names)
                 self.assertTrue(all(i.create_system == 3 and i.compress_type == zipfile.ZIP_STORED for i in archive.infolist()))
+                installed = self.project / "installed" / path.stem
+                archive.extractall(installed)
+            shutil.copytree(self.project / "problem_files", installed / "problem_files")
+            platform = "codex" if "Codex" in path.name else "claude-code"
+            skill_root = ".agents" if platform == "codex" else ".claude"
+            entry = installed / skill_root / "skills/pro-workflow-orchestrator/scripts/pro_preflight.py"
+            self.assertEqual(entry.read_text(encoding="utf-8"), (SCRIPTS / "pro_preflight.py").read_text(encoding="utf-8"))
+            run(entry, "--project-root", installed, "--platform", platform, "--model", "gpt-6-astra")
+            config = read_json(installed / "paper_output_pro/pro_config.json")
+            self.assertEqual(len(config["mathmodel_installation"]["installations"]), 1)
+            mixed = installed / ".claude/skills/mathmodel-lite"
+            mixed.mkdir(parents=True)
+            (mixed / "SKILL.md").write_text("legacy lite entry", encoding="utf-8")
+            self.assertNotEqual(run(entry, "--project-root", installed, "--platform", platform, "--model", "gpt-6-astra", check=False).returncode, 0)
 
     def test_project_location_binding_prevents_copied_approvals(self):
         approve(self.project, 1)

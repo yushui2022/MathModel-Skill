@@ -17,7 +17,7 @@ VERSION = "3.2.0-pro.1"
 MODEL_CATALOG_PATH = Path(__file__).resolve().parents[1] / "references" / "model-profiles.json"
 MODEL_SUFFIXES = {"low", "medium", "high", "xhigh", "max", "ultra", "preview", "latest"}
 EXPECTED_EDITION = "pro"
-SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".agents/skills", ".trae/skills")
+SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".claude/skills", ".trae/skills")
 LEGACY_ENTRY_EDITIONS = {
     "paper-workflow-orchestrator": "standard",
     "mathmodel-lite": "lite",
