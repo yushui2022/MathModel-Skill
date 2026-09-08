@@ -138,6 +138,22 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 
 ## 验证状态与详细文档
 
+## Codex Plugin（`feat/codex-plugin`）
+
+插件分支在保留现有 S0-S8 Skills 的基础上，增加了可安装的
+`.codex-plugin/plugin.json`、仓库 marketplace 清单和本地进度看板原型。
+插件源码位于 `plugins/mathmodel/`；Skills 由
+`packages/codex/.agents/skills/` 同步而来：
+
+```bash
+python plugins/mathmodel/scripts/sync_plugin_skills.py --check
+python plugins/mathmodel/scripts/serve_dashboard.py --project-root .
+```
+
+看板读取项目根目录的 `.mathmodel/status.json` 与 `.mathmodel/events.jsonl`，
+不会上传赛题、代码或结果。当前看板作为本地原型使用；Codex 内嵌 UI/MCP
+接入将在验证状态事件模型后继续实现。
+
 - 发布提交已通过原有 42 项回归和新增 14 项范围与渲染检查；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940797268) 覆盖 Windows/Ubuntu、Python 3.11/3.12，并含 LibreOffice 渲染任务。
 - 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
 - [安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md)

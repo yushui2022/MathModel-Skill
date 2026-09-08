@@ -1,0 +1,28 @@
+{
+  "name": "mathmodel",
+  "version": "0.1.0",
+  "description": "A reproducible mathematical modeling workspace for Codex: analyze problems, run real experiments, verify evidence, and prepare papers.",
+  "author": {
+    "name": "yushui2022",
+    "url": "https://github.com/yushui2022"
+  },
+  "homepage": "https://github.com/yushui2022/MathModel-Skill",
+  "repository": "https://github.com/yushui2022/MathModel-Skill",
+  "license": "MIT",
+  "keywords": ["mathematical-modeling", "optimization", "data-analysis", "paper-writing", "Codex"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "MathModel",
+    "shortDescription": "Reproducible mathematical modeling in Codex.",
+    "longDescription": "MathModel guides a complete S0-S8 workflow from contest files to executable models, evidence checks, figures, and a formal paper. It keeps project-specific code and artifacts in the current workspace.",
+    "developerName": "yushui2022",
+    "category": "Education",
+    "capabilities": ["Analyze", "Code", "Visualize", "Write"],
+    "defaultPrompt": [
+      "Start a mathematical modeling project from problem_files.",
+      "Show the current MathModel workflow status.",
+      "Verify the latest modeling results and evidence."
+    ],
+    "brandColor": "#176B87"
+  }
+}

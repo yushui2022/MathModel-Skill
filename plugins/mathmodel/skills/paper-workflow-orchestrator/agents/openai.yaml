@@ -1,0 +1,8 @@
+interface:
+  display_name: "MathModel Standard"
+  short_description: "可复现证据链与自适应正式论文工作流"
+  brand_color: "#0F766E"
+  default_prompt: "Use $paper-workflow-orchestrator to run or resume the complete MathModel Standard workflow from contest files to audited Word and PDF output."
+
+policy:
+  allow_implicit_invocation: true

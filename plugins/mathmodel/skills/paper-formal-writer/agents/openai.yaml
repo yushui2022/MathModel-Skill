@@ -1,0 +1,8 @@
+interface:
+  display_name: "Formal Paper Writer"
+  short_description: "章节审计、全文统一改写与 Word/PDF 门禁"
+  brand_color: "#0F766E"
+  default_prompt: "Use $paper-formal-writer after S6 passes to plan, audit, globally revise, and format the sole Standard formal manuscript."
+
+policy:
+  allow_implicit_invocation: true
