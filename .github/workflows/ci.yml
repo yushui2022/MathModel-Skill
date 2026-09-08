@@ -37,11 +37,17 @@ jobs:
       - name: Check platform synchronization
         run: python scripts/sync_platform_packages.py --check
 
+      - name: Validate Codex plugin manifest
+        run: python -c "import json; m=json.load(open('plugins/mathmodel/.codex-plugin/plugin.json')); assert m['name']=='mathmodel' and m['version'].count('.')==2; json.load(open('plugins/mathmodel/.mcp.json'))"
+
       - name: Compile Python sources
         run: python -m compileall -q packages scripts tests
 
       - name: Run test suite
         run: python -u tests/run_tests.py
+
+      - name: Run plugin workbench tests
+        run: python tests/test_plugin_workbench.py
 
       - name: Check complete-paper scope regressions
         run: python tests/test_paper_scope.py

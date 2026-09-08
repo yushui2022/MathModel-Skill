@@ -1,41 +1,36 @@
-# MathModel Codex Plugin
+# MathModel Workbench for Codex
 
-This plugin packages the existing MathModel Standard workflow for Codex. The
-workflow remains the source of truth: S0 input admission, S1 problem analysis,
-S2 model route, S3 data and visualization planning, S4 code generation, S5 real
-execution, S6 evidence gate, S7 formal writing, and S8 Word/PDF QA.
+MathModel packages the existing S0–S8 mathematical-modeling Skills with a local, evidence-first workbench. The conversation remains the place for problem analysis, model choices and paper writing; the right-side dashboard is the operational view of real project state.
 
-## Start a project
+## 使用
 
-Place the contest statement and attachments in `problem_files/`, then ask Codex:
+在包含 `problem_files/` 的比赛目录中直接告诉 Codex：
 
-> Start a mathematical modeling project. Run preflight first, follow S0-S8,
-> keep all project code and artifacts under `paper_output/`, and record progress
-> with the MathModel status script.
+> 开始建模，先做预检，并打开 MathModel 工作台。
 
-The plugin does not silently install Python or LibreOffice. Use the existing
-preflight check to identify missing dependencies before a long run.
+Codex 会使用插件入口 Skill，启动本地服务并在支持的桌面宿主中打开右侧工作台。工作台服务只监听回环地址，产物只从 `paper_output/` 登记读取，不上传题面、代码或结果。关闭页面不会终止实验，重新打开会从 `.mathmodel/` 恢复状态。
 
-## Local progress dashboard
-
-From the contest project root, run:
+用户也可以手动启动本地服务（适合调试或宿主尚未提供右栏能力）：
 
 ```bash
-python <path-to-mathmodel-plugin>/scripts/update_model_status.py \\
-  --stage S0 --status running --message "Admitting contest inputs"
-python <path-to-mathmodel-plugin>/scripts/serve_dashboard.py
+python <插件目录>/scripts/serve_dashboard.py --project-root . --port 8765
 ```
 
-Then open the printed local URL. The dashboard reads `.mathmodel/status.json`
-and `.mathmodel/events.jsonl` from the current project, and can preview images
-and other artifacts below the project root. It is deliberately local-only.
+然后在 Codex 中打开打印出的本地地址。普通浏览器也可以访问，但它不是 Codex 右栏的保证替代品。
 
-The dashboard is a first integration slice. A future MCP server can expose the
-same state as structured tools and return an in-Codex UI resource where the host
-supports it.
+## MCP 工具
 
-## Development note
+`.mcp.json` 注册可选的 Python MCP 服务。安装了官方 Python MCP SDK 后，服务提供 `open_workspace`、`get_status`、`list_artifacts`、`read_artifact`、`run_job`、`get_job`、`cancel_job` 和 `get_next_action`。没有安装 SDK 时，Skills 和本地看板仍可使用，启动错误会明确提示安装命令。
 
-The skills under `skills/` are copied from `packages/codex/.agents/skills/` for
-plugin packaging. Keep the canonical workflow changes in the package source and
-refresh this copy before publishing a release.
+受控任务只有预检、模型运行、证据检查和格式检查四类，不接受任意 shell 字符串。Guard 的验证报告是完成依据，手工记录的 `passed` 事件只能显示为“待验证”，不能伪造阶段通过。
+
+## 开发与发布
+
+插件 Skills 是生成副本，规范来源仍是 `packages/claude/.claude/skills`。同步并检查：
+
+```bash
+python plugins/mathmodel/scripts/sync_plugin_skills.py
+python plugins/mathmodel/scripts/sync_plugin_skills.py --check
+```
+
+插件缓存与比赛项目严格分离；结果、记忆和 SQLite 状态写入比赛目录的 `.mathmodel/` 与 `paper_output/`。发布前运行插件校验、Python 编译、MCP 协议 smoke test 和现有完整回归测试。

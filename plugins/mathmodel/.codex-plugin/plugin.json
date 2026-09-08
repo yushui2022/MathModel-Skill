@@ -1,6 +1,6 @@
 {
   "name": "mathmodel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A reproducible mathematical modeling workspace for Codex: analyze problems, run real experiments, verify evidence, and prepare papers.",
   "author": {
     "name": "yushui2022",
@@ -11,6 +11,7 @@
   "license": "MIT",
   "keywords": ["mathematical-modeling", "optimization", "data-analysis", "paper-writing", "Codex"],
   "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "MathModel",
     "shortDescription": "Reproducible mathematical modeling in Codex.",

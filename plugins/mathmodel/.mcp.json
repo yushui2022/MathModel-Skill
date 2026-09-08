@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mathmodel": {
+    "command": "python",
+    "args": ["./scripts/mcp_server.py"],
+    "env": {
+      "PYTHONUTF8": "1"
+    }
+    }
+  }
+}

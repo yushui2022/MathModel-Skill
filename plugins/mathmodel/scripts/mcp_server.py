@@ -8,11 +8,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 from workbench import JobRunner, WorkbenchState, project_id
 
 _states: dict[str, WorkbenchState] = {}
 _runners: dict[str, JobRunner] = {}
+_dashboard_processes: dict[str, subprocess.Popen[str]] = {}
+_dashboard_urls: dict[str, str] = {}
 
 def _state(root: str) -> WorkbenchState:
     p = str(Path(root).expanduser().resolve())
@@ -22,7 +26,17 @@ def _state(root: str) -> WorkbenchState:
 
 def open_workspace(project_root: str) -> dict:
     s = _state(project_root)
-    return {"project_id": project_id(s.root), "project_root": str(s.root), "dashboard_url": os.environ.get("MATHMODEL_DASHBOARD_URL", "http://127.0.0.1:8765/"), "status": s.status()}
+    key = str(s.root)
+    if key not in _dashboard_urls:
+        try:
+            script = Path(__file__).resolve().with_name("serve_dashboard.py")
+            proc = subprocess.Popen([sys.executable, "-u", str(script), "--project-root", str(s.root), "--port", "0"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
+            line = proc.stdout.readline().strip() if proc.stdout else ""
+            url = line.split(": ", 1)[-1] if "MathModel dashboard:" in line else ""
+            _dashboard_processes[key], _dashboard_urls[key] = proc, (url or os.environ.get("MATHMODEL_DASHBOARD_URL", "http://127.0.0.1:8765/"))
+        except OSError:
+            _dashboard_urls[key] = os.environ.get("MATHMODEL_DASHBOARD_URL", "http://127.0.0.1:8765/")
+    return {"project_id": project_id(s.root), "project_root": str(s.root), "dashboard_url": _dashboard_urls[key], "status": s.status()}
 
 def get_status(project_root: str) -> dict: return _state(project_root).status()
 def list_artifacts(project_root: str, kind: str | None = None) -> list[dict]: return _state(project_root).artifacts(kind)

@@ -4,17 +4,14 @@
 from __future__ import annotations
 
 import argparse
-import json
-import os
-from datetime import datetime, timezone
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from workbench import WorkbenchState
 
 
 STAGES = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]
-
-
-def now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def main() -> int:
@@ -28,43 +25,9 @@ def main() -> int:
     args = parser.parse_args()
 
     project = Path(args.project_root).resolve()
-    state_dir = project / ".mathmodel"
-    state_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = now()
-    event = {
-        "timestamp": timestamp,
-        "stage": args.stage,
-        "status": args.status,
-        "message": args.message,
-        "current_task": args.current_task,
-        "artifacts": args.artifact,
-    }
-
-    status_path = state_dir / "status.json"
-    previous = {}
-    if status_path.exists():
-        try:
-            previous = json.loads(status_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            previous = {}
-    history = previous.get("history", [])
-    history = (history + [event])[-100:]
-    payload = {
-        "project": project.name,
-        "stage": args.stage,
-        "stage_index": STAGES.index(args.stage),
-        "stage_count": len(STAGES),
-        "status": args.status,
-        "message": args.message,
-        "current_task": args.current_task,
-        "artifacts": args.artifact,
-        "updated_at": timestamp,
-        "history": history,
-    }
-    status_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    with (state_dir / "events.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(event, ensure_ascii=False) + "\n")
-    print(f"MathModel status updated: {status_path}")
+    state = WorkbenchState(project)
+    state.record_event(args.stage, args.status, args.message, args.current_task, args.artifact)
+    print(f"MathModel activity recorded: {project / '.mathmodel' / 'status.json'}")
     return 0
 
 
