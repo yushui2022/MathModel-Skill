@@ -23,6 +23,10 @@ from typing import Any
 STAGES = [f"S{i}" for i in range(9)]
 JOB_TYPES = {"preflight", "model_run", "evidence_check", "format_check"}
 SAFE_ARTIFACT_ROOTS = ("paper_output",)
+# Project files exposed by the workbench. Keep this allowlist narrow so the
+# dashboard cannot become a generic file browser.
+PROJECT_TREE_ROOTS = ("problem_files", "paper_output")
+MAX_PROJECT_FILE_BYTES = 10 * 1024 * 1024
 _GUARD_LOCK = threading.Lock()
 
 

@@ -8,6 +8,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from plugins.mathmodel.scripts.workbench import WorkbenchState
+from plugins.mathmodel.scripts.build_context_packet import build_packet
 
 
 class WorkbenchStateTests(unittest.TestCase):
@@ -36,6 +37,20 @@ class WorkbenchStateTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 state.read_artifact("../../etc/passwd")
             state.close()
+
+    def test_context_packet_recovers_without_chat_memory(self) -> None:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp:
+            root = Path(temp)
+            (root / "paper_output" / "context").mkdir(parents=True)
+            packet = build_packet(root)
+            self.assertEqual(packet["workflow"]["next_step"], "S0")
+            self.assertEqual(packet["workflow"]["recommended_skill"], "paper-workflow-orchestrator")
+            memory = root / "paper_output" / "context" / "workflow_memory.json"
+            memory.write_text('{"workflow":{"current_step":"S8","next_step":"S8","recommended_skill":"paper-formal-writer"}}', encoding="utf-8")
+            packet = build_packet(root)
+            self.assertFalse(packet["memory_consistency"]["matches_guard"])
+            self.assertEqual(packet["workflow"]["next_step"], "S0")
+            self.assertFalse((root / "paper_output" / "qa" / "workflow_guard_report.json").exists())
 
 
 if __name__ == "__main__":

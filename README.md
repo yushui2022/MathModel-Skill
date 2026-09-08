@@ -141,8 +141,10 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 ## Codex Plugin（`feat/codex-plugin`）
 
 插件分支在保留现有 S0-S8 Skills 的基础上，增加了可安装的
-`.codex-plugin/plugin.json`、可选 Python MCP 服务、SQLite 状态记录和
-Codex 右栏工作台。插件源码位于 `plugins/mathmodel/`；Skills 的规范来源是
+`.codex-plugin/plugin.json`、无记忆会话的上下文恢复协议、可选 Python MCP
+服务、SQLite 状态记录和 Codex 右栏证据伴侣。它的核心价值是让每次新的
+Codex 会话都按同一节奏推进并在证据门禁后写论文；右栏不承担 IDE 或自动写作。
+插件源码位于 `plugins/mathmodel/`；Skills 的规范来源是
 `packages/claude/.claude/skills/`：
 
 ```bash
@@ -152,7 +154,7 @@ python plugins/mathmodel/scripts/serve_dashboard.py --project-root . --port 0
 
 看板读取项目根目录的 `.mathmodel/status.json`、SQLite 任务记录和登记产物，
 不会上传赛题、代码或结果。当前分支已在 Codex 桌面端验证可用右栏打开本地
-工作台；没有右栏或 MCP SDK 时仍可使用对话和普通本地页面。MCP 只提供受控
+证据伴侣；没有右栏或 MCP SDK 时仍可使用对话和普通本地页面。MCP 只提供受控
 的预检、模型运行、证据检查和格式检查，不接受任意 shell 命令。
 
 - 发布提交已通过原有 42 项回归和新增 14 项范围与渲染检查；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940797268) 覆盖 Windows/Ubuntu、Python 3.11/3.12，并含 LibreOffice 渲染任务。

@@ -15,7 +15,12 @@ import sys
 import secrets
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from workbench import JobRunner, WorkbenchState
+try:  # direct plugin execution
+    from workbench import JobRunner, WorkbenchState
+    from build_context_packet import build_packet
+except ModuleNotFoundError:  # package imports in tests and host adapters
+    from .workbench import JobRunner, WorkbenchState
+    from .build_context_packet import build_packet
 
 
 class DashboardHandler(http.server.BaseHTTPRequestHandler):
@@ -45,6 +50,10 @@ class DashboardHandler(http.server.BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/status":
             body = json.dumps(self.state.status(), ensure_ascii=False).encode("utf-8")
+            self._send(body, "application/json; charset=utf-8")
+            return
+        if parsed.path == "/api/context":
+            body = json.dumps(build_packet(self.project_root), ensure_ascii=False).encode("utf-8")
             self._send(body, "application/json; charset=utf-8")
             return
         if parsed.path == "/api/events":

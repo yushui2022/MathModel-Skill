@@ -11,7 +11,12 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from workbench import JobRunner, WorkbenchState, project_id
+try:  # direct plugin execution
+    from workbench import JobRunner, WorkbenchState, project_id
+    from build_context_packet import build_packet
+except ModuleNotFoundError:  # package imports in tests and host adapters
+    from .workbench import JobRunner, WorkbenchState, project_id
+    from .build_context_packet import build_packet
 
 _states: dict[str, WorkbenchState] = {}
 _runners: dict[str, JobRunner] = {}
@@ -49,8 +54,13 @@ def run_job(project_root: str, job_type: str) -> dict:
 def get_job(project_root: str, job_id: str) -> dict: return _runners[str(_state(project_root).root)].get(job_id)
 def cancel_job(project_root: str, job_id: str) -> dict: return {"cancelled": _runners[str(_state(project_root).root)].cancel(job_id)}
 def get_next_action(project_root: str) -> dict:
-    status = _state(project_root).status(); guard = status.get("guard", {})
-    return {"recommended_skill": guard.get("recommended_skill", ""), "next_action": guard.get("next_action", "请先运行预检")}
+    packet = build_packet(project_root)
+    workflow = packet["workflow"]
+    return {"recommended_skill": workflow["recommended_skill"], "next_action": workflow["next_action"], "next_step": workflow["next_step"], "blockers": workflow["blockers"]}
+
+def get_context_packet(project_root: str) -> dict:
+    """Return the stateless handoff context used by every resumed conversation."""
+    return build_packet(project_root)
 
 def main() -> int:
     try:
@@ -58,7 +68,7 @@ def main() -> int:
     except ImportError:
         raise SystemExit("MathModel MCP requires the optional dependency 'mcp'. Install it with: python -m pip install mcp")
     app = FastMCP("mathmodel")
-    for fn in (open_workspace, get_status, list_artifacts, read_artifact, run_job, get_job, cancel_job, get_next_action): app.tool()(fn)
+    for fn in (open_workspace, get_status, list_artifacts, read_artifact, run_job, get_job, cancel_job, get_next_action, get_context_packet): app.tool()(fn)
     app.run()
     return 0
 

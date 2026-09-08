@@ -3,32 +3,41 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-  <meta name="description" content="MathModel engineering workbench for reproducible modeling projects" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2310a88f'/%3E%3Cpath d='M16 4 25 9v14l-9 5-9-5V9l9-5Zm-5 8 5 3 5-3m-10 8 5-3 5 3m-5-5v5' fill='none' stroke='%23061513' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
-  <title>MathModel · Workbench</title>
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="MathModel engineering workbench" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b1d20'/%3E%3Cpath d='M8 8h16v16H8zM12 12h8v8h-8z' fill='none' stroke='%23f0f1f2' stroke-width='2'/%3E%3C/svg%3E" />
+  <title>MathModel Workbench</title>
   <link rel="stylesheet" href="/dashboard/styles.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar" aria-label="工作台导航">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" role="img"><path d="M16 3.5 24.6 8a3 3 0 0 1 1.6 2.7v8.6a3 3 0 0 1-1.6 2.7L16 26.5l-8.6-4.5a3 3 0 0 1-1.6-2.7v-8.6A3 3 0 0 1 7.4 8L16 3.5Z"/><path d="m11.2 11.2 4.8 2.5 4.8-2.5M11.2 20.8l4.8-2.5 4.8 2.5M16 13.7v4.6"/></svg></span><div><strong>MathModel</strong><span>Engineering workbench</span></div></div>
-      <div class="project-switcher"><span class="label">当前项目</span><strong id="project-name">加载中…</strong><span id="project-path" class="muted truncate"></span></div>
-      <div class="workspace-label">WORKSPACE</div><nav class="nav-list" id="nav-list">
-        <button class="nav-item active" data-view="overview"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m2.5 7.5 5.5-5 5.5 5v5.8a.7.7 0 0 1-.7.7H3.2a.7.7 0 0 1-.7-.7Z"/><path d="M6 14v-4h4v4"/></svg></span><span>概览</span><kbd>1</kbd></button>
-        <button class="nav-item" data-view="workflow"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v3M13.5 8h-3M8 13.5v-3M2.5 8h3"/></svg></span><span>建模流程</span><kbd>2</kbd></button>
-        <button class="nav-item" data-view="experiments"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M2.5 12.5h11M3 11V8M6.3 11V5.5M9.7 11V3.5M13 11V7"/></svg></span><span>实验结果</span><kbd>3</kbd></button>
-        <button class="nav-item" data-view="code"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="m5.5 4-4 4 4 4M10.5 4l4 4-4 4M9.5 2.5l-3 11"/></svg></span><span>代码与日志</span><kbd>4</kbd></button>
-        <button class="nav-item" data-view="delivery"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 2.5h7l3 3v8H3zM10 2.5v3h3M5 9h6M5 11.5h4"/></svg></span><span>论文与交付</span><kbd>5</kbd></button>
-      </nav>
-      <div class="sidebar-footer"><span class="status-dot" id="connection-dot"></span><span id="connection-label">正在连接</span><span class="build-tag">LOCAL</span><button class="icon-button" id="theme-toggle" title="切换主题" aria-label="切换主题"><svg viewBox="0 0 16 16"><path d="M12.8 10.8A5.6 5.6 0 0 1 5.2 3.2a5.6 5.6 0 1 0 7.6 7.6Z"/></svg></button></div>
-    </aside>
-    <main class="main-content">
-      <header class="topbar"><div class="breadcrumb"><span class="crumb-mark">⌘</span><span>MathModel</span><span class="crumb-sep">/</span><strong id="view-title">概览</strong></div><div class="topbar-actions"><span class="last-sync" id="last-sync">等待状态</span><button class="button secondary" id="refresh-button"><span class="button-glyph">↻</span>刷新</button></div></header>
-      <div id="app" aria-live="polite"></div>
-    </main>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-glyph">M</span><span class="brand-name">MathModel</span><span class="slash">/</span><span id="project-name" class="project-name">加载项目…</span></div>
+      <div class="top-actions"><span id="connection-label" class="connection"><i id="connection-dot"></i>连接中</span><span id="last-sync" class="sync">等待状态</span><button id="refresh-button" class="tool-btn" title="刷新状态">↻</button><button id="theme-toggle" class="tool-btn" title="切换主题">◐</button></div>
+    </header>
+    <div class="workspace">
+      <aside class="file-pane" aria-label="项目文件">
+        <div class="pane-heading"><span>PROJECT</span><button id="collapse-files" class="subtle-btn" title="折叠文件树">−</button></div>
+        <div id="project-path" class="project-path">读取项目目录…</div>
+        <div class="file-tree" id="file-tree" role="tree"></div>
+        <div class="pane-footer"><span class="tiny-dot"></span><span>本地工作区</span><span class="mono">LOCAL</span></div>
+      </aside>
+      <main class="main-pane">
+        <nav class="tabs" id="tabs" aria-label="工作台视图">
+          <button class="tab active" data-view="overview">总览</button><button class="tab" data-view="workflow">流程</button><button class="tab" data-view="experiments">实验</button><button class="tab" data-view="code">代码</button><button class="tab" data-view="delivery">交付</button>
+        </nav>
+        <div id="app" aria-live="polite"></div>
+      </main>
+      <aside class="inspector" aria-label="任务与验证">
+        <div class="inspector-head"><span>RUN / VERIFY</span><button id="run-check" class="run-btn">运行检查</button></div>
+        <section class="inspector-section"><div class="section-label">当前任务</div><div id="inspector-task" class="task-card"><span class="task-state"></span><div><strong>等待 Codex</strong><p>在对话中说“开始建模”</p></div></div></section>
+        <section class="inspector-section"><div class="section-label">验证门禁</div><div id="guard-summary" class="guard-summary"></div></section>
+        <section class="inspector-section log-section"><div class="section-label">最近日志</div><div id="side-log" class="side-log"><span class="muted">暂无日志</span></div></section>
+        <section class="inspector-section next-section"><div class="section-label">NEXT ACTION</div><div id="next-action" class="next-action">等待 Guard 建议</div><button id="copy-next" class="copy-btn">复制到对话</button></section>
+      </aside>
+    </div>
   </div>
-  <noscript><p class="noscript">MathModel Workbench 需要启用 JavaScript 才能读取本地项目状态。</p></noscript>
+  <noscript><p class="noscript">MathModel Workbench 需要启用 JavaScript。</p></noscript>
   <script src="/dashboard/dashboard.js"></script>
 </body>
 </html>
