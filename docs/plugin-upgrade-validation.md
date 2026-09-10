@@ -74,6 +74,8 @@ Codex 内置浏览器检查了 420、820、1360 CSS 像素及浅深色页面，�
 
 ## 可复现检查命令
 
+首次远程运行中，Ubuntu 两个 Python 版本的插件测试和固定基线、确定性发行包检查均通过。Windows 插件检查发现 Git 将无扩展名 LICENSE 转为 CRLF，造成生成文件漂移；已在 `.gitattributes` 明确其 LF 格式。完整矩阵状态以当前分支的 GitHub Actions 为准。
+
 在本地先准备依赖和 G 盘测试缓存；Linux CI 则使用 runner 的临时目录。
 
 ```powershell

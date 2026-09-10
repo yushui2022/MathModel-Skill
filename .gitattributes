@@ -6,6 +6,7 @@
 *.yml text eol=lf
 *.txt text eol=lf
 VERSION text eol=lf
+LICENSE text eol=lf
 *.zip binary
 *.docx binary
 *.pdf binary
