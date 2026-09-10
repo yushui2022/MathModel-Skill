@@ -1,0 +1,6 @@
+{
+  "case_id": "pro-forward-prediction",
+  "category": "prediction",
+  "required_evidence": ["temporal_split", "interpretable_baseline", "uncertainty_interval", "leakage_audit", "independent_replication"],
+  "acceptance": "All three checkpoints approved and final Pro gate PASS"
+}

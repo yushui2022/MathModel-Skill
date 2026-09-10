@@ -2,6 +2,7 @@ import argparse
 import csv
 import hashlib
 import json
+import os
 import re
 import sys
 from datetime import datetime
@@ -17,17 +18,19 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 from formula_omml import FormulaConversionError, display_omml, inline_formula_tokens, latex_to_omml, source_formula_tokens
-from authoring_contracts import authoring_pass_errors
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "pro-workflow-orchestrator" / "scripts"))
+from pro_contracts import safe_path, read_json
 
 
 BASE_DIR = Path.cwd()
-OUTPUT_DIR = BASE_DIR / "paper_output"
+OUTPUT_DIR = BASE_DIR / "paper_output_pro"
 SOURCE_FILE = OUTPUT_DIR / "final_paper_source.md"
 FALLBACK_SOURCE_FILE = OUTPUT_DIR / "final_paper.md"
-OUTLINE_FILE = OUTPUT_DIR / "plan" / "paper_outline.json"
+OUTLINE_FILE = OUTPUT_DIR / "paper_plan.json"
 FIGURE_INDEX_FILE = OUTPUT_DIR / "figure_index.json"
 TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
-EVIDENCE_GATE_REPORT = OUTPUT_DIR / "qa" / "evidence_gate_report.json"
+EVIDENCE_GATE_REPORT = OUTPUT_DIR / "evidence_freeze.json"
 DOCX_FILE_FORMAL = OUTPUT_DIR / "final_paper.docx"
 DOCX_FILE_DRAFT = OUTPUT_DIR / "final_paper_draft.docx"
 REPORT_MD_FORMAL = OUTPUT_DIR / "format_check_report.md"
@@ -48,7 +51,7 @@ def load_json(path: Path) -> Any:
     if not path.exists():
         return {}
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return read_json(path)
     except Exception:
         return {}
 
@@ -62,10 +65,9 @@ def rel(path: Path) -> str:
 
 def resolve_path(path_text: str) -> Path:
     normalized = path_text.strip().strip("<>").replace("\\", "/")
-    path = Path(normalized)
-    if path.is_absolute():
-        return path
-    return BASE_DIR / path
+    if normalized.startswith("paper_output_pro/"):
+        return safe_path(BASE_DIR, normalized)
+    return safe_path(BASE_DIR / "paper_output_pro", normalized)
 
 
 def set_cell_shading(cell, fill: str) -> None:
@@ -125,6 +127,14 @@ def configure_document(document: Document) -> None:
     section.bottom_margin = Cm(2.54)
     section.left_margin = Cm(2.8)
     section.right_margin = Cm(2.6)
+    section.page_width = Cm(21)
+    section.page_height = Cm(29.7)
+    footer = section.footer.paragraphs[0]
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer.paragraph_format.first_line_indent = None
+    page_number = OxmlElement("w:fldSimple")
+    page_number.set(qn("w:instr"), "PAGE")
+    footer._p.append(page_number)
 
     styles = document.styles
     normal = styles["Normal"]
@@ -253,9 +263,11 @@ def add_center_paragraph(document: Document, text: str, font_name: str = "宋体
     apply_run_font(run, font_name, size, bold)
 
 
-def add_heading(document: Document, text: str, level: int) -> None:
+def add_heading(document: Document, text: str, level: int, *, page_break_before: bool = False) -> None:
     level = max(1, min(level, 3))
     paragraph = document.add_heading(clean_inline_markdown(text), level=level)
+    if page_break_before:
+        paragraph.paragraph_format.page_break_before = True
     paragraph.paragraph_format.first_line_indent = None
     for run in paragraph.runs:
         apply_run_font(run, "黑体", {1: 15, 2: 13, 3: 12}[level], True)
@@ -312,16 +324,15 @@ def add_table_from_rows(
 ) -> int:
     native_count = 0
     if not rows:
-        if caption:
-            add_center_paragraph(document, caption, bold=True)
-        add_body_paragraph(document, "表格数据文件暂不可读取，正式提交前需检查表格索引和源 CSV 文件。")
-        return native_count
+        raise ValueError("empty or unreadable paper table")
     if caption:
         add_center_paragraph(document, caption, bold=True)
+        document.paragraphs[-1].paragraph_format.keep_with_next = True
     col_count = max(len(row) for row in rows)
     table = document.add_table(rows=len(rows), cols=col_count)
     table.alignment = WD_ALIGN_PARAGRAPH.CENTER
     table.autofit = True
+    compact = len(rows) <= 10 and all(len(cell) <= 40 for row in rows for cell in row)
     for row_idx, row in enumerate(rows):
         row_properties = table.rows[row_idx]._tr.get_or_add_trPr()
         cant_split = OxmlElement("w:cantSplit")
@@ -342,6 +353,7 @@ def add_table_from_rows(
             for paragraph_index, paragraph in enumerate(cell.paragraphs):
                 paragraph.paragraph_format.first_line_indent = None
                 paragraph.paragraph_format.space_after = Pt(0)
+                paragraph.paragraph_format.keep_with_next = compact and row_idx < len(rows) - 1
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER if len(value) <= 16 else WD_ALIGN_PARAGRAPH.LEFT
                 if paragraph_index == 0:
                     native_count += add_inline_content(
@@ -427,8 +439,7 @@ def add_index_table(document: Document, table_id: str, table_lookup: dict[str, d
 
 def add_image(document: Document, path: Path, caption: str | None = None) -> bool:
     if not path.exists():
-        add_body_paragraph(document, f"图片文件未找到：{rel(path)}。正式提交前需补齐图像文件。")
-        return False
+        raise ValueError(f"missing paper figure: {path}")
     paragraph = document.add_paragraph()
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     paragraph.paragraph_format.first_line_indent = None
@@ -439,8 +450,7 @@ def add_image(document: Document, path: Path, caption: str | None = None) -> boo
         try:
             run.add_picture(str(path), width=Cm(12.8))
         except Exception:
-            add_body_paragraph(document, f"图片无法插入：{rel(path)}。")
-            return False
+            raise ValueError(f"unreadable paper figure: {path}")
     if caption:
         add_center_paragraph(document, caption, bold=True)
     return True
@@ -456,10 +466,8 @@ def add_index_figure(document: Document, figure_id: str, figure_lookup: dict[str
     return add_image(document, resolve_path(str(item.get("path") or item.get("expected_path") or "")), str(caption))
 
 
-def source_path(*, allow_fallback: bool) -> Path:
-    if SOURCE_FILE.exists():
-        return SOURCE_FILE
-    return FALLBACK_SOURCE_FILE if allow_fallback else SOURCE_FILE
+def source_path() -> Path:
+    return SOURCE_FILE
 
 
 def render_markdown(
@@ -479,11 +487,21 @@ def render_markdown(
         "native_math": 0,
         "formula_fallbacks": [],
     }
-    lines = text.splitlines()
+    lines = re.sub(r"<!--.*?-->", "", text, flags=re.S).splitlines()
+    plan = load_json(OUTPUT_DIR / "paper_plan.json")
+    break_titles = set()
+    previous_kind = None
+    if isinstance(plan, dict) and plan.get("delivery_mode") == "competition":
+        for section in plan.get("sections", []):
+            kind = section.get("kind")
+            if previous_kind and kind != previous_kind and (previous_kind == "abstract" or kind in {"appendix", "ai-disclosure"}):
+                break_titles.add(section.get("title"))
+            previous_kind = kind
     idx = 0
     in_code = False
     code_lines: list[str] = []
     in_formula = False
+    formula_end = "$$"
     formula_lines: list[str] = []
 
     while idx < len(lines):
@@ -519,12 +537,13 @@ def render_markdown(
             idx += 1
             continue
 
-        if stripped.startswith("$$") and not in_formula:
+        if (stripped.startswith("$$") or stripped == r"\[") and not in_formula:
             in_formula = True
+            formula_end = r"\]" if stripped == r"\[" else "$$"
             formula_lines = [stripped[2:]] if stripped[2:] else []
             idx += 1
             continue
-        if in_formula and stripped.endswith("$$"):
+        if in_formula and stripped.endswith(formula_end):
             before_end = stripped[:-2]
             if before_end:
                 formula_lines.append(before_end)
@@ -603,7 +622,8 @@ def render_markdown(
         heading = re.match(r"^(#{1,6})\s+(.+)$", stripped)
         if heading:
             level = min(len(heading.group(1)), 3)
-            add_heading(document, heading.group(2), level)
+            add_heading(document, heading.group(2), level,
+                        page_break_before=len(heading.group(1)) == 2 and heading.group(2) in break_titles)
             stats["headings"] += 1
             idx += 1
             continue
@@ -649,6 +669,21 @@ def render_markdown(
             raise FormulaConversionError(message)
         stats["formula_fallbacks"].append(message)
         add_center_paragraph(document, "\n".join(formula_lines), font_name="Cambria Math", size=10.5)
+    # Keep short table captions with their table, and equations/figures with captions.
+    body = list(document.element.body)
+    for index, node in enumerate(body):
+        if node.tag != qn("w:p"):
+            continue
+        paragraph_text = "".join(node.itertext())
+        following = body[index + 1] if index + 1 < len(body) else None
+        is_caption = re.match(r"^(?:表\s*\d|Table\s+\d)", paragraph_text, re.I)
+        if is_caption and following is not None and following.tag == qn("w:tbl"):
+            node.get_or_add_pPr().append(OxmlElement("w:keepNext"))
+        if following is not None and following.tag == qn("w:p"):
+            next_text = "".join(following.itertext())
+            has_math_or_image = bool(node.xpath(".//m:oMath | .//w:drawing"))
+            if has_math_or_image and re.match(r"^(?:式\s*[（(\d]|图\s*\d|Figure\s+\d|Equation\s+\d)", next_text, re.I):
+                node.get_or_add_pPr().append(OxmlElement("w:keepNext"))
     return stats
 
 
@@ -671,32 +706,44 @@ def write_report(stats: dict[str, Any], source: Path, outline: Any) -> None:
         f"- Formula text fallbacks: `{len(stats.get('formula_fallbacks', []))}`",
         "- Render QA: `render_skipped`",
         "",
-        "LibreOffice 渲染不是本脚本的强依赖；若本机 LibreOffice 可用，可在最终交付前另行渲染 PNG/PDF 做视觉检查。",
+        "此报告只证明 DOCX 已生成。正式交付必须由 pro_render_pdf.py 使用 LibreOffice 渲染，逐页检查并通过 pro_format_check.py 和 pro_gate.py。",
     ]
     REPORT_MD.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
 
 
 def check_evidence_gate() -> tuple[bool, str]:
-    """Return (passed, reason). passed=True only when report exists and status==PASS."""
+    """Return True only for a fresh Pro evidence freeze."""
     if not EVIDENCE_GATE_REPORT.exists():
-        return False, f"未找到证据门禁报告：{rel(EVIDENCE_GATE_REPORT)}。请先运行 quality-assurance-auditor/scripts/evidence_gate.py。"
+        return False, f"未找到 Pro 证据冻结：{rel(EVIDENCE_GATE_REPORT)}。请先批准检查点 3 并冻结证据。"
     try:
         data = json.loads(EVIDENCE_GATE_REPORT.read_text(encoding="utf-8"))
     except Exception as exc:
         return False, f"证据门禁报告无法解析：{type(exc).__name__}: {exc}"
     status = str(data.get("status") or "").strip().upper()
     if status != "PASS":
-        return False, f"证据门禁状态为 `{status or 'UNKNOWN'}`，正式 Word 不得生成。请先补齐证据并重跑 evidence_gate.py。"
-    input_hashes = data.get("input_hashes")
+        return False, f"证据冻结状态为 `{status or 'UNKNOWN'}`，正式 Word 不得生成。"
+    input_hashes = data.get("file_hashes") or data.get("input_hashes")
     if not isinstance(input_hashes, dict) or not input_hashes:
-        return False, "证据门禁报告缺少 input_hashes，无法证明报告仍对应当前结果。请重跑 evidence_gate.py。"
+        return False, "证据冻结缺少文件哈希，无法证明证据新鲜。"
     for path_text, expected_hash in input_hashes.items():
-        path = resolve_path(str(path_text))
+        path = OUTPUT_DIR / Path(str(path_text).replace("\\", "/"))
+        if not path.exists():
+            path = resolve_path(str(path_text))
         if not path.exists() or not path.is_file():
-            return False, f"证据门禁输入已缺失：{rel(path)}。请重跑 evidence_gate.py。"
+            return False, f"冻结证据已缺失：{rel(path)}。"
         if sha256_file(path) != str(expected_hash or "").strip().lower():
-            return False, f"证据门禁报告已过期，输入发生变化：{rel(path)}。请重跑 evidence_gate.py。"
-    return True, ""
+            return False, f"冻结证据已变化：{rel(path)}。请重新计算并批准检查点 3。"
+    from pro_checkpoint import require_checkpoints
+    from pro_validation import check_freeze, check_review
+    from pro_paper_audit import check_paper
+    try:
+        errors = require_checkpoints(BASE_DIR, OUTPUT_DIR, 3)
+        errors += check_freeze(OUTPUT_DIR, data)
+        errors += check_paper(OUTPUT_DIR)
+        errors += check_review(OUTPUT_DIR, load_json(OUTPUT_DIR / "review_board_report.json"))
+        return not errors, "; ".join(errors)
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        return False, str(exc)
 
 
 def main() -> int:
@@ -705,31 +752,27 @@ def main() -> int:
     parser.add_argument(
         "--allow-draft",
         action="store_true",
-        help="证据或写作门禁未通过时仍生成草稿 Word（写入 final_paper_draft.docx + format_draft_report.md），不会覆盖正式产物。",
+        help="证据门禁未通过时仍生成草稿 Word（写入 final_paper_draft.docx + format_draft_report.md），不会覆盖正式产物。",
     )
     args = parser.parse_args()
 
     global DOCX_FILE, REPORT_MD
 
     gate_passed, gate_reason = check_evidence_gate()
-    authoring_errors = authoring_pass_errors(BASE_DIR)
-    authoring_passed = not authoring_errors
-    block_reasons = [reason for reason in (gate_reason, "; ".join(authoring_errors)) if reason]
     draft_mode = False
-    if not gate_passed or not authoring_passed:
+    if not gate_passed:
         if not args.allow_draft:
-            print("[FORMAT BLOCKED] 证据或 S7 写作门禁未通过，禁止生成正式 final_paper.docx。", file=sys.stderr)
-            for reason in block_reasons:
-                print(f"  原因：{reason}", file=sys.stderr)
+            print("[FORMAT BLOCKED] 证据门禁未通过，禁止生成正式 final_paper.docx。", file=sys.stderr)
+            print(f"  原因：{gate_reason}", file=sys.stderr)
             print("  如需先看排版草稿，请加 --allow-draft，会写入 final_paper_draft.docx，不会污染正式产物。", file=sys.stderr)
             return 2
         draft_mode = True
         DOCX_FILE = DOCX_FILE_DRAFT
         REPORT_MD = REPORT_MD_DRAFT
-        print(f"[DRAFT MODE] 正式门禁未通过：{'; '.join(block_reasons)}")
+        print(f"[DRAFT MODE] 证据门禁未通过：{gate_reason}")
         print(f"[DRAFT MODE] 将写入草稿 Word：{rel(DOCX_FILE)}（不会覆盖正式 final_paper.docx）")
 
-    source = source_path(allow_fallback=draft_mode)
+    source = source_path()
     if not source.exists():
         print(f"缺少正式论文 Markdown：{rel(SOURCE_FILE)}", file=sys.stderr)
         return 1
@@ -776,7 +819,7 @@ def main() -> int:
     print(f"{label}已生成：{rel(DOCX_FILE)}")
     print(f"格式化报告已生成：{rel(REPORT_MD)}")
     if draft_mode:
-        print("[DRAFT MODE] 该文件不是最终稿；正式提交前必须先通过证据门禁与 S7 写作门禁，再不带 --allow-draft 重跑本脚本。")
+        print("[DRAFT MODE] 该文件不是最终稿；正式提交前必须先通过证据门禁，再不带 --allow-draft 重跑本脚本。")
     return 0
 
 

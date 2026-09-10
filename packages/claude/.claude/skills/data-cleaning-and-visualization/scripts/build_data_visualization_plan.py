@@ -7,7 +7,7 @@ from typing import Any
 
 
 BASE_DIR = Path.cwd().resolve()
-OUTPUT_DIR = BASE_DIR / "paper_output"
+OUTPUT_DIR = BASE_DIR / "paper_output_pro"
 PLAN_DIR = OUTPUT_DIR / "plan"
 PROBLEM_ANALYSIS_FILE = OUTPUT_DIR / "step1" / "problem_analysis.json"
 MODEL_ROUTE_FILE = PLAN_DIR / "model_route.json"
@@ -134,7 +134,7 @@ def classify_columns(df: Any) -> tuple[list[str], list[str]]:
 
 
 def profile_data_file(path: Path) -> dict[str, Any]:
-    cleaned_output = f"paper_output/data_cleaned/{path.stem}_cleaned.csv"
+    cleaned_output = f"paper_output_pro/data_cleaned/{path.stem}_cleaned.csv"
     role = "主建模数据" if "problem_files" in path.parts else "补充数据"
     profile: dict[str, Any] = {
         "path": relative_path(path),
@@ -199,7 +199,7 @@ def profiles_from_problem_analysis(analysis: dict[str, Any] | None) -> list[dict
                 "numeric_columns": [],
                 "categorical_columns": [str(col) for col in columns] if isinstance(columns, list) else [],
                 "role": "主建模数据",
-                "cleaned_output": f"paper_output/data_cleaned/{clean_name}_cleaned.csv",
+                "cleaned_output": f"paper_output_pro/data_cleaned/{clean_name}_cleaned.csv",
                 "cleaning_tasks": ["缺失值检查", "字段类型转换", "异常值检查"],
             }
         )
@@ -251,7 +251,7 @@ def questions_from_contracts(
                             "figure_id": f"fig_q{index}_{fig_index}",
                             "title": str(title),
                             "purpose": f"支撑Q{index}的结果、验证或敏感性分析",
-                            "expected_path": f"paper_output/figures/fig_q{index}_{fig_index}.png",
+                            "expected_path": f"paper_output_pro/figures/fig_q{index}_{fig_index}.png",
                         }
                         for fig_index, title in enumerate(suggestions or ["数据概览图", "结果对比图"], start=1)
                     ],
@@ -270,7 +270,7 @@ def questions_from_contracts(
                     "figure_id": "fig_q1_1",
                     "title": "数据概览图",
                     "purpose": "支撑问题一的数据理解与结果展示",
-                    "expected_path": "paper_output/figures/fig_q1_1.png",
+                    "expected_path": "paper_output_pro/figures/fig_q1_1.png",
                 }
             ],
             "paper_sections": ["问题一结果分析"],
@@ -399,8 +399,8 @@ def build_data_plan(
         "generated_by": GENERATED_BY,
         "generated_at": now(),
         "source_contracts": [
-            "paper_output/step1/problem_analysis.json",
-            "paper_output/plan/model_route.json",
+            "paper_output_pro/step1/problem_analysis.json",
+            "paper_output_pro/plan/model_route.json",
         ],
         "data_files": data_files,
         "question_links": question_links,
@@ -428,7 +428,7 @@ def build_visualization_plan(
                     "figure_id": f"fig_{qid.lower()}_1",
                     "title": f"{qid}结果对比图",
                     "purpose": f"支撑{qid}的模型结果、验证或敏感性分析",
-                    "expected_path": f"paper_output/figures/fig_{qid.lower()}_1.png",
+                    "expected_path": f"paper_output_pro/figures/fig_{qid.lower()}_1.png",
                 }
             ]
         for index, raw_figure in enumerate(raw_figures, start=1):
@@ -436,12 +436,12 @@ def build_visualization_plan(
                 figure_id = str(raw_figure.get("figure_id") or f"fig_{qid.lower()}_{index}")
                 title = str(raw_figure.get("title") or f"{qid}图表{index}")
                 purpose = str(raw_figure.get("purpose") or f"支撑{qid}的模型结果、验证或敏感性分析")
-                output_path = str(raw_figure.get("expected_path") or f"paper_output/figures/{figure_id}.png")
+                output_path = str(raw_figure.get("expected_path") or f"paper_output_pro/figures/{figure_id}.png")
             else:
                 figure_id = f"fig_{qid.lower()}_{index}"
                 title = str(raw_figure)
                 purpose = f"支撑{qid}的模型结果、验证或敏感性分析"
-                output_path = f"paper_output/figures/{figure_id}.png"
+                output_path = f"paper_output_pro/figures/{figure_id}.png"
             chart_type_value = chart_type(task_type, title, x_column, y_columns)
             figures.append(
                 {
@@ -464,8 +464,8 @@ def build_visualization_plan(
         "generated_by": GENERATED_BY,
         "generated_at": now(),
         "source_contracts": [
-            "paper_output/plan/model_route.json",
-            "paper_output/plan/data_plan.json",
+            "paper_output_pro/plan/model_route.json",
+            "paper_output_pro/plan/data_plan.json",
         ],
         "figures": figures,
         "note": "本文件只规划图表证据，不承诺固定代码可直接适配所有赛题。",

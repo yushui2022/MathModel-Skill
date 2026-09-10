@@ -1,0 +1,150 @@
+{
+  "schema_version": "1.0",
+  "catalog_version": "2026-09-04",
+  "verified_on": "2026-09-04",
+  "catalog_freshness_days": 90,
+  "profiles": [
+    {
+      "profile_id": "openai-gpt-6-astra",
+      "vendor": "openai",
+      "display_name": "GPT-6 Astra",
+      "canonical_model_id": "gpt-6-astra",
+      "aliases": ["gpt-6-astra", "gpt 6 astra", "astra"],
+      "support_tier": "preferred",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "effort_aliases": {"ultra": "max"},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": [
+        "checkpoint_autonomy",
+        "explicit_parallel_delegation",
+        "instruction_conflict_sensitive",
+        "async_tools_when_available",
+        "responses_api_for_tool_calling"
+      ],
+      "official_sources": [
+        "https://developers.openai.com/api/docs/models/gpt-6-astra",
+        "https://developers.openai.com/api/docs/guides/latest-model"
+      ]
+    },
+    {
+      "profile_id": "anthropic-claude-fable-5-1",
+      "vendor": "anthropic",
+      "display_name": "Claude Fable 5.1",
+      "canonical_model_id": "claude-fable-5-1",
+      "aliases": ["claude-fable-5-1", "claude fable 5.1", "fable 5.1", "fable-5-1"],
+      "support_tier": "preferred",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "effort_aliases": {"ultra": "max"},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": [
+        "checkpoint_autonomy",
+        "append_only_history",
+        "batch_independent_tools",
+        "lead_continues_during_delegation",
+        "avoid_duplicate_long_form_drafting"
+      ],
+      "official_sources": [
+        "https://www.anthropic.com/claude/fable",
+        "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1"
+      ]
+    },
+    {
+      "profile_id": "anthropic-claude-opus-5",
+      "vendor": "anthropic",
+      "display_name": "Claude Opus 5",
+      "canonical_model_id": "claude-opus-5",
+      "aliases": ["claude-opus-5", "claude opus 5", "opus 5"],
+      "support_tier": "supported",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "effort_aliases": {"ultra": "max"},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": [
+        "checkpoint_autonomy",
+        "adaptive_thinking",
+        "explicit_subagent_scope",
+        "avoid_redundant_self_review"
+      ],
+      "official_sources": [
+        "https://www.anthropic.com/news/claude-opus-5",
+        "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5"
+      ]
+    },
+    {
+      "profile_id": "anthropic-claude-sonnet-5",
+      "vendor": "anthropic",
+      "display_name": "Claude Sonnet 5",
+      "canonical_model_id": "claude-sonnet-5",
+      "aliases": ["claude-sonnet-5", "claude sonnet 5", "sonnet 5"],
+      "support_tier": "supported",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "effort_aliases": {"ultra": "max"},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": [
+        "checkpoint_autonomy",
+        "adaptive_thinking",
+        "explicit_tool_triggering",
+        "explicit_subagent_scope"
+      ],
+      "official_sources": [
+        "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5",
+        "https://platform.claude.com/docs/en/about-claude/model-deprecations"
+      ]
+    },
+    {
+      "profile_id": "anthropic-claude-fable-5",
+      "vendor": "anthropic",
+      "display_name": "Claude Fable 5",
+      "canonical_model_id": "claude-fable-5",
+      "aliases": ["claude-fable-5", "claude fable 5", "fable 5"],
+      "support_tier": "supported",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "effort_aliases": {"ultra": "max"},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": ["checkpoint_autonomy", "long_horizon_execution"],
+      "official_sources": ["https://www.anthropic.com/claude/fable"]
+    },
+    {
+      "profile_id": "openai-gpt-5-6-sol",
+      "vendor": "openai",
+      "display_name": "GPT-5.6 Sol",
+      "canonical_model_id": "gpt-5.6-sol",
+      "aliases": ["gpt-5.6-sol", "gpt 5.6 sol", "gpt-5-6-sol"],
+      "support_tier": "supported",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "effort_aliases": {"ultra": "max"},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": ["checkpoint_autonomy", "explicit_parallel_delegation"],
+      "official_sources": ["https://developers.openai.com/api/docs/models/compare"]
+    }
+  ]
+}

@@ -5,8 +5,8 @@ import seaborn as sns
 from pathlib import Path
 import platform
 
-INPUT_DIR = Path("paper_output/data_cleaned")
-OUTPUT_DIR = Path("paper_output/figures")
+INPUT_DIR = Path("paper_output_pro/data_cleaned")
+OUTPUT_DIR = Path("paper_output_pro/figures")
 
 def set_chinese_font():
     """设置 Matplotlib 中文字体，兼容 Windows/Mac/Linux"""

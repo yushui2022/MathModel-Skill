@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "core_edition": "pro",
+  "core_version": "3.3.0-pro.1",
+  "source_commit": "da520d49c62c8f5dc3755eb16bedefd78e77b466",
+  "contract_schema": "3.3",
+  "canonical_source": "packages/claude/.claude/skills",
+  "platform_source": "packages/codex/.agents/skills",
+  "entry_skill": "pro-workflow-orchestrator",
+  "output_directory": "paper_output_pro"
+}

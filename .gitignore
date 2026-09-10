@@ -12,6 +12,9 @@ paper_output/
 !examples/cumcm2024-b-demo/paper_output/**
 data_requirements.json
 .mathmodel/
+paper_output_pro/
+.venv/
+release-validation/
 
 .DS_Store
 Thumbs.db

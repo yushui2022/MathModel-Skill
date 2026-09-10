@@ -1,0 +1,6 @@
+{
+  "case_id": "pro-forward-open-data",
+  "category": "open_data",
+  "required_evidence": ["public_urls", "content_hashes", "two_publisher_critical_claims", "claim_source_trace", "independent_replication"],
+  "acceptance": "All three checkpoints approved and final Pro gate PASS"
+}

@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from workbench import WorkbenchState
 
 
-STAGES = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]
+STAGES = [f"P{i}" for i in range(10)] + [f"S{i}" for i in range(9)]
 
 
 def main() -> int:

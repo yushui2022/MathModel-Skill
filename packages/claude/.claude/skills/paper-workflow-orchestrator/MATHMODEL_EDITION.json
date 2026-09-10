@@ -1,7 +1,0 @@
-{
-  "schema_version": "1.0",
-  "product": "MathModel-Skill",
-  "edition": "standard",
-  "version": "2.3.0",
-  "entry_skill": "paper-workflow-orchestrator"
-}

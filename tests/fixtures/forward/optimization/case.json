@@ -1,0 +1,6 @@
+{
+  "case_id": "pro-forward-optimization",
+  "category": "optimization",
+  "required_evidence": ["explicit_variables", "constraint_feasibility", "baseline", "stress_test", "solver_independent_check"],
+  "acceptance": "All three checkpoints approved and final Pro gate PASS"
+}

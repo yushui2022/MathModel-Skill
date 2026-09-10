@@ -7,9 +7,14 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONIOENCODING: utf-8
+  PYTHONUTF8: "1"
+
 jobs:
-  core:
-    name: Core ${{ matrix.os }} / Python ${{ matrix.python }}
+  baselines:
+    name: Preserved baselines / ${{ matrix.os }} / Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -17,90 +22,122 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         python: ["3.11", "3.12"]
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-
-      - name: Install dependencies
+      - name: Configure runner-local test caches
+        run: >-
+          python -c "import os; from pathlib import Path; task_temp=Path(os.environ['RUNNER_TEMP'])/'mathmodel-tests'; task_temp.mkdir(exist_ok=True); values={'MATHMODEL_TEST_TEMP':task_temp,'MATHMODEL_TEST_TMP':task_temp,'PYTHONPYCACHEPREFIX':task_temp/'pycache','TEMP':task_temp,'TMP':task_temp,'TMPDIR':task_temp}; handle=open(os.environ['GITHUB_ENV'],'a',encoding='utf-8'); handle.write(''.join(name+'='+str(value)+chr(10) for name,value in values.items())); handle.close()"
+      - name: Install Pro modeling dependencies
         run: python -m pip install -r requirements.txt
+      - run: python -m pip check
+      - name: Check canonical to Codex synchronization
+        run: python -B scripts/sync_platform_packages.py --check
+      - name: Run untouched Standard tests and verify its historical ZIPs in isolation
+        run: python -B scripts/run_baseline_tests.py --edition standard
+      - name: Run original Pro tests against current core in isolation
+        run: python -B scripts/run_baseline_tests.py --edition pro
 
-      - name: Verify dependencies
-        run: python -m pip check
-
-      - name: Check platform synchronization
-        run: python scripts/sync_platform_packages.py --check
-
-      - name: Validate Codex plugin manifest
-        run: python -c "import json; m=json.load(open('plugins/mathmodel/.codex-plugin/plugin.json')); assert m['name']=='mathmodel' and m['version'].count('.')==2; json.load(open('plugins/mathmodel/.mcp.json'))"
-
-      - name: Compile Python sources
-        run: python -m compileall -q packages scripts tests
-
-      - name: Run test suite
-        run: python -u tests/run_tests.py
-
-      - name: Run plugin workbench tests
-        run: python tests/test_plugin_workbench.py
-
-      - name: Check complete-paper scope regressions
-        run: python tests/test_paper_scope.py
+  plugin:
+    name: Plugin / ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            plugins/mathmodel/requirements.txt
+      - name: Configure runner-local test caches
+        run: >-
+          python -c "import os; from pathlib import Path; task_temp=Path(os.environ['RUNNER_TEMP'])/'mathmodel-tests'; task_temp.mkdir(exist_ok=True); values={'MATHMODEL_TEST_TEMP':task_temp,'MATHMODEL_TEST_TMP':task_temp,'PYTHONPYCACHEPREFIX':task_temp/'pycache','TEMP':task_temp,'TMP':task_temp,'TMPDIR':task_temp}; handle=open(os.environ['GITHUB_ENV'],'a',encoding='utf-8'); handle.write(''.join(name+'='+str(value)+chr(10) for name,value in values.items())); handle.close()"
+      - name: Install core and pinned MCP adapter dependencies
+        run: python -m pip install -r requirements.txt -r plugins/mathmodel/requirements.txt
+      - run: python -m pip check
+      - name: Check generated skills, dependency file and license
+        run: python -B plugins/mathmodel/scripts/sync_plugin_skills.py --check
+      - name: Validate manifest, bundled paths and core lock
+        run: python -B -c "from scripts.build_plugin_package import source_entries,build_manifest; build_manifest(source_entries())"
+      - name: Compile sources into the runner temporary cache
+        run: python -m compileall -q packages scripts tests plugins/mathmodel/scripts
+      - name: Test plugin modules in separate processes
+        run: >-
+          python -B -c "import pathlib,subprocess,sys; names=sorted(p.name for p in pathlib.Path('tests').glob('test_plugin_*.py')); [subprocess.run([sys.executable,'-B','-m','unittest','discover','-s','tests','-p',name,'-v'],check=True) for name in names]"
+      - name: Test pure Pro status
+        run: python -B -m unittest discover -s tests -p test_pro_status.py -v
+      - name: Test independent optimization checks and gate binding
+        run: python -B -m unittest discover -s tests -p test_optimization_spec.py -v
+      - name: Test real experiment log capacity
+        run: python -B -m unittest discover -s tests -p test_pro_experiment_logs.py -v
 
   render:
-    name: LibreOffice render gate
+    name: Required LibreOffice / Pro and historical Standard
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-
+    timeout-minutes: 30
+    env:
+      REQUIRE_LIBREOFFICE: "1"
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-
-      - name: Install dependencies
-        run: python -m pip install -r requirements.txt
-
+      - name: Configure runner-local test caches
+        run: >-
+          python -c "import os; from pathlib import Path; task_temp=Path(os.environ['RUNNER_TEMP'])/'mathmodel-tests'; task_temp.mkdir(exist_ok=True); values={'MATHMODEL_TEST_TEMP':task_temp,'MATHMODEL_TEST_TMP':task_temp,'PYTHONPYCACHEPREFIX':task_temp/'pycache','TEMP':task_temp,'TMP':task_temp,'TMPDIR':task_temp}; handle=open(os.environ['GITHUB_ENV'],'a',encoding='utf-8'); handle.write(''.join(name+'='+str(value)+chr(10) for name,value in values.items())); handle.close()"
+      - run: python -m pip install -r requirements.txt
       - name: Install LibreOffice
         run: sudo apt-get update && sudo apt-get install -y libreoffice-writer
-
-      - name: Run required render integration test
-        run: python -c "import sys; sys.path.insert(0, 'tests'); import setup_sandbox, run_tests; setup_sandbox.main(); run_tests.test_render_required_when_libreoffice_is_available()"
+      - name: Run original Pro full pipeline with current core and actual rendering
+        run: python -B scripts/run_baseline_tests.py --edition pro
+      - name: Verify pure status on actual rendered Pro pipeline
+        run: python -B -m unittest discover -s tests -p test_pro_status.py -v
+      - name: Preserve Standard render regressions in their original layout
+        run: python -B scripts/run_baseline_tests.py --edition standard
 
   packages:
-    name: Deterministic tracked packages
+    name: Historical archives and deterministic plugin payload
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Verify tracked archives
-        run: python scripts/build_release_packages.py --verify
-
-      - name: Build twice
+      - name: Configure runner-local test caches
+        run: >-
+          python -c "import os; from pathlib import Path; task_temp=Path(os.environ['RUNNER_TEMP'])/'mathmodel-tests'; task_temp.mkdir(exist_ok=True); values={'MATHMODEL_TEST_TEMP':task_temp,'MATHMODEL_TEST_TMP':task_temp,'PYTHONPYCACHEPREFIX':task_temp/'pycache','TEMP':task_temp,'TMP':task_temp,'TMPDIR':task_temp}; handle=open(os.environ['GITHUB_ENV'],'a',encoding='utf-8'); handle.write(''.join(name+'='+str(value)+chr(10) for name,value in values.items())); handle.close()"
+      - name: Verify fixed Standard archives without rebuilding repository ZIPs
+        run: python -B scripts/run_baseline_tests.py --edition standard --packages-only
+      - name: Build and verify current Pro platform payloads in an isolated tree
+        run: python -B scripts/run_baseline_tests.py --edition pro --packages-only
+      - name: Check plugin source synchronization
+        run: python -B plugins/mathmodel/scripts/sync_plugin_skills.py --check
+      - name: Verify tracked plugin ZIP against all source bytes and manifest
+        run: python -B scripts/build_plugin_package.py --verify
+      - name: Build plugin twice outside repository dist
         run: |
-          python scripts/build_release_packages.py --output-dir build-a
-          python scripts/build_release_packages.py --output-dir build-b
-
-      - name: Compare archive hashes
-        run: |
-          sha256sum build-a/*.zip | sed 's#build-a/##' > hashes-a.txt
-          sha256sum build-b/*.zip | sed 's#build-b/##' > hashes-b.txt
-          diff -u hashes-a.txt hashes-b.txt
-          cmp build-a/SHA256SUMS.txt build-b/SHA256SUMS.txt
+          python -B scripts/build_plugin_package.py --output "${{ runner.temp }}/mathmodel-build-a.zip"
+          python -B scripts/build_plugin_package.py --output "${{ runner.temp }}/mathmodel-build-b.zip"
+      - name: Compare deterministic plugin bytes and validate both manifests
+        run: >-
+          python -B -c "from pathlib import Path; from scripts.build_plugin_package import verify; a=Path('${{ runner.temp }}/mathmodel-build-a.zip'); b=Path('${{ runner.temp }}/mathmodel-build-b.zip'); assert a.read_bytes()==b.read_bytes(); assert not verify(a); assert not verify(b)"

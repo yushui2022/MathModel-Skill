@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Data And Visualization"
+  short_description: "可审计数据处理与真实图表"
+  default_prompt: "Use $data-cleaning-and-visualization to process only P0-approved raw data and register reproducible artifacts."

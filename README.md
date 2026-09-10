@@ -1,174 +1,76 @@
 <div align="center">
-  <img src="./assets/mathmodel-banner.png" alt="MathModel Skill：豆包坐镇指挥，Fable 推导模型，Astra 编写代码" width="100%" />
+  <img src="./assets/mathmodel-banner.png" alt="MathModel：从赛题分析到可复现的数学建模论文" width="100%" />
 
-# MathModel Skill Standard
+# MathModel for Codex
 
-### 从赛题分析、真实计算到可复现的数学建模论文
+基于 MathModel Pro 的建模插件 · `0.5.0-alpha.1`
 
-[![Version](https://img.shields.io/badge/version-2.3.0-0f766e)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0)
-[![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
+[插件使用说明](./plugins/mathmodel/README.md) · [实施与验证记录](./docs/plugin-upgrade-validation.md) · [Pro 契约](./docs/pro-contracts.md)
 
 </div>
 
-MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛题与附件放入项目后，Agent 按工作流分析问题、选择模型、编写并运行代码、整理图表和证据，再撰写与检查论文；它不只是让模型直接生成一篇文章的提示词。
+MathModel 帮助编程 Agent 分析赛题、比较模型、执行实验、追溯结论，再撰写和检查论文。这个插件分支将 **Pro 的 P0–P9 工作流**接入 Codex，并增加按问题恢复上下文、持久计算作业、修改影响分析和独立重放包。
 
-当前是默认 `standard` 分支的 **Standard 2.3.0，定位标准档**，建议搭配 GPT-5.5、GPT-5.6 Sol 等具备稳定推理、长上下文和工具调用能力的模型。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
+当前为 Alpha 开发版本。工程测试验证了相应功能与门禁，不代表已经证明真实比赛论文质量优于 Pro，也不保证竞赛获奖。稳定的 Standard 历史版本仍可独立下载，入口保留在下方。
 
-**能力档位：入门 → 标准 → 旗舰**
+## 插件比直接安装 Pro Skill 增加什么
 
-三个主版本按模型能力要求、流程复杂度与验证深度，从低到高分档；分别在独立 Git 分支维护，不是安装后的切换模式：
-
-| 档位与版本 | 推荐模型示例 | 流程与交付能力 |
+| 能力 | Pro 已经提供 | 本插件增加 |
 |---|---|---|
-| **1 · 入门档** [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | **DeepSeek 等模型**；优先低负担运行 | **基础建模报告**：一个入口、六步流程，真实计算与基础 Word 导出；不含严格引文、原生 Word 公式和 PDF 验收。 |
-| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
-| **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)** 等前沿模型；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
+| 继续建模 | 阶段记忆、检查点、哈希与失败摘要 | 按小问组织题意、选模理由、回执、结论和写作定位；事实带来源与版本，恢复包可分页 |
+| 管理实验 | 真实执行脚本、输入输出回执 | 项目运行服务、持久作业、幂等提交、日志游标、取消与重试；页面和 MCP 共享服务 |
+| 数学检查 | 独立复算、稳健性与证据门禁 | 在显式启用的 LP/MILP 范围内，独立重算目标、约束、上下界和整数性，并检查可验证的最优界证书 |
+| 修改后继续 | 哈希变化使批准或下游检查失效 | 解释哪些实验、结论和章节受到影响，列出依赖顺序；缺依赖声明时扩大核验范围 |
+| 交付复算 | 记录解释器、环境、参数和结果 | 导出冻结代码、显式允许分发的输入、依赖版本及独立 runner，在新目录生成一致性报告 |
 
-这是本项目的推荐搭配，不是对同品牌所有模型的固定排名，也不代表已完成实战认证；最终看具体型号、推理档位与工具能力。
+三路审题、多路线比较、路线淘汰理由、独立复算、三个用户确认点、证据冻结、双向结论映射和五角色审稿都是 **Pro 原有能力**。插件保留这些要求；进程退出成功、页面显示完成或重放一致，都不能替代正式门禁。
 
-另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是第四个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
+## 使用插件
 
-**一个项目只安装一个版本、一个平台包，不要混装。** 各版本的具体导入方法见下方快速使用说明。
+插件源码在 [`plugins/mathmodel/`](./plugins/mathmodel/)，构建包为 [`dist/MathModel-Codex-Plugin.zip`](./dist/MathModel-Codex-Plugin.zip)。按当前 Codex 宿主支持的插件安装方式启用后，在独立比赛目录放入 `problem_files/`，然后说：
 
-## 小红书
+> 请使用 MathModel 开始这个数学建模项目。赛题和附件在 problem_files/。先检查实际安装、模型和推理档位，再按 Pro 工作流推进；需要我确认时给出当前具体对象。
 
-作者：**Orlando Liu（奥兰多）**，小红书号：[`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。点击图片进入主页，也可以扫码找到我。
+以后可以说“继续第二问”“第二问的数据改了，检查影响”“这句话的数字从哪来”。不需要先打开看板。主产物写入 `paper_output_pro/`，运行记录写入项目的 `.mathmodel/`，插件安装目录保存通用代码。
 
-<p align="center">
-  <a href="https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb">
-    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu 小红书主页与二维码" width="480" />
-  </a>
-</p>
+安装依赖、生成本机绝对 MCP 配置、恢复和重放命令见[插件使用说明](./plugins/mathmodel/README.md)。右侧页面需要宿主提供打开浏览器面板的能力；`open_workspace` 返回地址，不等于已经自动打开页面。本版本没有宣称 MCP Apps 或所有桌面宿主自动展示均已验收。
 
-## 快速导入使用
+## 历史版本与分发入口
 
-### 1. 下载 Standard 安装包
+一个比赛项目只使用一个 MathModel 版本和一个平台入口。已有 Standard 项目继续使用它自己的安装包与 `paper_output/`；安装 Pro 插件不会自动迁移旧批准。项目内另装了一套 MathModel Skill 时，先处理重复入口。
 
-**一个比赛项目只安装一个版本、一个平台包。** 不要把 Standard、Lite、Pro 或 LaTeX 包混在同一目录。
-
-从 [Standard 2.3.0 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0) 下载与你的 Agent 对应的一个安装包：
-
-| 平台 | 直接下载 | 解压后的 Skill 目录 |
+| 版本 | 分发入口 | 说明 |
 |---|---|---|
-| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Codex.zip) | `.agents/skills/` |
-| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Claude-Code.zip) | `.claude/skills/` |
-| Trae | [Trae 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Trae.zip) | `.trae/skills/` |
+| Standard 2.3.0 | [固定 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0) · [Standard 分支](https://github.com/yushui2022/MathModel-Skill/tree/standard) | S0–S8，保留独立的 Codex、Claude Code、Trae 包 |
+| Pro | [Pro 分支](https://github.com/yushui2022/MathModel-Skill/tree/pro) | 本插件以 `3.3.0-pro.1`、提交 `da520d49c62c8f5dc3755eb16bedefd78e77b466` 为比较基线 |
+| Lite | [Lite 分支](https://github.com/yushui2022/MathModel-Skill/tree/lite) | 独立的轻量工作流 |
+| LaTeX 实验分支 | [LaTeX 分支](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 历史 TeX/PDF 路径，不是当前插件的切换模式 |
 
-上面的安装包不同于 GitHub 的 `Code → Download ZIP` 仓库源码。需要核验下载时，使用 Release 中的 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/SHA256SUMS.txt)。
+Standard 2.3.0 直接下载：[Codex](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Codex.zip) · [Claude Code](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Claude-Code.zip) · [Trae](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/MathModel-Skill-Trae.zip) · [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.3.0/SHA256SUMS.txt)。按下载包内的说明安装其依赖。GitHub 的仓库源码 ZIP 与这些固定发布包不同。
 
-### 2. 导入项目并准备环境
+历史 Standard 文档：[安装指南](./docs/agent-install-guide.md) · [正式写作](./docs/formal-paper-authoring.md) · [启动与恢复](./docs/starter-prompts.md)。这些文档描述 Standard；当前插件以本页、插件 README 和 Pro 契约为准。
 
-在一个独立的数学建模项目目录中解压安装包，不要只复制 `SKILL.md`，也不要覆盖用户已有的 `AGENTS.md` 或 `CLAUDE.md`。确认隐藏目录里的 Skills 已完整解压，再用对应 Agent 打开这个项目。
+## 开发与验证
 
-使用 Python **3.11 或 3.12**，在项目根目录安装依赖：
-
-```bash
-python -m pip install -r requirements.txt
-python -m pip check
-```
-
-正式交付还需要安装 **LibreOffice**，并使 `soffice` 或 `libreoffice` 可用。没有它可以进行前期工作，但不能通过最终 PDF 渲染检查。
-
-### 3. 放入赛题与附件
-
-在项目根目录创建 `problem_files/`，放入赛题、官方附件与数据。例如 Codex 项目：
-
-```text
-your-project/
-├── .agents/skills/
-├── requirements.txt
-└── problem_files/
-    ├── 赛题.pdf
-    └── 附件.xlsx
-```
-
-Claude Code 或 Trae 使用上表中自己的 Skill 目录，输入目录保持不变。
-
-### 4. 对 Agent 说
-
-```text
-请使用 $paper-workflow-orchestrator 完成这个数学建模项目。
-赛题和官方附件已放在 problem_files/。
-先预检输入，再按 S0-S8 执行，必须真实运行代码并保留结果证据。
-采用完整章节写作，允许分多轮完成，最后统一全文，不要只输出摘要或拼接微单元。
-请核对当年赛题的篇幅和格式规则，不自行降低为短报告。
-所有赛题产物写入 paper_output/；证据、写作与 Word/PDF 检查未通过，不要称为最终稿。
-```
-
-正常使用不需要手工执行整套脚本。若 Agent 没有识别入口，让它先读取所安装目录中的 `paper-workflow-orchestrator/SKILL.md`。继续上次任务、修复章节的提示词见 [启动与恢复提示词](docs/starter-prompts.md)。
-
-完成后先查看：
-
-| 产物 | 位置 |
-|---|---|
-| 正式 Word | `paper_output/final_paper.docx` |
-| 正式 Markdown 源稿 | `paper_output/final_paper_source.md` |
-| 渲染 PDF | `paper_output/qa/rendered/final_paper.pdf` |
-| 代码、结果与图表 | `paper_output/code/`、`results/`、`figures/`、`tables/` |
-| 最终检查报告 | `paper_output/format_check_report.json` |
-
-## 原理介绍
-
-### 先计算、后成文
-
-Standard 保留 S0-S8 单一工作流。不同 Skills 各自负责一个环节，用实际文件和证据交接，而不是仅依赖对话记忆。
-
-```text
-S0 输入与安装预检 → S1 题意分析 → S2 模型路线
-→ S3 数据与图表计划 → S4 编写代码 → S5 真实运行
-→ S6 证据检查 → S7 自适应正式写作 → S8 Word/PDF 检查
-```
-
-脚本、输入和输出都记录 SHA-256。证据或已审计文件变化后，依赖它们的通过状态会失效，必须重新计算或验证。安装目录只保存通用能力，当前赛题代码始终写到 `paper_output/code/`。
-
-### 章节写作与局部修复
-
-`paper-formal-writer` 是唯一正式主笔：先制定写作计划，再按完整章节写作与审计；全部章节通过后确定性合并，由 Agent 全文统一改写，最后生成 DOCX。
-
-默认完整竞赛稿使用 `section` 模式。明确要求的短报告可使用 `global`，同类问题连续两次失败后转为章节写作。单章同类问题连续两次失败才启用局部 `micro-repair`；第三次仍失败则阻塞并报告原因，不自动切换版本。旧微单元与 quickstart 只保留为非正式草稿。
-
-### 篇幅、证据与渲染检查
-
-默认完整稿规划至少 14000 有效字符，检查主稿至少 8000 有效字符、附录前渲染页数至少 18 页。**这些是防止极短稿的项目默认值，不是所有比赛的统一规定，也不是优秀论文标准。** 具体比赛的页数上限和计页方式仍要单独核对。
-
-每问需要实质性的建模、计算结果与解释；注释、代码块和附录不能用于填补主稿长度。范围调整或短报告必须明确说明理由，不用空页、放大排版或重复正文凑数。
-
-正式稿要求新鲜的证据与写作检查、可编辑的 Word OMML 公式和真实 LibreOffice 渲染。完整稿和短报告不能通过 `--render skip` 完成最终检查；仅明确的安装测试允许豁免，并标记为 `SMOKE_TEST_ONLY`。
-
-## 验证状态与详细文档
-
-## Codex Plugin（`feat/codex-plugin`）
-
-插件分支在保留现有 S0-S8 Skills 的基础上，增加了可安装的
-`.codex-plugin/plugin.json`、无记忆会话的上下文恢复协议、可选 Python MCP
-服务、SQLite 状态记录和 Codex 右栏证据伴侣。它的核心价值是让每次新的
-Codex 会话都按同一节奏推进并在证据门禁后写论文；右栏不承担 IDE 或自动写作。
-插件源码位于 `plugins/mathmodel/`；Skills 的规范来源是
-`packages/claude/.claude/skills/`：
+单一源码链为 `packages/claude/.claude/skills` → `packages/codex/.agents/skills` → `plugins/mathmodel/skills`。插件入口 `mathmodel-plugin-entry` 独立保留，生成目录中的核心文件不要直接修改。
 
 ```bash
-python plugins/mathmodel/scripts/sync_plugin_skills.py --check
-python plugins/mathmodel/scripts/serve_dashboard.py --project-root . --port 0
+python -B scripts/sync_platform_packages.py
+python -B plugins/mathmodel/scripts/sync_plugin_skills.py
+python -B plugins/mathmodel/scripts/sync_plugin_skills.py --check
+python -B scripts/run_baseline_tests.py --edition standard
+python -B scripts/run_baseline_tests.py --edition pro
+python -B scripts/build_plugin_package.py
+python -B scripts/build_plugin_package.py --verify
 ```
 
-看板读取项目根目录的 `.mathmodel/status.json`、SQLite 任务记录和登记产物，
-不会上传赛题、代码或结果。当前分支已在 Codex 桌面端验证可用右栏打开本地
-证据伴侣；没有右栏或 MCP SDK 时仍可使用对话和普通本地页面。MCP 只提供受控
-的预检、模型运行、证据检查和格式检查，不接受任意 shell 命令。
+固定基线测试在隔离目录中执行：Standard 原断言和历史 ZIP 不被重写；Pro 原测试布局覆盖当前核心源码后执行。需要完整 Git 历史，CI 使用 `fetch-depth: 0`。启用 `REQUIRE_LIBREOFFICE=1` 并安装 LibreOffice 后才能覆盖 Pro 的完整渲染流水线。插件附加测试与本机实测结果见[验证记录](./docs/plugin-upgrade-validation.md)。本分支不要直接运行旧 Standard 发布脚本去重建历史 ZIP。
 
-- 发布提交已通过原有 42 项回归和新增 14 项范围与渲染检查；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940797268) 覆盖 Windows/Ubuntu、Python 3.11/3.12，并含 LibreOffice 渲染任务。
-- 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
-- [安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md)
-- 分支 `dist/` 是随提交维护的构建包；上面的 Release 是固定版本快照，不会随 README 更新而被覆盖。
+## 作者
 
-开发者可在仓库中执行：
+Orlando Liu（奥兰多），小红书号 [`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。
 
-```bash
-python scripts/sync_platform_packages.py --check
-python -u tests/run_tests.py
-python tests/test_paper_scope.py
-python scripts/build_release_packages.py --verify
-```
+<p align="center"><a href="https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb"><img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu 小红书主页与二维码" width="360" /></a></p>
 
-[MIT License](LICENSE)，Copyright (c) 2026 yushui2022.
+[MIT License](./LICENSE)，Copyright (c) 2026 yushui2022.

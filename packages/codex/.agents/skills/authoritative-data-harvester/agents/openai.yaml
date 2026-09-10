@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Authoritative Research"
+  short_description: "公开权威来源研究与 claim 溯源"
+  default_prompt: "Use $authoritative-data-harvester after checkpoint 1 to build a public, hashed, claim-linked source ledger."

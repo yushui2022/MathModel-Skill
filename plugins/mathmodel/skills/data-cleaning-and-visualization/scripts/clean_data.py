@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 
 SEARCH_DIRS = ["problem_files", "crawled_data"]
-OUTPUT_DIR = Path("paper_output/data_cleaned")
+OUTPUT_DIR = Path("paper_output_pro/data_cleaned")
 FILE_EXTENSIONS = ["*.csv", "*.xlsx", "*.xls", "*.txt"]
 
 def find_data_files():
@@ -18,7 +18,7 @@ def find_data_files():
         for ext in FILE_EXTENSIONS:
             files = list(dir_path.rglob(ext))
             for f in files:
-                if "paper_output" in str(f) or "node_modules" in str(f) or ".git" in str(f):
+                if "paper_output_pro" in str(f) or "node_modules" in str(f) or ".git" in str(f):
                     continue
                 if f.name.startswith("~"):
                     continue

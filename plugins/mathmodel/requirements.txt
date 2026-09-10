@@ -1,0 +1,2 @@
+# Optional MCP adapter; modeling dependencies are in core-requirements.txt.
+mcp==1.26.0

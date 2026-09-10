@@ -1,142 +1,134 @@
 #!/usr/bin/env python3
-"""Build a compact, deterministic handoff packet for a stateless Codex.
-
-The packet is read-only by default.  It combines the authoritative workflow
-Guard with the durable workflow-memory snapshot so a fresh conversation can
-resume without trusting prior chat history.  ``--write`` refreshes only the
-memory JSON through the existing memory skill; it never writes a QA report.
-"""
+"""Build a source-linked Pro handoff without writing project state or QA reports."""
 from __future__ import annotations
-
 import argparse
+import hashlib
 import json
-import subprocess
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = SCRIPT_DIR.parent
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(SCRIPT_DIR))
-from workbench import STAGES, WorkbenchState, project_id  # noqa: E402
+from workbench import WorkbenchState, project_id
+from runtime.context import collect_facts, digest_file, memory_consistency, safe_file, write_snapshot
+from runtime.routing import make_handoff
 
 
-def _read_json(path: Path) -> dict[str, Any] | None:
-    if not path.is_file():
-        return None
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    return value if isinstance(value, dict) else None
+def _input_index(root: Path) -> list[dict]:
+    result = []
+    for path in sorted(safe_file(root, "problem_files").rglob("*")):
+        if len(result) >= 100:
+            break
+        try:
+            relative = path.relative_to(root).as_posix()
+            target = safe_file(root, relative)
+            if target.is_file():
+                result.append({"path": relative, "size": target.stat().st_size, "sha256": digest_file(target)})
+        except (OSError, ValueError):
+            continue
+    return result
 
 
-def _memory_consistency(memory: dict[str, Any] | None, guard: dict[str, Any]) -> dict[str, Any]:
-    workflow = memory.get("workflow", {}) if isinstance(memory, dict) else {}
-    if not isinstance(workflow, dict):
-        workflow = {}
-    fields = ("current_step", "next_step", "recommended_skill")
-    mismatches = []
-    for field in fields:
-        expected = str(guard.get(field) or "")
-        recorded = str(workflow.get(field) or "")
-        if recorded and expected != recorded:
-            mismatches.append({"field": field, "memory": recorded, "guard": expected})
-    return {
-        "present": memory is not None,
-        "matches_guard": not mismatches,
-        "mismatches": mismatches,
-        "source_of_truth": "workflow_guard",
-    }
-
-
-def build_packet(project_root: str | Path) -> dict[str, Any]:
-    state = WorkbenchState(project_root)
-    status = state.status()
-    guard = status.get("guard") if isinstance(status.get("guard"), dict) else {}
-    memory_path = state.root / "paper_output" / "context" / "workflow_memory.json"
-    memory = _read_json(memory_path)
-    steps = []
-    raw_steps = guard.get("steps") if isinstance(guard.get("steps"), list) else []
-    by_step = {str(item.get("step")): item for item in raw_steps if isinstance(item, dict)}
-    for code in STAGES:
-        item = by_step.get(code, {})
-        steps.append({
-            "step": code,
-            "name": item.get("name", code),
-            "status": str(item.get("status", "PENDING")).upper(),
-            "failures": [str(x) for x in item.get("failures", [])][:8],
-        })
-    blockers = [str(x) for x in guard.get("failures", [])][:12]
-    jobs = [j for j in status.get("jobs", []) if isinstance(j, dict)]
-    active_jobs = [j for j in jobs if j.get("status") == "running"]
-    next_step = str(guard.get("next_step") or ("S8" if guard.get("status") == "COMPLETE" else "S0"))
-    packet = {
-        "schema_version": "1.0",
-        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "project": {
-            "id": project_id(state.root),
-            "name": state.root.name,
-            "root": str(state.root),
-        },
-        "workflow": {
-            "status": str(guard.get("status") or "UNKNOWN"),
-            "current_step": str(guard.get("current_step") or ""),
-            "next_step": next_step,
-            "verified_count": int(status.get("verified_count") or 0),
-            "steps": steps,
-            "recommended_skill": str(guard.get("recommended_skill") or ""),
-            "next_action": str(guard.get("next_action") or "先运行工作流预检。"),
-            "blockers": blockers,
-        },
-        "activity": {
-            "current_task": status.get("current_task", ""),
-            "active_jobs": active_jobs,
-            "recent_events": (status.get("history") or [])[-5:],
-        },
-        "evidence": {
-            "artifact_count": len(status.get("artifacts") or []),
-            "artifacts": (status.get("artifacts") or [])[:80],
-            "guard_report": "paper_output/qa/workflow_guard_report.json",
-            "memory": "paper_output/context/workflow_memory.json" if memory else None,
-        },
-        "memory_consistency": _memory_consistency(memory, guard),
-        "resume_rule": "以 Guard 为准；先处理 blockers，再调用 recommended_skill。对话负责推理和写作，脚本只执行受控检查与计算。",
-    }
+def build_packet(project_root: str | Path, question_id: str | None = None, *, max_chars: int = 8000, cursor: int = 0, source_revision: str | None = None) -> dict:
+    if not 4000 <= max_chars <= 64000 or cursor < 0:
+        raise ValueError("max_chars must be 4000..64000 and cursor must be nonnegative")
+    root = Path(project_root).expanduser().resolve()
+    if not root.is_dir():
+        raise ValueError("project_root must be an existing directory")
+    status = WorkbenchState(root).status()
+    guard = status.get("guard") or {}
+    output_name = "paper_output_pro" if status.get("core_edition", "pro") == "pro" else "paper_output"
+    verified_receipts = any(s.get("step") == "P3" and s.get("status") == "PASS" for s in guard.get("steps", []))
+    facts, diagnostics, questions = collect_facts(root, output_name, question_id, verified_receipts=verified_receipts)
+    steps = [{"step": s.get("step") or s.get("code"), "name": s.get("name", ""),
+              "status": s.get("status", "unknown"), "failures": [str(x)[:180] for x in s.get("failures", [])[:2]]}
+             for s in (guard.get("steps") or [])]
+    workflow = {"status": guard.get("status", "UNKNOWN"), "current_step": guard.get("current_step", ""),
+        "next_step": guard.get("next_step") or status.get("stage") or "P0", "verified_count": status.get("verified_count", 0),
+        "stage_count": status.get("stage_count", 10), "steps": steps,
+        "recommended_skill": guard.get("recommended_skill", "pro-workflow-orchestrator"),
+        "next_action": str(guard.get("next_action") or status.get("next_action") or "运行 Pro 预检并读取当前契约。")[:500],
+        "blockers": [str(x)[:220] for x in (guard.get("failures") or guard.get("blockers") or [])[:8]],
+        "revision": hashlib.sha256(json.dumps({"contracts": guard.get("contract_hashes", {}), "steps": steps}, ensure_ascii=False, sort_keys=True).encode()).hexdigest()}
+    packet = {"schema_version": "2.0", "project": {"id": project_id(root), "name": root.name, "root": str(root)},
+        "core_edition": status.get("core_edition", "pro"),
+        "focus": {"question_id": question_id, "available_questions": [q.get("subproblem_id") or q.get("question_id") for q in questions[:100]], "total_questions": len(questions)},
+        "inputs": {"problem_files": _input_index(root)[:12], "manifest": f"{output_name}/input_manifest.json"},
+        "workflow": workflow, "facts": [], "diagnostics": diagnostics[:8],
+        "memory_consistency": memory_consistency(root, output_name, guard),
+        "activity": {"active_jobs": [{k: j.get(k) for k in ("id", "type", "status", "stage")} for j in status.get("jobs", []) if j.get("status") in {"queued", "running"}][:8]},
+        "evidence": {"artifact_count": len(status.get("artifacts", [])), "output_root": output_name},
+        "pagination": {"cursor": cursor, "next_cursor": None, "total_facts": len(facts), "omitted": 0},
+        "resume_rule": "先处理真实门禁与批准，再按所选问题恢复。current 仅表示记录哈希有效，不等于论文门禁通过；缺失理由保持未知。"}
+    # Trim structural summaries before budgeting individually addressable facts.
+    if len(json.dumps(packet, ensure_ascii=False)) > max_chars - 2200:
+        workflow["steps"] = [{"step": x["step"], "status": x["status"]} for x in steps]
+        packet["inputs"]["problem_files"] = packet["inputs"]["problem_files"][:3]
+        packet["memory_consistency"]["mismatches"] = packet["memory_consistency"]["mismatches"][:2]
+    handoff = make_handoff({**packet, "facts": facts}, PLUGIN_ROOT)
+    version = handoff["input_revision"]
+    if cursor and source_revision != version:
+        raise ValueError("Context sources changed or source_revision is missing; restart pagination at cursor 0")
+    packet["pagination"]["source_revision"] = version
+    reserve = len(json.dumps(handoff, ensure_ascii=False)) + 80
+    for fact in facts[cursor:]:
+        packet["facts"].append(fact)
+        if len(json.dumps(packet, ensure_ascii=False)) > max_chars - reserve:
+            packet["facts"].pop()
+            break
+    end = cursor + len(packet["facts"])
+    packet["pagination"].update(next_cursor=end if end < len(facts) else None, omitted=max(0, len(facts) - end))
+    packet["handoff"] = handoff
+    if facts[cursor:] and not packet["facts"]:
+        # Never return a cursor that points to the same oversized page forever.
+        workflow["steps"] = []
+        workflow["blockers"] = workflow["blockers"][:2]
+        packet["inputs"]["problem_files"] = []
+        packet["diagnostics"] = diagnostics[:2]
+        packet["facts"] = [facts[cursor]]
+        packet["pagination"].update(next_cursor=cursor + 1 if cursor + 1 < len(facts) else None, omitted=max(0, len(facts) - cursor - 1))
+    if len(json.dumps(packet, ensure_ascii=False)) > max_chars:
+        raise ValueError("Context metadata exceeds max_chars; retry with a larger max_chars (maximum 64000)")
     return packet
 
 
-def _refresh_memory(root: Path) -> None:
-    script = root / ".agents" / "skills" / "context-memory-keeper" / "scripts" / "update_workflow_memory.py"
-    if not script.is_file():
-        script = PLUGIN_ROOT / "skills" / "context-memory-keeper" / "scripts" / "update_workflow_memory.py"
-    if script.is_file():
-        subprocess.run([sys.executable, str(script)], cwd=root, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def markdown(packet: dict) -> str:
+    wf, focus = packet["workflow"], packet["focus"]
+    lines = [f"# MathModel · {packet['project']['name']}", "",
+        f"已验证 {wf['verified_count']}/{wf['stage_count']} 个阶段；下一阶段 {wf['next_step']}。",
+        f"当前问题：{focus['question_id'] or '全项目'}；推荐 Skill：{packet['handoff']['skill_id']}",
+        f"下一步：{wf['next_action']}", "", "阻塞：" + ("；".join(wf["blockers"]) or "查看阶段所需批准与产物。")]
+    for fact in packet["facts"]:
+        value = fact["value"] if isinstance(fact["value"], str) else json.dumps(fact["value"], ensure_ascii=False)
+        lines += ["", f"- {fact['title']} [{fact['state']}]：{value}", f"  来源：{fact['source']['path']}#{fact['source']['pointer']}"]
+    if packet["pagination"]["next_cursor"] is not None:
+        lines += ["", f"还有 {packet['pagination']['omitted']} 条事实；用 --cursor {packet['pagination']['next_cursor']} --source-revision {packet['pagination']['source_revision']} 读取。"]
+    return "\n".join([*lines, "", packet["resume_rule"]])
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project-root", default=".")
-    parser.add_argument("--write", action="store_true", help="刷新 workflow_memory.json 后再构建 packet")
+    parser.add_argument("--question", dest="question_id")
+    parser.add_argument("--max-chars", type=int, default=8000)
+    parser.add_argument("--cursor", type=int, default=0)
+    parser.add_argument("--source-revision")
+    parser.add_argument("--write", action="store_true", help="保存 .mathmodel/context/resume.json，不修改 Pro 批准与 QA")
     parser.add_argument("--format", choices=("json", "markdown"), default="json")
     args = parser.parse_args()
-    root = Path(args.project_root).expanduser().resolve()
-    if args.write:
-        _refresh_memory(root)
-    packet = build_packet(root)
-    if args.format == "json":
-        print(json.dumps(packet, ensure_ascii=False, indent=2))
-    else:
-        wf = packet["workflow"]
-        print(f"# MathModel Context Packet — {packet['project']['name']}\n")
-        print(f"- 状态：`{wf['status']}`；已验证 `{wf['verified_count']}/9` 个阶段")
-        print(f"- 当前/下一阶段：`{wf['current_step'] or 'NONE'}` → `{wf['next_step'] or 'DONE'}`")
-        print(f"- 推荐 Skill：`{wf['recommended_skill'] or '-'}`\n- 下一步：{wf['next_action']}")
-        if wf["blockers"]:
-            print("\n## 阻塞\n" + "\n".join(f"- {x}" for x in wf["blockers"]))
-        print("\n## 恢复规则\n" + packet["resume_rule"])
-    return 0
+    try:
+        packet = build_packet(args.project_root, args.question_id, max_chars=args.max_chars, cursor=args.cursor, source_revision=args.source_revision)
+        if args.write:
+            write_snapshot(Path(args.project_root).resolve(), packet)
+        print(markdown(packet) if args.format == "markdown" else json.dumps(packet, ensure_ascii=False, indent=2))
+        return 0
+    except (ValueError, OSError) as exc:
+        print(json.dumps({"error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

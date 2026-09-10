@@ -6,39 +6,40 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
-TARGETS = (
-    (REPO_ROOT / "packages" / "codex" / ".agents" / "skills", ".claude/skills", ".agents/skills", True),
-    (REPO_ROOT / "packages" / "trae" / ".trae" / "skills", ".claude/skills", ".trae/skills", False),
-)
-SKIP_PARTS = {"__pycache__"}
+TARGET_ROOT = REPO_ROOT / "packages" / "codex" / ".agents" / "skills"
+SKIP_PARTS = {"__pycache__", ".pytest_cache", ".mypy_cache"}
 
 
-def payload_files(root: Path, *, include_agents: bool) -> dict[Path, Path]:
+def payload_files(root: Path) -> dict[Path, Path]:
     result: dict[Path, Path] = {}
+    if not root.exists():
+        return result
     for path in root.rglob("*"):
         if not path.is_file():
             continue
         relative = path.relative_to(root)
-        if any(part in SKIP_PARTS for part in relative.parts) or (not include_agents and "agents" in relative.parts):
+        if any(part in SKIP_PARTS for part in relative.parts) or path.suffix.lower() in {".pyc", ".pyo"}:
             continue
         result[relative] = path
     return result
 
 
-def transformed_bytes(path: Path, source_prefix: str, target_prefix: str) -> bytes:
+def transformed_bytes(path: Path) -> bytes:
     data = path.read_bytes()
     try:
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError:
         return data
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    # Preserve all platform roots in the installation scanner.
-    if path.name != "preflight_check.py":
-        text = text.replace(source_prefix, target_prefix)
+    # Instructions contain platform-specific invocation paths. Runtime code must
+    # retain all platforms, especially the mixed-installation scanner's root list.
+    if path.suffix.lower() == ".md":
+        text = text.replace(".claude/skills", ".agents/skills")
+        text = text.replace("--platform claude-code", "--platform codex")
     return text.encode("utf-8")
 
 
-def normalized_existing_bytes(path: Path) -> bytes:
+def normalized_bytes(path: Path) -> bytes:
     data = path.read_bytes()
     try:
         text = data.decode("utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
@@ -47,55 +48,47 @@ def normalized_existing_bytes(path: Path) -> bytes:
         return data
 
 
-def sync_target(target_root: Path, source_prefix: str, target_prefix: str, include_agents: bool, check: bool) -> list[str]:
-    source_files = payload_files(SOURCE_ROOT, include_agents=include_agents)
-    target_files = payload_files(target_root, include_agents=include_agents) if target_root.exists() else {}
+def sync(check: bool) -> list[str]:
+    source_files = payload_files(SOURCE_ROOT)
+    target_files = payload_files(TARGET_ROOT)
     failures: list[str] = []
-
-    for relative, source_path in source_files.items():
-        expected = transformed_bytes(source_path, source_prefix, target_prefix)
-        target_path = target_root / relative
+    for relative, source in source_files.items():
+        target = TARGET_ROOT / relative
+        expected = transformed_bytes(source)
         if check:
-            if not target_path.exists():
-                failures.append(f"missing: {target_path.relative_to(REPO_ROOT)}")
-            elif normalized_existing_bytes(target_path) != expected:
-                failures.append(f"drift: {target_path.relative_to(REPO_ROOT)}")
-            continue
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        if not target_path.exists() or normalized_existing_bytes(target_path) != expected:
-            target_path.write_bytes(expected)
-
-    stale = sorted(set(target_files) - set(source_files))
-    for relative in stale:
-        target_path = target_root / relative
-        if check:
-            failures.append(f"stale: {target_path.relative_to(REPO_ROOT)}")
+            if not target.is_file():
+                failures.append(f"missing: {target.relative_to(REPO_ROOT)}")
+            elif normalized_bytes(target) != expected:
+                failures.append(f"drift: {target.relative_to(REPO_ROOT)}")
         else:
-            target_path.unlink()
-            parent = target_path.parent
-            while parent != target_root and parent.exists() and not any(parent.iterdir()):
-                parent.rmdir()
-                parent = parent.parent
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if not target.is_file() or normalized_bytes(target) != expected:
+                target.write_bytes(expected)
+    for relative in sorted(set(target_files) - set(source_files)):
+        target = TARGET_ROOT / relative
+        if check:
+            failures.append(f"stale: {target.relative_to(REPO_ROOT)}")
+        else:
+            target.unlink()
+    if not check and TARGET_ROOT.exists():
+        for directory in sorted((path for path in TARGET_ROOT.rglob("*") if path.is_dir()), reverse=True):
+            if not any(directory.iterdir()):
+                directory.rmdir()
     return failures
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Synchronize Claude canonical skill payloads to Codex and Trae.")
-    parser.add_argument("--check", action="store_true", help="Report drift without modifying files.")
+    parser = argparse.ArgumentParser(description="Synchronize canonical Claude Pro skills to Codex .agents/skills.")
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-
-    if not SOURCE_ROOT.exists():
+    if not SOURCE_ROOT.is_dir():
         raise FileNotFoundError(f"Missing canonical skill root: {SOURCE_ROOT}")
-
-    failures: list[str] = []
-    for target_root, source_prefix, target_prefix, include_agents in TARGETS:
-        failures.extend(sync_target(target_root, source_prefix, target_prefix, include_agents, args.check))
-
+    failures = sync(args.check)
+    for failure in failures:
+        print(f"[FAIL] {failure}")
     if failures:
-        for failure in failures:
-            print(f"[FAIL] {failure}")
         return 1
-    print("[PASS] Platform skill payloads are synchronized." if args.check else "Platform skill payloads synchronized.")
+    print("[PASS] Pro Claude and Codex skill payloads are synchronized." if args.check else "Pro Codex payload synchronized.")
     return 0
 
 

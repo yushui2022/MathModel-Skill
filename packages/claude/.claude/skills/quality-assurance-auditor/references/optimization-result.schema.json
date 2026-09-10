@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MathModel M3 independently checked solution",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "spec_sha256", "run_id", "values", "reported_objective", "claim", "certificate"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "spec_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "run_id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S"},
+    "values": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "number"}},
+    "reported_objective": {"type": "number"},
+    "claim": {"enum": ["feasible", "heuristic", "optimal"]},
+    "certificate": {"oneOf": [
+      {"type": "null"},
+      {"type": "object", "additionalProperties": false, "required": ["kind", "multipliers"],
+       "properties": {"kind": {"const": "lagrangian_bound"}, "multipliers": {"type": "object", "additionalProperties": {"type": "number"}}}}
+    ]}
+  }
+}

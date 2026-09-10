@@ -1,153 +1,45 @@
 ---
 name: paper-formal-writer
-description: Plan, draft, audit, globally revise, format, and verify a formal mathematical-modeling paper after the Standard evidence gate passes. Use for the sole S7/S8 formal manuscript path, not for legacy micro-unit scaffolds.
+description: "MathModel Pro P7-P9 正式论文写作与 Word/PDF 交付。仅基于冻结证据全局写稿，生成原生 DOCX，再由 LibreOffice 渲染和核验 PDF。"
 ---
 
-# Paper Formal Writer
+# Pro Formal Paper Writer
 
-This skill is the sole formal author and final manuscript producer in Standard. It turns a fresh S6 evidence chain into an audited Markdown source and native-equation Word document.
+仅当检查点 3 新鲜批准且 `evidence_freeze.json` PASS 时运行。读取题意共识、获选路线、
+冻结证据、来源账本、图表和表格，从整体论证出发写
+`paper_output_pro/final_paper_source.md`。正式主稿不得由微单元或旧草稿拼接。
 
-## Entry
+先读取 `pro_config.json.paper_delivery` 和
+[competition-authoring.md](references/competition-authoring.md)。默认是完整竞赛论文，
+不是安装演示或简报；交付范围、页数目标在检查点 1 已确认，不能在写作时降低。
+先创建 `paper_plan.json`，绑定配置、题意和冻结证据的 SHA-256，声明标题、语言、
+交付模式、有序章节及 kind、各章篇幅、逐问论证映射和图表路径；
+数值声明必须对应冻结 claim ID。在对应论证段落末尾添加
+`<!-- claim:C1 -->` 证据标记，转换 Word 时自动移除。先运行总入口脚本
+`pro_paper_audit.py --project-root <项目>`，确认章节、数值、引用、公式和图表通过。
+篇幅达标不是质量目标，具体论证要求见总入口 `references/paper-quality.md`。
 
-Run before formal work:
+先读取 `pro_config.json.reasoning_profile.phase_effort.authoring`。平台支持分阶段调节时
+使用该档位；否则保留并记录当前档位。长篇正文可以分章节、多轮连续写入唯一源稿，
+不能因为单次输出长度限制而压成摘要。完成后统一符号、前后引用和叙述；允许补写与
+修订，不要求一次响应生成整篇。推理用于检查证据、结构和论证，不得先完整暗写
+一遍正文再重复输出。通用自检由下列门禁完成，
+不要在五角色 review board 之外增加无明确失败假设的重复审稿轮次。
 
-```bash
-python .agents/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --skill paper-formal-writer
-```
+- 所有数值、图表、结论和外部声明必须有冻结 claim ID。
+- 论文语言跟随题面和用户要求，默认中文竞赛论文。
+- 假设、符号、模型、求解、验证、不确定性、局限和结论形成完整闭环。
+- 每个确认子问题都须有选模理由、推导、求解、结果、验证和局限；用段落锚点绑定
+  `subproblem_coverage`。这些是论证维度，不要求机械拆成六个标题；空标题不算完成。
+- 缺证据时回到计算与确认阶段，不编造结果、不通过加大字号、重复正文或附录凑页数。
+- 图表和公式在正文中先引用后出现，编号、标题、单位和来源一致。
+- 只从同一正式源稿生成 DOCX；公式用 Word 原生 OMML。
 
-S0-S6 must pass. If workflow state is uncertain, run `workflow_guard.py --status` and follow its current artifact report rather than memory.
-
-## Single Formal Path
-
-```text
-S6 evidence PASS
--> writing plan
--> chapter drafts
--> chapter audits
--> queued local repair when required
--> deterministic assembly
--> Agent global revision
--> final Markdown audit
--> formal DOCX
--> S8 format/render gate
-```
-
-Do not promote quickstart, legacy, or mechanically merged micro-unit output into a formal filename.
-
-## Prepare
-
-1. Build the evidence-aware outline:
-
-```bash
-python .agents/skills/paper-formal-writer/scripts/build_paper_outline.py
-```
-
-2. Prepare adaptive authoring:
-
-```bash
-python .agents/skills/paper-formal-writer/scripts/prepare_authoring.py --mode auto
-```
-
-Default delivery is `competition`: plan at least 14000 effective characters, with a main-paper floor of 8000 and at least 18 rendered pages before appendices. These are adjustable project defaults, not contest rules. Verify the actual contest's page cap and counting rules before writing. `auto` therefore selects `section`; a short report needs `--delivery short-report --scope-reason "user-requested scope"`. Custom floors use `--min-pages` / `--min-body-chars` with a reason; never lower them merely to turn a failed check green.
-
-Read [references/competition-scope.md](references/competition-scope.md) when preparing scope or repairing a short manuscript. Several authoring turns may produce one coherent chapter; preserve evidence and notation between turns instead of compressing the paper into one response.
-
-The authoritative S7 contracts are:
-
-- `paper_output/plan/writing_plan.json`
-- `paper_output/context/authoring_state.json`
-- `paper_output/qa/draft_audit.json`
-- `paper_output/qa/repair_queue.json`
-
-## Draft And Audit
-
-Write only to the path recorded for the current unit in `authoring_state.json`. Each chapter must be a complete, coherent section and must include its required removable marker:
-
-```html
-<!-- mathmodel-evidence: evidence-id-1, evidence-id-2 -->
-```
-
-Audit every changed draft:
-
-```bash
-python .agents/skills/paper-formal-writer/scripts/validate_authoring.py --section <section-id>
-```
-
-Routing is deterministic:
-
-- `global` repeats the same blocking category twice: switch to `section`.
-- A section fails once: rewrite that section.
-- A section repeats the same category twice: `$paper-micro-unit-generator` may repair only queued locations.
-- The third changed attempt with the same category: S7 becomes `BLOCKED`; report the cause and suggest Lite as a user choice without switching automatically.
-
-Audits block short drafts, missing chapters/evidence/numbers, broken formulas, placeholders, duplicate prose, broken figure/table references, and internal workflow language.
-
-## Assemble And Revise
-
-After all active units pass:
-
-```bash
-python .agents/skills/paper-formal-writer/scripts/assemble_sections.py
-python .agents/skills/paper-formal-writer/scripts/validate_authoring.py --assembled
-```
-
-The assembler follows outline order, strips evidence comments, and preserves existing numbering. It writes `paper_output/drafts/assembled_draft.md`.
-
-Then read the entire assembled draft and evidence chain, and rewrite the paper globally into:
-
-```text
-paper_output/final_paper_source.md
-```
-
-This pass must unify terminology, notation, transitions, argument order, citations, captions, and conclusions. Copying the assembled draft unchanged is rejected.
-
-Run the final source audit:
-
-```bash
-python .agents/skills/paper-formal-writer/scripts/validate_authoring.py --final
-```
-
-Any change to evidence, writing plan, approved section draft, assembly, or final source invalidates downstream PASS state.
-
-## Word And S8
-
-Only after `authoring_state.status = PASS`:
-
-```bash
-python .agents/skills/paper-formal-writer/scripts/format_formal_docx.py
-python .agents/skills/paper-formal-writer/scripts/check_paper_format.py --render required
-```
-
-Formal mode requires fresh S6 and S7 hashes. `--allow-draft` may create `final_paper_draft.docx` for layout diagnosis, but never satisfies S7/S8 or overwrites the formal DOCX.
-
-`format_formal_docx.py` converts LaTeX to editable Word OMML and blocks failed conversion. `check_paper_format.py` checks dynamic length, required hierarchy, citations, evidence-linked figures/tables, formulas, duplicate prose, DOCX structure, LibreOffice PDF rendering, page count, and extractable text.
-
-## Writing Standard
-
-- Use `1 / 1.1 / 1.1.1` headings and complete CUMCM sections.
-- For each question, connect assumptions, variables, derivation, algorithm, computed values, validation, uncertainty, and conclusion.
-- Define symbols before formulas and explain every displayed result.
-- Cite and interpret every included figure/table.
-- Use only current evidence; never invent runs, values, sources, or validation.
-- Avoid copied or number-swapped paragraphs used only to meet length.
-- Keep implementation language out of body prose; reproducibility paths belong in the appendix.
-
-## References
-
-- Format standard: [references/cumcm-paper-standard.md](references/cumcm-paper-standard.md)
-- Full-paper structure: [references/formal-paper-template.md](references/formal-paper-template.md)
-- Section expansion: [references/section-expansion-rules.md](references/section-expansion-rules.md)
-- Figures, tables, formulas, and results: [references/figure-table-writing-rules.md](references/figure-table-writing-rules.md)
-
-Read only the reference needed for the current writing or repair decision.
-
-## Handoff
-
-After each meaningful transition, run workflow status and update `paper_output/context/workflow_memory.json`:
-
-```bash
-python .agents/skills/paper-workflow-orchestrator/scripts/workflow_guard.py --status
-python .agents/skills/context-memory-keeper/scripts/update_workflow_memory.py
-```
-
-S8 is complete only when the machine-readable format report is PASS and fresh.
+完成 `pro-review-board` 全轮审稿和修复后，用 LibreOffice 生成 `final_paper.pdf`。
+使用总入口 `pro_render_pdf.py` 生成 PDF、`render_manifest.json` 和逐页 PNG。
+实际查看每一页后填写 `visual_review.json`，绑定当前渲染清单和每页哈希，记录观察和
+未解决问题。再运行 `pro_format_check.py --project-root <项目>` 自动生成格式报告，
+最后执行 `pro_gate.py --project-root <项目>`。禁止手填格式 PASS。没有 LibreOffice、
+渲染失败、PDF 为空、内容不一致或未完成逐页检查时阻止正式交付。
+实际计入范围的页数低于已确认下限时补充实质论证；题目确实只适合短报告则回到
+检查点 1 请用户重新确认范围。不得把 `ENGINEERING_SMOKE_ONLY` 称为竞赛论文验收。

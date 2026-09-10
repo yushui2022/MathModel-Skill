@@ -117,6 +117,33 @@ def package_version() -> str:
     return version
 
 
+def require_standard_release_tree() -> None:
+    """Stop the historical publisher before mixed-edition inputs can be written."""
+    guidance = (
+        "This is the historical Standard release script; the current source tree is not a matching Standard installation. "
+        "Use scripts/run_baseline_tests.py --edition standard --packages-only to verify preserved Standard ZIPs, "
+        "or --edition pro --packages-only to build and check Pro in isolation. "
+        "Use scripts/build_plugin_package.py for the Codex plugin."
+    )
+    try:
+        version = package_version()
+        for spec in PACKAGE_SPECS:
+            for source_root, _ in spec.roots:
+                skills = source_root / "skills"
+                entry = skills / "paper-workflow-orchestrator"
+                marker = json.loads((entry / "MATHMODEL_EDITION.json").read_text(encoding="utf-8-sig"))
+                expected = {"product": "MathModel-Skill", "edition": "standard", "version": version,
+                            "entry_skill": "paper-workflow-orchestrator"}
+                if not isinstance(marker, dict) or any(marker.get(key) != value for key, value in expected.items()):
+                    raise ValueError(f"{spec.name}: Standard marker does not match VERSION={version}")
+                if not (entry / "SKILL.md").is_file():
+                    raise ValueError(f"{spec.name}: Standard entry skill is missing")
+                if any((skills / name).exists() for name in ("pro-workflow-orchestrator", "mathmodel-lite")):
+                    raise ValueError(f"{spec.name}: mixed Pro/Lite entrypoint")
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise RuntimeError(f"{guidance}\nSource check: {exc}") from exc
+
+
 def normalized_source_bytes(path: Path) -> bytes:
     data = path.read_bytes()
     try:
@@ -174,6 +201,7 @@ def write_zip_entry(archive: zipfile.ZipFile, path: str, data: bytes) -> None:
 
 
 def build_package(spec: PackageSpec, output_dir: Path) -> tuple[Path, int]:
+    require_standard_release_tree()
     output_dir.mkdir(parents=True, exist_ok=True)
     output = output_dir / spec.archive_name
     entries = source_entries(spec)
@@ -215,6 +243,7 @@ def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
 
 
 def clean_dist(output_dir: Path) -> None:
+    require_standard_release_tree()
     output_dir.mkdir(parents=True, exist_ok=True)
     for spec in PACKAGE_SPECS:
         target = output_dir / spec.archive_name
@@ -247,6 +276,11 @@ def main() -> int:
     parser.add_argument("--verify", action="store_true", help="Verify existing archives against the current source tree.")
     parser.add_argument("--output-dir", type=Path, default=DIST_DIR, help="Directory for generated archives.")
     args = parser.parse_args()
+    try:
+        require_standard_release_tree()
+    except RuntimeError as exc:
+        print(f"[BLOCKED] {exc}")
+        return 1
     output_dir = args.output_dir.resolve()
 
     if args.verify:

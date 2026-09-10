@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MathModel M3 linear-v1 specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile", "problem_id", "subproblem_id", "route_id", "model_class", "input_hashes", "variables", "objective", "constraints", "tolerances"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "profile": {"const": "linear-v1"},
+    "problem_id": {"$ref": "#/$defs/id"},
+    "subproblem_id": {"$ref": "#/$defs/id"},
+    "route_id": {"$ref": "#/$defs/id"},
+    "model_class": {"enum": ["LP", "MILP"]},
+    "input_hashes": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
+    "variables": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "unit", "domain", "lower", "upper"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "unit": {"$ref": "#/$defs/id"},
+        "domain": {"enum": ["continuous", "integer", "binary"]}, "lower": {"type": ["number", "null"]}, "upper": {"type": ["number", "null"]}}
+    }},
+    "objective": {"type": "object", "additionalProperties": false,
+      "required": ["sense", "unit", "metric", "constant", "coefficients"],
+      "properties": {"sense": {"enum": ["min", "max"]}, "unit": {"$ref": "#/$defs/id"}, "metric": {"$ref": "#/$defs/id"},
+        "constant": {"type": "number"}, "coefficients": {"$ref": "#/$defs/coefficients"}}},
+    "constraints": {"type": "array", "maxItems": 10000, "items": {
+      "type": "object", "additionalProperties": false, "required": ["id", "unit", "coefficients", "sense", "rhs"],
+      "properties": {"id": {"$ref": "#/$defs/id"}, "unit": {"$ref": "#/$defs/id"}, "coefficients": {"$ref": "#/$defs/coefficients"},
+        "sense": {"enum": ["le", "eq", "ge"]}, "rhs": {"type": "number"}}
+    }},
+    "tolerances": {"type": "object", "additionalProperties": false,
+      "required": ["feasibility_absolute", "integrality_absolute", "objective_absolute", "objective_relative"],
+      "properties": {"feasibility_absolute": {"const": 1e-7}, "integrality_absolute": {"const": 1e-7},
+        "objective_absolute": {"const": 1e-7}, "objective_relative": {"const": 1e-9}}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "\\S"},
+    "coefficients": {"type": "object", "additionalProperties": {"type": "number"}}
+  }
+}

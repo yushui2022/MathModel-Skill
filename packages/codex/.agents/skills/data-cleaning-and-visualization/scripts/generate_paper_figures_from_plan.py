@@ -9,7 +9,7 @@ from paper_figure_templates import plot_figure_spec
 
 
 BASE_DIR = Path.cwd().resolve()
-OUTPUT_DIR = BASE_DIR / "paper_output"
+OUTPUT_DIR = BASE_DIR / "paper_output_pro"
 PLAN_DIR = OUTPUT_DIR / "plan"
 VISUALIZATION_PLAN_FILE = PLAN_DIR / "visualization_plan.json"
 FIGURE_INDEX_FILE = OUTPUT_DIR / "figure_index.json"
@@ -134,7 +134,7 @@ def main() -> int:
         "schema_version": "1.0",
         "generated_by": GENERATED_BY,
         "generated_at": now(),
-        "source": "paper_output/plan/visualization_plan.json",
+        "source": "paper_output_pro/plan/visualization_plan.json",
         "figures": indexed,
         "note": "这些图是论文级图表样板。真实赛题应结合模型输出和字段含义二次修改，不应把模板图直接当作最终计算结论。",
     }

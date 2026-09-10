@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pro Experiment Runner"
+  short_description: "独立复算、多种子与稳健性实验"
+  default_prompt: "Use $model-code-and-result-generator after checkpoint 2 to run independent implementations, robustness tests, and ablations."

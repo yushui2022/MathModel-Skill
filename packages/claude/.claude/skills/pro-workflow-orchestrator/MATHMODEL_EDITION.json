@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "product": "MathModel-Skill",
+  "edition": "pro",
+  "version": "3.3.0-pro.1",
+  "entry_skill": "pro-workflow-orchestrator"
+}

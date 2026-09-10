@@ -12,7 +12,7 @@ from typing import Any
 
 
 BASE_DIR = Path.cwd().resolve()
-OUTPUT_DIR = BASE_DIR / "paper_output"
+OUTPUT_DIR = BASE_DIR / "paper_output_pro"
 REPORT_FILE = OUTPUT_DIR / "data_cleaned" / "load_report.json"
 INPUT_MANIFEST_FILE = OUTPUT_DIR / "input_manifest.json"
 

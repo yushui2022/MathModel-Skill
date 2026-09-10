@@ -2,9 +2,12 @@
   "mcpServers": {
     "mathmodel": {
     "command": "python",
-    "args": ["./scripts/mcp_server.py"],
+    "args": ["-B", "./scripts/mcp_server.py"],
+    "cwd": ".",
+    "startup_timeout_sec": 30,
     "env": {
-      "PYTHONUTF8": "1"
+      "PYTHONUTF8": "1",
+      "PYTHONDONTWRITEBYTECODE": "1"
     }
     }
   }

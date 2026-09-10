@@ -41,15 +41,20 @@ class WorkbenchStateTests(unittest.TestCase):
     def test_context_packet_recovers_without_chat_memory(self) -> None:
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp:
             root = Path(temp)
-            (root / "paper_output" / "context").mkdir(parents=True)
+            (root / "paper_output_pro" / "context").mkdir(parents=True)
+            problem = root / "problem_files" / "赛题 2026.pdf"
+            problem.parent.mkdir(parents=True)
+            problem.write_bytes(b"problem")
             packet = build_packet(root)
-            self.assertEqual(packet["workflow"]["next_step"], "S0")
-            self.assertEqual(packet["workflow"]["recommended_skill"], "paper-workflow-orchestrator")
-            memory = root / "paper_output" / "context" / "workflow_memory.json"
-            memory.write_text('{"workflow":{"current_step":"S8","next_step":"S8","recommended_skill":"paper-formal-writer"}}', encoding="utf-8")
+            self.assertEqual(packet["workflow"]["next_step"], "P0")
+            self.assertEqual(packet["workflow"]["recommended_skill"], "pro-workflow-orchestrator")
+            self.assertEqual(packet["inputs"]["problem_files"][0]["path"], "problem_files/赛题 2026.pdf")
+            memory = root / "paper_output_pro" / "context" / "workflow_memory.json"
+            memory.write_text('{"current_phase":"P9","next_action":"deliver"}', encoding="utf-8")
             packet = build_packet(root)
             self.assertFalse(packet["memory_consistency"]["matches_guard"])
-            self.assertEqual(packet["workflow"]["next_step"], "S0")
+            self.assertEqual(packet["workflow"]["next_step"], "P0")
+            self.assertFalse((root / "paper_output_pro" / "pro_gate_report.json").exists())
             self.assertFalse((root / "paper_output" / "qa" / "workflow_guard_report.json").exists())
 
 
