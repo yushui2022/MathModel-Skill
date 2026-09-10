@@ -109,6 +109,8 @@ jobs:
         run: python -B scripts/run_baseline_tests.py --edition pro
       - name: Verify pure status on actual rendered Pro pipeline
         run: python -B -m unittest discover -s tests -p test_pro_status.py -v
+      - name: Verify completed recovery and invalidation with actual plugin rendering
+        run: python -B -m unittest discover -s tests -p test_plugin_context.py -v
       - name: Preserve Standard render regressions in their original layout
         run: python -B scripts/run_baseline_tests.py --edition standard
 

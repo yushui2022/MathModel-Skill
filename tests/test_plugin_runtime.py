@@ -15,10 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from plugins.mathmodel.scripts.workbench import WorkbenchState, JobRunner, evaluate_guard
 from plugins.mathmodel.scripts.runtime import jobs
-from plugins.mathmodel.scripts.runtime.safety import MAX_LOG_BYTES, process_identity
+from plugins.mathmodel.scripts.runtime.safety import MAX_LOG_BYTES, process_identity, spawn_options
 
-TEMP = ROOT / "tests/.runtime-tmp"
-TEMP.mkdir(exist_ok=True)
+TEMP = Path(os.environ.get("MATHMODEL_TEST_TEMP", ROOT / "tests/.runtime-tmp"))
+TEMP.mkdir(parents=True, exist_ok=True)
 
 
 def wait_job(state, jid, predicate, timeout=15):
@@ -29,6 +29,29 @@ def wait_job(state, jid, predicate, timeout=15):
             return item
         time.sleep(0.05)
     raise AssertionError(f"job did not reach expected state: {state.job(jid)}")
+
+
+def wait_workers_stopped(state, timeout=15):
+    """A durable terminal result can precede the worker's actual process exit.
+
+    Windows retains a process's current directory until that process exits. Wait
+    for its recorded creation identity, including completed jobs, before removing
+    the fixture. A PID reused by an unrelated process must not delay cleanup.
+    """
+    rows = state._rows("SELECT id,pid,process_identity,child_pid,child_identity FROM jobs")
+    deadline = time.monotonic() + timeout
+    while True:
+        alive = []
+        for item in rows:
+            for pid_key, identity_key in (("pid", "process_identity"), ("child_pid", "child_identity")):
+                pid, identity = item[pid_key], item[identity_key]
+                if pid and identity and process_identity(pid) == identity:
+                    alive.append((item["id"], pid_key, pid))
+        if not alive:
+            return
+        if time.monotonic() >= deadline:
+            raise AssertionError(f"fixture processes did not exit after terminal status: {alive}")
+        time.sleep(0.025)
 
 
 class RuntimeTests(unittest.TestCase):
@@ -43,6 +66,7 @@ class RuntimeTests(unittest.TestCase):
             for item in self.state._rows("SELECT id FROM jobs WHERE status IN ('queued','running','cancelling')"):
                 runner.cancel(item["id"])
                 wait_job(self.state, item["id"], lambda j: j["status"] not in {"queued", "running", "cancelling"})
+            wait_workers_stopped(self.state)
         self.temp.cleanup()
 
     def script(self, code):
@@ -61,6 +85,23 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(snapshot["verified_count"], 0)
         self.assertEqual(before, set(self.root.rglob("*")))
         self.assertFalse((self.root / ".mathmodel").exists())
+
+    def test_cleanup_waits_for_terminal_worker_process_exit(self):
+        self.state.initialize()
+        with subprocess.Popen([sys.executable, "-B", "-c", "import time; time.sleep(0.5)"],
+                              cwd=self.root, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, **spawn_options()) as worker:
+            identity = process_identity(worker.pid)
+            self.assertIsNotNone(identity)
+            with self.state._db() as db:
+                db.execute("INSERT INTO jobs(id,type,stage,status,command,created_at,pid,process_identity) VALUES(?,?,?,?,?,?,?,?)",
+                           ("terminal-worker", "model_run", "P3", "succeeded", "[]", "2026-01-01", worker.pid, identity))
+            # This represents the legitimate gap after a worker commits its
+            # result and before interpreter shutdown releases the Windows cwd.
+            self.assertEqual(self.state.job("terminal-worker")["status"], "succeeded")
+            wait_workers_stopped(self.state)
+            self.assertIsNone(process_identity(worker.pid))
+            self.assertEqual(worker.wait(timeout=2), 0)
 
     def test_atomic_admission_two_clients_and_restart_keep_running(self):
         script = self.script("import time\nprint('started',flush=True)\ntime.sleep(30)\n")

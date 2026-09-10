@@ -22,6 +22,9 @@ def make_handoff(packet: dict, plugin_root: Path) -> dict:
     workflow = packet["workflow"]
     phase = workflow.get("next_step", "P0")
     fallback, outputs = ROUTES.get(phase, ("pro-workflow-orchestrator", []))
+    completed = workflow.get("status") == "COMPLETE"
+    if completed:
+        fallback, outputs = "pro-workflow-orchestrator", []
     skill = workflow.get("recommended_skill") or fallback
     if not (plugin_root / "skills" / skill / "SKILL.md").is_file():
         skill = "pro-workflow-orchestrator"
@@ -31,6 +34,7 @@ def make_handoff(packet: dict, plugin_root: Path) -> dict:
     question = packet.get("focus", {}).get("question_id")
     return {"task_id": hashlib.sha256(f"{revision}:{question}:{skill}".encode()).hexdigest()[:24],
             "question_ids": [question] if question else [], "skill_id": skill,
+            "completed": completed, "acceptance_scope": workflow.get("acceptance_scope", "NOT_ACCEPTED"),
             "skill_path": str(plugin_root / "skills" / skill / "SKILL.md"), "input_revision": revision,
             "expected_outputs": ["paper_output_pro/" + p for p in outputs],
             "acceptance_checks": ["Read live Pro status; require fresh approvals and artifact hashes.",

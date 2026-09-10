@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -11,7 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "plugins/mathmodel/scripts"))
-from build_context_packet import build_packet
+from build_context_packet import build_packet, markdown
 from runtime.context import collect_facts, digest_file, read_contract, write_snapshot
 
 
@@ -143,6 +144,46 @@ class ContextTests(unittest.TestCase):
         value, source = read_contract(self.project, "../secret.json")
         self.assertIsNone(value)
         self.assertEqual(source["state"], "unknown")
+
+
+class CompletedContextTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("soffice") or Path("C:/Program Files/LibreOffice/program/soffice.exe").is_file(),
+                         "LibreOffice required for actual completed recovery")
+    def test_real_completion_scope_and_handoff_are_revoked_after_manuscript_edit(self):
+        with tempfile.TemporaryDirectory(dir=os.environ.get("MATHMODEL_TEST_TEMP")) as temporary:
+            project = Path(temporary) / "工程恢复 比赛"
+            project.mkdir()
+            # Use plugin Skill hashes from preflight onwards; canonical Claude
+            # approvals must not be silently transferred into a Codex installation.
+            program = (
+                "import sys; from pathlib import Path; repo=Path(sys.argv[1]); "
+                "skills=repo/'plugins/mathmodel/skills'; scripts=skills/'pro-workflow-orchestrator/scripts'; "
+                "sys.path.insert(0,str(scripts)); sys.path.insert(0,str(repo/'tests')); "
+                "import pro_contracts,pro_validation; import pro_fixture as fixture; "
+                "sys.path.insert(0,str(scripts)); fixture.SKILLS=skills; fixture.SCRIPTS=scripts; "
+                "fixture.complete(Path(sys.argv[2]))"
+            )
+            result = subprocess.run([sys.executable, "-B", "-c", program, str(REPO), str(project)],
+                                    capture_output=True, text=True, encoding="utf-8", timeout=120)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            def fingerprint():
+                return {str(p): (digest_file(p), p.stat().st_mtime_ns) for p in project.rglob("*") if p.is_file()}
+            before = fingerprint()
+            packet = build_packet(project, "q1")
+            self.assertEqual(before, fingerprint())
+            self.assertEqual(packet["workflow"]["acceptance_scope"], "ENGINEERING_SMOKE_ONLY", packet["workflow"])
+            self.assertEqual(packet["handoff"]["acceptance_scope"], "ENGINEERING_SMOKE_ONLY")
+            self.assertTrue(packet["handoff"]["completed"])
+            self.assertEqual(packet["handoff"]["expected_outputs"], [])
+            self.assertIn("无已报告阻塞", markdown(packet))
+            manuscript = project / "paper_output_pro/final_paper_source.md"
+            manuscript.write_text(manuscript.read_text(encoding="utf-8") + "\nAn unreviewed edit.\n", encoding="utf-8")
+            before = fingerprint()
+            packet = build_packet(project, "q1")
+            self.assertEqual(before, fingerprint())
+            self.assertFalse(packet["handoff"]["completed"])
+            self.assertEqual(packet["handoff"]["acceptance_scope"], "NOT_ACCEPTED")
+            self.assertTrue(packet["handoff"]["expected_outputs"])
 
 
 if __name__ == "__main__":

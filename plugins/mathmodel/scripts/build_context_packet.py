@@ -46,6 +46,7 @@ def build_packet(project_root: str | Path, question_id: str | None = None, *, ma
               "status": s.get("status", "unknown"), "failures": [str(x)[:180] for x in s.get("failures", [])[:2]]}
              for s in (guard.get("steps") or [])]
     workflow = {"status": guard.get("status", "UNKNOWN"), "current_step": guard.get("current_step", ""),
+        "acceptance_scope": guard.get("acceptance_scope", "NOT_ACCEPTED"),
         "next_step": guard.get("next_step") or status.get("stage") or "P0", "verified_count": status.get("verified_count", 0),
         "stage_count": status.get("stage_count", 10), "steps": steps,
         "recommended_skill": guard.get("recommended_skill", "pro-workflow-orchestrator"),
@@ -99,7 +100,8 @@ def markdown(packet: dict) -> str:
     lines = [f"# MathModel · {packet['project']['name']}", "",
         f"已验证 {wf['verified_count']}/{wf['stage_count']} 个阶段；下一阶段 {wf['next_step']}。",
         f"当前问题：{focus['question_id'] or '全项目'}；推荐 Skill：{packet['handoff']['skill_id']}",
-        f"下一步：{wf['next_action']}", "", "阻塞：" + ("；".join(wf["blockers"]) or "查看阶段所需批准与产物。")]
+        f"验收范围：{wf['acceptance_scope']}（ENGINEERING_SMOKE_ONLY 仅表示工程样例验收，不是比赛论文通过。）",
+        f"下一步：{wf['next_action']}", "", "阻塞：" + ("；".join(wf["blockers"]) or "无已报告阻塞；以实时 Pro 状态为准。")]
     for fact in packet["facts"]:
         value = fact["value"] if isinstance(fact["value"], str) else json.dumps(fact["value"], ensure_ascii=False)
         lines += ["", f"- {fact['title']} [{fact['state']}]：{value}", f"  来源：{fact['source']['path']}#{fact['source']['pointer']}"]
