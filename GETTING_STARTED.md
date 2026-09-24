@@ -2,7 +2,7 @@
 
 Flash 是速度优先的独立版本，适合 DeepSeek、Gemini、GLM 等 Flash 类高吞吐模型。
 
-1. 从 [Flash 分支](https://github.com/yushui2022/MathModel-Skill/tree/flash) 的 `dist/` 下载对应平台的 `MathModel-Skill-Flash-*.zip`。
+1. 从 [Flash 2.0.0-flash.1 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.0.0-flash.1) 下载对应平台的 `MathModel-Skill-Flash-*.zip`。
 2. 只在一个未安装 Standard、Lite、Pro 或 LaTeX 的项目根目录解压一个平台包。
 3. 创建 `problem_files/`，放入赛题和附件。
 4. 使用 Python 3.11 或 3.12，运行 `python -m pip install -r requirements.txt` 和 `python -m pip check`。

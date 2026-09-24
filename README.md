@@ -43,15 +43,17 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 
 ### 1. 下载 Flash 包
 
-进入 [Flash 分支](https://github.com/yushui2022/MathModel-Skill/tree/flash) 的 `dist/` 下载对应平台包，或等待本版本 Release 发布。不要把仓库源码 ZIP 当作平台安装包。
+从 [Flash 2.0.0-flash.1 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.0.0-flash.1) 下载对应平台包，也可以查看 [Flash 分支](https://github.com/yushui2022/MathModel-Skill/tree/flash) 的 `dist/`。不要把仓库源码 ZIP 当作平台安装包。
 
-| 平台 | 解压后的目录 |
-|---|---|
-| Codex | `.agents/skills/` |
-| Claude Code | `.claude/skills/` |
-| Trae | `.trae/skills/` |
+| 平台 | 直接下载 | 解压后的目录 |
+|---|---|---|
+| Codex | [Flash Codex 包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/MathModel-Skill-Flash-Codex.zip) | `.agents/skills/` |
+| Claude Code | [Flash Claude Code 包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/MathModel-Skill-Flash-Claude-Code.zip) | `.claude/skills/` |
+| Trae | [Flash Trae 包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/MathModel-Skill-Flash-Trae.zip) | `.trae/skills/` |
 
 保留用户已有的 `AGENTS.md` / `CLAUDE.md`，不要把不同版本的入口复制到同一项目。Python 建议使用 3.11 或 3.12，安装本包内 `requirements.txt` 后执行 `python -m pip check`。
+
+可用 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/SHA256SUMS.txt) 核对下载文件。
 
 ### 2. 放入题目并启动
 
