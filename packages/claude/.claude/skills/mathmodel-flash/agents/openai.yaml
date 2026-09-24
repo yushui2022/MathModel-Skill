@@ -1,0 +1,8 @@
+interface:
+  display_name: "MathModel Flash"
+  short_description: "高速生成带真实实验的基础长篇数学建模论文"
+  brand_color: "#D97706"
+  default_prompt: "Use $mathmodel-flash to quickly run real modeling experiments and produce an approximately 20-page basic Word paper draft from the contest files."
+
+policy:
+  allow_implicit_invocation: true

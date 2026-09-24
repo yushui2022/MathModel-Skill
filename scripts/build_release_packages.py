@@ -24,6 +24,7 @@ EXCLUDED_DIRS = {
     "crawled_data",
     "paper_output",
     "paper_output_lite",
+    "paper_output_flash",
 }
 EXCLUDED_FILES = {
     "data_requirements.json",
@@ -47,36 +48,36 @@ class PackageSpec:
 COMMON_DOCS = (
     (REPO_ROOT / "LICENSE", Path("LICENSE")),
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
-    (REPO_ROOT / "docs" / "lite-workflow.md", Path("docs/lite-workflow.md")),
-    (REPO_ROOT / "docs" / "lite-starter-prompt.md", Path("docs/lite-starter-prompt.md")),
+    (REPO_ROOT / "docs" / "flash-workflow.md", Path("docs/flash-workflow.md")),
+    (REPO_ROOT / "docs" / "flash-starter-prompt.md", Path("docs/flash-starter-prompt.md")),
 )
 
 
 PACKAGE_SPECS = (
     PackageSpec(
-        name="Lite Trae",
-        archive_name="MathModel-Skill-Lite-Trae.zip",
+        name="Flash Trae",
+        archive_name="MathModel-Skill-Flash-Trae.zip",
         roots=((REPO_ROOT / "packages" / "trae" / ".trae", Path(".trae")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "trae" / "README.md", Path("README-MathModel-Skill-Lite.md")),
+            (REPO_ROOT / "packages" / "trae" / "README.md", Path("README-MathModel-Skill-Flash.md")),
             *COMMON_DOCS,
         ),
     ),
     PackageSpec(
-        name="Lite Claude Code",
-        archive_name="MathModel-Skill-Lite-Claude-Code.zip",
+        name="Flash Claude Code",
+        archive_name="MathModel-Skill-Flash-Claude-Code.zip",
         roots=((REPO_ROOT / "packages" / "claude" / ".claude", Path(".claude")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill-Lite.md")),
+            (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill-Flash.md")),
             *COMMON_DOCS,
         ),
     ),
     PackageSpec(
-        name="Lite Codex",
-        archive_name="MathModel-Skill-Lite-Codex.zip",
+        name="Flash Codex",
+        archive_name="MathModel-Skill-Flash-Codex.zip",
         roots=((REPO_ROOT / "packages" / "codex" / "skills", Path(".agents/skills")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill-Lite.md")),
+            (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill-Flash.md")),
             *COMMON_DOCS,
         ),
     ),
@@ -151,7 +152,7 @@ def build_manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
         digest.update(b"\n")
     payload = {
         "schema_version": "1.0",
-        "edition": "lite",
+        "edition": "flash",
         "package": spec.name,
         "version": package_version(),
         "file_count": len(entries),
@@ -212,9 +213,8 @@ def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
 
 def clean_dist(output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    for spec in PACKAGE_SPECS:
-        target = output_dir / spec.archive_name
-        if target.exists():
+    for target in output_dir.glob("MathModel-Skill-*.zip"):
+        if target.is_file():
             target.unlink()
     staging = output_dir / "_staging"
     if staging.exists():

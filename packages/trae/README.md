@@ -1,11 +1,23 @@
-# MathModel Skill Lite for Trae
+# MathModel Skill Flash for Trae
 
-这是面向较弱或较旧模型的低上下文版本，只包含一个 `mathmodel-lite` Skill 和三个固定脚本。
+Flash 是速度优先的独立版本，适合 DeepSeek、Gemini、GLM 等 Flash 类高吞吐模型。它通过一个 `mathmodel-flash` 入口，快速完成真实实验、图表、结果和约 18–22 页目标的基础 Word 长文草稿。
 
-只在没有安装 Standard 的项目中，将 `.trae/skills/` 复制到项目根目录。不要同时保留 Standard 的 `paper-workflow-orchestrator`。把赛题放进 `problem_files/`，然后说：
+版本分支：
+
+| 版本 | 分支 | 作用 |
+|---|---|---|
+| Flash | [flash](https://github.com/yushui2022/MathModel-Skill/tree/flash) | 快速长文草稿，真实运行但不做严格终稿门禁 |
+| Lite | [lite](https://github.com/yushui2022/MathModel-Skill/tree/lite) | 普通或较旧模型的低负担基础报告 |
+| Standard | [standard](https://github.com/yushui2022/MathModel-Skill/tree/standard) | 正式竞赛论文与证据、Word/PDF 检查 |
+| Pro | [pro](https://github.com/yushui2022/MathModel-Skill/tree/pro) | 高计算投入的模型竞赛、复算和审稿；预发布 |
+| LaTeX | [Latex](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 独立实验性 TeX/PDF 旧流程 |
+
+**一个项目只安装一个版本、一个平台包，不要混装。** Flash 输出在 `paper_output_flash/`，不能读取 Standard、Lite 或 Pro 的旧结果。Flash PASS 只表示基础运行和文档检查通过；正式提交前请转用 Standard 或 Pro 复核。
+
+将本目录的 `.trae/skills/` 解压到项目根目录。使用 Python 3.11 或 3.12，安装包内 `requirements.txt` 后，把赛题和附件放进 `problem_files/`，然后发送：
 
 ```text
-请使用 MathModel Lite，严格按固定六步完成，并在 lite_report.json 为 PASS 后交付 paper.docx。
+请使用 $mathmodel-flash。按预检、计划、真实实验、长文写作、Word 检查的固定流程完成，所有产物写入 paper_output_flash/。只有 flash_report.json 为 PASS 才交付 paper.docx。
 ```
 
-Lite 输出位于 `paper_output_lite/`。它保留输入哈希、真实代码运行、输出哈希和占位检查，但不提供 Standard 的多 Skill 路由、原生 Word 公式、严格引文和 PDF 渲染 QA。
+详见仓库根目录 README 和 `docs/flash-starter-prompt.md`。

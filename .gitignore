@@ -8,6 +8,7 @@ problem_files/
 !examples/quickstart/problem_files/**
 paper_output_lite/
 tests/lite_sandbox/
+tests/flash_sandbox/
 
 .DS_Store
 Thumbs.db

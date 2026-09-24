@@ -1,9 +1,9 @@
-name: Release Lite
+name: Release MathModel Flash
 
 on:
   push:
     tags:
-      - "v2.2.1-lite.2"
+      - "v2.0.0-flash.1"
 
 permissions:
   contents: write
@@ -24,7 +24,7 @@ jobs:
 
       - name: Verify version and tracked archives
         run: |
-          test "$(cat VERSION)" = "2.2.1-lite.2"
+          test "$(cat VERSION)" = "2.0.0-flash.1"
           python scripts/build_release_packages.py --verify
 
       - name: Publish GitHub Release
@@ -32,10 +32,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "${GITHUB_REF_NAME}"
-          dist/MathModel-Skill-Lite-Trae.zip
-          dist/MathModel-Skill-Lite-Claude-Code.zip
-          dist/MathModel-Skill-Lite-Codex.zip
+          dist/MathModel-Skill-Flash-Trae.zip
+          dist/MathModel-Skill-Flash-Claude-Code.zip
+          dist/MathModel-Skill-Flash-Codex.zip
           dist/SHA256SUMS.txt
           --verify-tag
-          --title "MathModel Skill Lite 2.2.1-lite.2"
+          --prerelease
+          --title "MathModel Skill Flash 2.0.0-flash.1"
           --generate-notes

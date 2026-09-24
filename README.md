@@ -1,35 +1,33 @@
 <div align="center">
   <img src="./assets/mathmodel-banner.png" alt="MathModel Skill：豆包坐镇指挥，Fable 推导模型，Astra 编写代码" width="100%" />
 
-# MathModel Skill Lite
+# MathModel Skill Flash
 
-### 一个入口、六步流程，完成基础数学建模报告
+### 用高吞吐模型快速生成带真实实验的基础长篇数学建模论文
 
-[![Version](https://img.shields.io/badge/version-2.2.1--lite.3-0f766e)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.2.1-lite.3)
+[![Version](https://img.shields.io/badge/version-2.0.0--flash.1-D97706)](https://github.com/yushui2022/MathModel-Skill/tree/flash)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
 </div>
 
-MathModel Skill 帮助编程 Agent 从赛题和附件出发，分析问题、运行建模代码、整理真实结果并生成论文或报告。**Lite 2.2.1-lite.3 定位入门档**，建议 DeepSeek 等模型或需要低负担运行的用户从此版本开始。它只提供一个 `mathmodel-lite` 入口，减少流程选择和中间文件负担，也适合较旧或短上下文模型。
+MathModel Skill 是面向数学建模竞赛的 Agent 工作流。它从赛题和附件出发，读取数据、运行建模代码、保存真实结果和图表，再生成可编辑的论文文档。**Flash 是独立的速度优先版本**：适合 DeepSeek、Gemini、GLM 等 Flash 类高吞吐模型，目标是在较短时间内完成一份有实验内容、结果数值和 Word 导出的基础长文草稿。
 
-Lite 会产出建模代码、计算结果、图表、Markdown 与基础 Word 报告，并检查输入和运行结果是否发生变化。它不提供原生 Word 公式、严格引文审计或 PDF 渲染验收，不能把基础报告检查通过当作约 20 页正式竞赛论文验收。
+Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版验收，也不承诺 Pro 的多路线竞赛、独立复算和五角色审稿。它适合作为快速起稿和方案探索版本；正式提交前应使用 Standard 或 Pro 复核。
 
-**能力档位：入门 → 标准 → 旗舰**
+## 版本选择
 
-三个主版本按模型能力要求、流程复杂度与验证深度，从低到高分档；分别在独立 Git 分支维护，不是安装后的切换模式：
+本项目每个版本在独立 Git 分支维护，**不是安装后的切换模式**。质量和速度不是单一的高低排序：Lite 优先降低模型负担，Flash 优先降低等待时间，Standard 优先正式交付，Pro 优先验证深度。
 
-| 档位与版本 | 推荐模型示例 | 流程与交付能力 |
-|---|---|---|
-| **1 · 入门档** [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | **DeepSeek 等模型**；优先低负担运行 | **基础建模报告**：一个入口、六步流程，真实计算与基础 Word 导出；不含严格引文、原生 Word 公式和 PDF 验收。 |
-| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
-| **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)** 等前沿模型；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
+| 定位 | 版本与分支 | 适合谁 | 主要交付 |
+|---|---|---|---|
+| 速度优先 | [**Flash**](https://github.com/yushui2022/MathModel-Skill/tree/flash) | DeepSeek/Gemini/GLM 等 Flash 类高吞吐模型 | 真实实验、图表、结果和约 18–22 页目标的基础 Word 长文；不做严格终稿门禁 |
+| 低负担 | [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | DeepSeek 等普通、较旧或短上下文模型 | 固定六步基础报告；篇幅和验证较轻 |
+| 正式标准 | [**Standard**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | GPT-5.5、GPT-5.6 Sol 等中高能力模型 | 完整章节写作、证据检查、原生 Word 公式和 PDF 渲染检查 |
+| 高强度旗舰 | [**Pro**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | GPT-6 Astra、Claude Fable 5.1 等前沿模型 | 多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；预发布 |
+| TeX 实验 | [**LaTeX**](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 需要旧版 TeX/PDF 流程的用户 | 独立实验性分支，不等同于 Standard 或 Pro 的当前能力 |
 
-这是本项目的推荐搭配，不是对同品牌所有模型的固定排名，也不代表已完成实战认证；最终看具体型号、推理档位与工具能力。
-
-另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是第四个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
-
-**一个项目只安装一个版本、一个平台包，不要混装。** 各版本的具体导入方法见下方快速使用说明。
+各版本 README 都保留这张版本表，便于从任意分支回到其他版本。**一个项目只安装一个版本、一个平台包，不要混装。**
 
 ## 小红书
 
@@ -43,99 +41,58 @@ Lite 会产出建模代码、计算结果、图表、Markdown 与基础 Word 报
 
 ## 快速导入使用
 
-### 1. 下载一个 Lite 安装包
+### 1. 下载 Flash 包
 
-**一个项目只安装一个版本、一个平台包。** 普通模型、基础报告选择当前 Lite；正式竞赛写作可选 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)，需要高计算投入和独立复算可选 [Pro 预发布版](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
+进入 [Flash 分支](https://github.com/yushui2022/MathModel-Skill/tree/flash) 的 `dist/` 下载对应平台包，或等待本版本 Release 发布。不要把仓库源码 ZIP 当作平台安装包。
 
-从 [Lite 2.2.1-lite.3 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.2.1-lite.3) 下载：
+| 平台 | 解压后的目录 |
+|---|---|
+| Codex | `.agents/skills/` |
+| Claude Code | `.claude/skills/` |
+| Trae | `.trae/skills/` |
 
-| 平台 | 直接下载 | 解压后的 Skill 目录 |
-|---|---|---|
-| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Codex.zip) | `.agents/skills/` |
-| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Claude-Code.zip) | `.claude/skills/` |
-| Trae | [Trae 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Trae.zip) | `.trae/skills/` |
+保留用户已有的 `AGENTS.md` / `CLAUDE.md`，不要把不同版本的入口复制到同一项目。Python 建议使用 3.11 或 3.12，安装本包内 `requirements.txt` 后执行 `python -m pip check`。
 
-使用这些平台安装包，不要把 GitHub 的仓库源码 ZIP 当作安装包。可用 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/SHA256SUMS.txt) 核对下载文件。
+### 2. 放入题目并启动
 
-### 2. 解压并准备环境
-
-在独立的建模项目目录中解压，保留完整 Skill 文件夹，不覆盖用户已有 `AGENTS.md` / `CLAUDE.md`。确认隐藏的 Skill 目录已解压，再用对应 Agent 打开项目。
-
-使用 Python **3.11 或 3.12**，在项目根目录运行：
-
-```bash
-python -m pip install -r requirements.txt
-python -m pip check
-```
-
-Lite 只使用精简 Python 依赖，**不需要 LibreOffice 或 TeX**。
-
-### 3. 放入题目，启动 Agent
-
-创建 `problem_files/`，放入赛题和附件。例如 Codex 项目：
+在项目根目录创建 `problem_files/`，放入赛题和附件，然后对 Agent 说：
 
 ```text
-your-project/
-├── .agents/skills/mathmodel-lite/
-├── requirements.txt
-└── problem_files/
-    ├── 赛题.pdf
-    └── 附件.xlsx
+请使用 $mathmodel-flash 完成这道数学建模题，赛题和附件在 problem_files/。
+按 Flash 六步流程完成：预检、计划、真实实验、运行记录、约 20 页目标的完整基础论文、Word 检查。
+所有产物只写入 paper_output_flash/，不要读取其他版本的旧结果，不要用重复段落凑页数。
+只有 flash_report.json 为 PASS 后，才交付 paper.docx，并明确说明这是一份需要进一步复核的快速基础稿。
 ```
 
-题面由 Agent 读取；遇到无法读取的扫描件或附件时，先补充可读文本或文件，不猜测内容。然后对 Agent 说：
-
-```text
-请使用 $mathmodel-lite，赛题和附件已经放在 problem_files/。
-按固定六步完成：预检、计划、建模脚本、真实运行、写报告、检查并生成 Word。
-所有产物写入 paper_output_lite/，不要读取其他版本的旧结果。
-每个问题分别说明方法、关键数值、检验和局限，允许分多轮写完整基础稿。
-除非我明确要求，不改成短报告或安装测试模式。
-只有 lite_report.json 为 PASS 后，才交付对应范围的 paper.docx。
-```
-
-若 Agent 没有识别入口，让它先读取所安装目录中的 `mathmodel-lite/SKILL.md`。正常使用不需要逐条运行脚本；更多说明见 [Lite 启动提示词](docs/lite-starter-prompt.md)。
-
-完成后查看 `paper_output_lite/paper.docx`、`paper.md` 和 `lite_report.json`；代码、结果和图表也保留在同一输出目录。
+也可以直接读取 [Flash 启动提示词](docs/flash-starter-prompt.md)。
 
 ## 原理介绍
 
-### 一条线性流程
-
 ```text
 赛题与附件
-→ 输入预检 → 最小计划 → 一个 model.py → 真实运行
-→ 根据 results.json 写报告 → 最终检查与 Word 导出
+→ 输入哈希预检
+→ 单路线快速计划
+→ 一个 model.py 真实运行
+→ 保存 results / CSV / PNG
+→ 生成有实验内容的长文
+→ 基础一致性检查与 Word 导出
 ```
 
-三个用户命令分别是 `lite_preflight.py`、`lite_run.py` 和 `lite_finalize.py`。其他共享脚本服务于这些命令，不增加新的模型决策步骤或多 Skill 路由。
+Flash 用少量固定脚本守住最低真实性底线：预检记录输入，运行器绑定计划、脚本和结果，终检检查每个问题、关键数值、图表和 DOCX 重开内容。它刻意不加入 Pro 的高成本研究闭环，以保持 Flash 模型的速度优势。
 
-### 用脚本守住真实性底线
+### 论文长度说明
 
-预检记录附件清单和 SHA-256，运行时绑定计划、代码、输入与输出。输入、计划或代码发生变化后必须重新预检或运行；每次运行清除旧 `results.json`，不能用空操作冒充新计算。
+默认目标是约 18–22 页，至少 9000 个有效字符，并按问题展开方法、算法、实验、结果、检验、敏感性和局限。脚本会给出粗略页数估计；不足目标只告警，不能靠复制正文通过。Word 页数会受到字体、页边距、表格和图片影响，因此 Flash 不把估算页数描述成排版保证。
 
-执行默认超时 300 秒，可根据算法显式调整；文件路径必须留在项目内。这些是运行与文件完整性保护，不是针对任意代码的安全沙箱。
+### 明确限制
 
-### 基础报告不等于竞赛终稿
+Flash PASS 不是数学正确性证明，也不是正式竞赛验收。没有严格引用审计、原生 OMML 公式、PDF 渲染门禁、独立双路径复算和多角色审稿时，应在提交前转入 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard) 或 [Pro](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
 
-默认基础报告至少 1500 有效字符，每问独立标题下至少 150 字符，数值指标必须出现在对应问题的正文中。脚本还检查空答案、非有限指标、占位内容、重复正文和缺失证据。
-
-图片必须对应运行记录，导出时真正嵌入 DOCX，之后重新打开核对。它不检查原生 Word OMML、严格正文引文或最终 PDF 排版。
-
-只有用户明确要求时才声明短报告或测试范围，并说明理由。篇幅门槛用于拦截过短或不完整报告，不证明建模假设正确或论文优秀。
-
-## 验证状态与详细文档
-
-- 发布提交通过 15 项本地自动测试；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940773858) 覆盖 Windows/Ubuntu、Python 3.11/3.12 与确定性安装包检查。
-- [安装指南](docs/agent-install-guide.md) · [固定流程与范围说明](docs/lite-workflow.md) · [启动提示词](docs/lite-starter-prompt.md)
-- 当前分支只维护 Lite，不包含 Standard 或 Pro 的工作流。分支 `dist/` 随提交更新，Release 保留固定发布快照。
-
-开发者可在仓库中执行：
+## 开发验证
 
 ```bash
 python scripts/sync_platform_packages.py --check
-python tests/run_lite_tests.py
 python scripts/build_release_packages.py --verify
 ```
 
-[MIT License](LICENSE)，Copyright (c) 2026 yushui2022.
+Flash 当前只维护 `mathmodel-flash` 一个入口，三端包都由 Claude canonical payload 同步生成；分支内不包含 Standard、Lite 或 Pro 的工作流。

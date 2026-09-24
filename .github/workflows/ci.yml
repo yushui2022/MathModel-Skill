@@ -1,4 +1,4 @@
-name: Lite CI
+name: MathModel Flash CI
 
 on:
   push:
@@ -40,11 +40,11 @@ jobs:
       - name: Compile Python payload
         run: python -m compileall -q packages scripts tests
 
-      - name: Run Lite test suite
-        run: python tests/run_lite_tests.py
+      - name: Run Flash test suite
+        run: python tests/run_flash_tests.py
 
   packages:
-    name: Deterministic tracked packages
+    name: Deterministic tracked Flash packages
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

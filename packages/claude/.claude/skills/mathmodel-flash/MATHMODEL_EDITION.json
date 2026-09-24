@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "product": "MathModel-Skill",
+  "edition": "flash",
+  "version": "2.0.0-flash.1",
+  "entry_skill": "mathmodel-flash"
+}
