@@ -15,21 +15,22 @@ MathModel Skill 帮助编程 Agent 完成题意分析、建模代码、真实计
 
 **这是旧版实验性分支，不是当前 Standard 或 Pro 的 LaTeX 模式。** 本次发布为 `latex-2026.09.05` 日期快照，重点加固导出完整性；未完成真实 XeLaTeX 编译验收。普通正式论文任务优先使用 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)，高计算投入与独立复算选择 [Pro](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
 
-**能力档位：入门 → 标准 → 旗舰**
+**版本分工：低负担 → 速度优先 → 标准交付 → 旗舰验证**
 
-三个主版本按模型能力要求、流程复杂度与验证深度，从低到高分档；分别在独立 Git 分支维护，不是安装后的切换模式：
+Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护，不是安装后的切换模式。Flash 是速度优先路线，不表示它在质量档位上高于 Lite：
 
 | 档位与版本 | 推荐模型示例 | 流程与交付能力 |
 |---|---|---|
+| **速度优先** [**Flash（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/flash) | **DeepSeek/Gemini/GLM 等 Flash 类模型**；优先快速出稿 | **基础长文草稿**：真实实验、图表、结果和约 18–22 页目标的 Word；不含严格终稿门禁。 |
 | **1 · 入门档** [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | **DeepSeek 等模型**；优先低负担运行 | **基础建模报告**：一个入口、六步流程，真实计算与基础 Word 导出；不含严格引文、原生 Word 公式和 PDF 验收。 |
 | **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
 | **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)** 等前沿模型；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
 
 这是本项目的推荐搭配，不是对同品牌所有模型的固定排名，也不代表已完成实战认证；最终看具体型号、推理档位与工具能力。
 
-另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是第四个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
+另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是另一个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
 
-**一个项目只安装一个版本、一个平台包，不要混装。** 各版本的具体导入方法见下方快速使用说明。
+**一个项目只安装一个版本、一个平台包，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
 
 ## 小红书
 
