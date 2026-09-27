@@ -42,7 +42,7 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
   </a>
 </p>
 
-+## 广告/推荐：TokensFactory
+## TokensFactory
 
 <p align="center">
   <a href="https://tokensfactory.cc/">
