@@ -39,7 +39,7 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
   </a>
 </p>
 
-+## 广告/推荐：TokensFactory
+## TokensFactory
 
 <p align="center">
   <a href="https://tokensfactory.cc/">
