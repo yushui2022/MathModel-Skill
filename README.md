@@ -39,6 +39,19 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
   </a>
 </p>
 
++## 广告/推荐：TokensFactory
+
+<p align="center">
+  <a href="https://tokensfactory.cc/">
+    <img src="./assets/tokensfactory-logo.png" alt="TokensFactory Logo" width="96" />
+  </a>
+</p>
+
+### TokensFactory
+
+[TokensFactory](https://tokensfactory.cc/) 是一个统一的 AI 模型聚合与分发网关，支持将不同大语言模型转换为 OpenAI、Claude、Gemini 等兼容接口，方便个人和团队集中管理模型。需要快速接入图片、视频或文本模型时，可以查看 [TokensFactory Agent 快速接入](https://tokensfactory.cc/skills)。
+
+
 ## 快速导入使用
 
 ### 1. 下载 Flash 包
