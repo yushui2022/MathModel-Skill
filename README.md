@@ -23,11 +23,15 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 |---|---|---|---|
 | 速度优先 | [**Flash**](https://github.com/yushui2022/MathModel-Skill/tree/flash) | DeepSeek/Gemini/GLM 等 Flash 类高吞吐模型 | 真实实验、图表、结果和约 18–22 页目标的基础 Word 长文；不做严格终稿门禁 |
 | 低负担 | [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | DeepSeek 等普通、较旧或短上下文模型 | 固定六步基础报告；篇幅和验证较轻 |
-| 正式标准 | [**Standard**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | GPT-5.5、GPT-5.6 Sol 等中高能力模型 | 完整章节写作、证据检查、原生 Word 公式和 PDF 渲染检查 |
-| 高强度旗舰 | [**Pro**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | GPT-6 Astra、Claude Fable 5.1 等前沿模型 | 多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；预发布 |
+| 正式标准 | [**Standard**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)、[Claude Opus 5.5](https://platform.claude.com/docs/en/models/opus-5-5/overview) 等；旧款强模型仍可用 | 完整章节写作、证据检查、原生 Word 公式和 PDF 渲染检查 |
+| 高强度旗舰 | [**Pro**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | GPT-6 Astra、[Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)、Opus 5.5、GPT-6.1 Sol 等前沿模型 | 多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；预发布 |
 | TeX 实验 | [**LaTeX**](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 需要旧版 TeX/PDF 流程的用户 | 独立实验性分支，不等同于 Standard 或 Pro 的当前能力 |
 
 各版本 README 都保留这张版本表，便于从任意分支回到其他版本。**一个项目只安装一个版本、一个平台包，不要混装。**
+
+模型推荐更新于 **2026-10-07**：已核对 Opus 5.5、Fable 5.1、GPT-6.1 Sol 的官方配置资料，尚未完成这些模型的完整赛题长文实测。**档位区分的是工作流，不是模型使用权限**：同一个模型可选 Standard 控制投入，也可选 Pro 加深验证；GPT-5.5、GPT-5.6 Sol 等旧款强模型仍可使用 Standard。
+
+这不是对同品牌所有模型的固定排名，也不是质量认证。模型名称、API 档位与宿主实际能力须分开核对；中转站的显示名不能证明底层型号。
 
 ## 小红书
 
