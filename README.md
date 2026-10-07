@@ -5,14 +5,14 @@
 
 ### 高计算投入、独立复算与多角色审稿的数学建模工作流
 
-[![Version](https://img.shields.io/badge/version-3.3.0--pro.1-0f766e)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v3.3.0-pro.1)
-[![Status](https://img.shields.io/badge/status-Preview-d97706)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v3.3.0-pro.1)
+[![Version](https://img.shields.io/badge/version-3.3.0--pro.2-0f766e)](https://github.com/yushui2022/MathModel-Skill/tree/pro)
+[![Status](https://img.shields.io/badge/status-Preview-d97706)](https://github.com/yushui2022/MathModel-Skill/tree/pro)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
 </div>
 
-MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.1 定位旗舰档**，首选 GPT-6 Astra、Claude Fable 5.1 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
+MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.2 定位旗舰档**，推荐 GPT-6.1 Sol、Claude Opus 5.5、Claude Fable 5.1、GPT-6 Astra 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
 
 Pro 输出正式 Markdown、原生公式 Word、渲染 PDF，以及代码、图表、证据与评审记录。正常流程有 **三个用户确认点**，其余已授权工作自动推进。当前为 **Preview 预发布**：工程测试通过，但真实多问赛题约 20 页长文的前向质量验收尚未完成，不承诺论文优秀或竞赛获奖。
 
@@ -24,10 +24,12 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 |---|---|---|
 | **速度优先** [**Flash（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/flash) | **DeepSeek/Gemini/GLM 等 Flash 类模型**；优先快速出稿 | **基础长文草稿**：真实实验、图表、结果和约 18–22 页目标的 Word；不含严格终稿门禁。 |
 | **1 · 入门档** [**Lite**](https://github.com/yushui2022/MathModel-Skill/tree/lite) | **DeepSeek 等模型**；优先低负担运行 | **基础建模报告**：一个入口、六步流程，真实计算与基础 Word 导出；不含严格引文、原生 Word 公式和 PDF 验收。 |
-| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | **[GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5) / [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)** 等；兼顾能力与投入 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
-| **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)** 等前沿模型；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
+| **2 · 标准档** [**Standard（默认）**](https://github.com/yushui2022/MathModel-Skill/tree/standard) | **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol) / [Claude Opus 5.5](https://platform.claude.com/docs/en/models/opus-5-5/overview)** 等；兼顾能力与投入，旧款强模型仍可用 | **正式竞赛论文**：完整章节写作、证据与写作检查、原生公式 Word 和 PDF 渲染检查，流程复杂度可控。 |
+| **3 · 旗舰档** [**Pro（预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | **[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) / [Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)**，以及 **Opus 5.5 / GPT-6.1 Sol**；接受高计算投入 | **高强度研究与验证**：多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；有三个用户确认点。 |
 
-这是本项目的推荐搭配，不是对同品牌所有模型的固定排名，也不代表已完成实战认证；最终看具体型号、推理档位与工具能力。
+模型推荐更新于 **2026-10-07**：已核对 Opus 5.5、Fable 5.1、GPT-6.1 Sol 的官方配置资料，尚未完成这些模型的完整赛题长文实测。**档位区分的是工作流，不是模型使用权限**：同一个模型可选 Standard 控制投入，也可选 Pro 加深验证；GPT-5.5、GPT-5.6 Sol 等旧款强模型仍可使用 Standard。
+
+这不是对同品牌所有模型的固定排名，也不是质量认证。模型名称、API 档位与宿主实际能力须分开核对；中转站的显示名不能证明底层型号。
 
 另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是另一个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
 
@@ -62,14 +64,14 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 Pro 适合能稳定执行长任务、复杂工具调用和隔离评审的模型。若希望控制复杂度，选择 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)；普通或较旧模型优先选择 [Lite](https://github.com/yushui2022/MathModel-Skill/tree/lite)。
 
-**一个项目只安装一个版本、一个平台包。** Pro 只支持 Codex 与 Claude Code，不提供 Trae 包。从 [Pro 3.3.0-pro.1 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v3.3.0-pro.1) 下载：
+**一个项目只安装一个版本、一个平台包。** Pro 只支持 Codex 与 Claude Code，不提供 Trae 包。以下为 `pro` 分支内 **3.3.0-pro.2** 安装包，包含本次模型适配；本次尚未创建新 Release：
 
 | 平台 | 直接下载 | 解压后的 Skill 目录 |
 |---|---|---|
-| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v3.3.0-pro.1/MathModel-Skill-Pro-Codex.zip) | `.agents/skills/` |
-| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v3.3.0-pro.1/MathModel-Skill-Pro-Claude-Code.zip) | `.claude/skills/` |
+| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro-Codex.zip) | `.agents/skills/` |
+| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro-Claude-Code.zip) | `.claude/skills/` |
 
-使用平台安装包，不要把 GitHub 仓库源码 ZIP 当作安装包。可用 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v3.3.0-pro.1/SHA256SUMS.txt) 核验下载。
+使用平台安装包，不要把 GitHub 仓库源码 ZIP 当作安装包。ZIP 内含 `VERSION` 和逐文件哈希清单 `MATHMODEL_BUILD.json`；分支包随提交更新。[旧版 3.3.0-pro.1 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v3.3.0-pro.1) 保持固定快照，不包含此次更新。
 
 ### 2. 导入项目并准备环境
 
@@ -145,6 +147,14 @@ P0 能力与输入预检
 
 P0 记录用户声明的模型、档位、平台、运行环境、联网和多代理能力，使用维护中的能力档案路由；未知模型会提示核验，但不会自动降低工作要求。**配置兼容不等于真实赛题合格认证**，具体型号由安装包内的 `pro-workflow-orchestrator/references/model-profiles.json` 维护。
 
+| 当前模型 | API 标识 | 配置要点 |
+|---|---|---|
+| GPT-6.1 Sol | `gpt-6.1-sol` | 工具调用使用 Responses API；默认 `medium`，支持至 `max`，`ultra` 不是 API 档位。 |
+| Claude Opus 5.5 | `claude-opus-5-5` | API 默认 `medium`；自适应思考常开，不能沿用关闭思考或强制工具的旧配置。 |
+| Claude Fable 5.1 | `claude-fable-5-1` | API 默认 `high`；思考块绑定模型和会话，不能随意跨模型复制历史。 |
+
+Pro 建议复杂建模与审稿从 `max`、正文写作从 `high` 开始实测，**不是已验证的最优档位**。P0 接受 `opus5.5`、`fable5.1`、`gptsol6.1` 等声明，但不会修改宿主配置、验证中转站底层模型或自动授予工具权限。旧模型档案保留；未知版本不再猜测为旧版本。依据与执行细节见[模型指南](https://github.com/yushui2022/MathModel-Skill/blob/pro/packages/claude/.claude/skills/pro-workflow-orchestrator/references/frontier-model-guidance.md)。
+
 多代理不可用时可以顺序运行真正独立的上下文；不能提供隔离环境时应报告能力缺口，不得用五个角色名称冒充五次独立审稿。数学正确性、代码复现、来源、表达和对抗质疑五个角色须审查同一版论文，无未解决 Critical/Major 问题后才能交付。
 
 ### 从冻结证据生成完整论文
@@ -163,6 +173,7 @@ Pro 不设任务总 Token、候选总量或运行时间预算；正常检查点�
 
 ## 验证状态与详细文档
 
+- 3.3.0-pro.2 分支更新新增模型识别、档位、独立核验日期和 Flash 混装回归覆盖；本地 90 项测试通过，含 LibreOffice 渲染。这是脚本与流程测试，不是三个新模型的在线实战测试。
 - 发布提交通过 81 项本地自动测试，包含真实 LibreOffice 渲染；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940773875) 覆盖 Windows/Ubuntu/macOS、Python 3.11/3.12。
 - 现有五页构造算例和合成分页测试验证工程机制，不是完整竞赛长文的质量证据。真实多问赛题长文前向验收仍未完成，因此当前 Release 标记为 Preview。
 - 升级到 3.3 须重新预检、计算与审批，不能复用旧版结果和批准。

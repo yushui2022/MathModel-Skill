@@ -42,6 +42,7 @@ COMMON_FILES = (
     (REPO_ROOT / "docs" / "pro-3.2-validation.md", Path("docs/pro-3.2-validation.md")),
     (REPO_ROOT / "assets" / "mathmodel-banner.png", Path("assets/mathmodel-banner.png")),
     (REPO_ROOT / "assets" / "orlando-liu-social.jpg", Path("assets/orlando-liu-social.jpg")),
+    (REPO_ROOT / "assets" / "tokensfactory-logo.png", Path("assets/tokensfactory-logo.png")),
 )
 
 

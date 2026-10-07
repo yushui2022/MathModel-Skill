@@ -1,11 +1,12 @@
 {
   "schema_version": "1.0",
-  "catalog_version": "2026-09-04",
-  "verified_on": "2026-09-04",
+  "catalog_version": "2026-10-07",
+  "verified_on": "2026-10-07",
   "catalog_freshness_days": 90,
   "profiles": [
     {
       "profile_id": "openai-gpt-6-astra",
+      "verified_on": "2026-09-04",
       "vendor": "openai",
       "display_name": "GPT-6 Astra",
       "canonical_model_id": "gpt-6-astra",
@@ -32,13 +33,76 @@
       ]
     },
     {
+      "profile_id": "openai-gpt-6-1-sol",
+      "verified_on": "2026-10-07",
+      "vendor": "openai",
+      "display_name": "GPT-6.1 Sol",
+      "canonical_model_id": "gpt-6.1-sol",
+      "aliases": ["gpt-6.1-sol", "gpt 6.1 sol", "gpt sol 6.1", "gptsol6.1", "sol6.1", "sol 6.1"],
+      "support_tier": "preferred",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "api_default_effort": "medium",
+      "effort_aliases": {},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": [
+        "checkpoint_autonomy",
+        "explicit_parallel_delegation",
+        "responses_api_for_tool_calling",
+        "verify_host_effort",
+        "preserve_long_form_output"
+      ],
+      "official_sources": [
+        "https://developers.openai.com/api/docs/models/gpt-6.1-sol"
+      ]
+    },
+    {
+      "profile_id": "anthropic-claude-opus-5-5",
+      "verified_on": "2026-10-07",
+      "vendor": "anthropic",
+      "display_name": "Claude Opus 5.5",
+      "canonical_model_id": "claude-opus-5-5",
+      "aliases": ["claude-opus-5-5", "claude opus 5.5", "opus 5.5", "opus5.5"],
+      "support_tier": "preferred",
+      "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "api_default_effort": "medium",
+      "effort_aliases": {},
+      "phase_effort": {
+        "problem_and_research": "max",
+        "experiments": "max",
+        "authoring": "high",
+        "review_and_delivery": "max"
+      },
+      "behavior_flags": [
+        "checkpoint_autonomy",
+        "adaptive_thinking_always_on",
+        "no_forced_tool_choice",
+        "model_and_conversation_bound_thinking",
+        "append_only_history",
+        "explicit_subagent_scope",
+        "verify_host_effort",
+        "preserve_long_form_output"
+      ],
+      "official_sources": [
+        "https://platform.claude.com/docs/en/models/opus-5-5/overview",
+        "https://platform.claude.com/docs/en/build-with-claude/effort",
+        "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5-5"
+      ]
+    },
+    {
       "profile_id": "anthropic-claude-fable-5-1",
+      "verified_on": "2026-10-07",
       "vendor": "anthropic",
       "display_name": "Claude Fable 5.1",
       "canonical_model_id": "claude-fable-5-1",
-      "aliases": ["claude-fable-5-1", "claude fable 5.1", "fable 5.1", "fable-5-1"],
+      "aliases": ["claude-fable-5-1", "claude fable 5.1", "fable 5.1", "fable-5-1", "fable5.1"],
       "support_tier": "preferred",
       "supported_efforts": ["low", "medium", "high", "xhigh", "max"],
+      "api_default_effort": "high",
       "effort_aliases": {"ultra": "max"},
       "phase_effort": {
         "problem_and_research": "max",
@@ -48,6 +112,9 @@
       },
       "behavior_flags": [
         "checkpoint_autonomy",
+        "adaptive_thinking_always_on",
+        "no_forced_tool_choice",
+        "model_and_conversation_bound_thinking",
         "append_only_history",
         "batch_independent_tools",
         "lead_continues_during_delegation",
@@ -55,11 +122,14 @@
       ],
       "official_sources": [
         "https://www.anthropic.com/claude/fable",
+        "https://platform.claude.com/docs/en/models/fable-5-1/whats-new-fable-5-1",
+        "https://platform.claude.com/docs/en/build-with-claude/effort",
         "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5-1"
       ]
     },
     {
       "profile_id": "anthropic-claude-opus-5",
+      "verified_on": "2026-09-04",
       "vendor": "anthropic",
       "display_name": "Claude Opus 5",
       "canonical_model_id": "claude-opus-5",
@@ -86,6 +156,7 @@
     },
     {
       "profile_id": "anthropic-claude-sonnet-5",
+      "verified_on": "2026-09-04",
       "vendor": "anthropic",
       "display_name": "Claude Sonnet 5",
       "canonical_model_id": "claude-sonnet-5",
@@ -112,6 +183,7 @@
     },
     {
       "profile_id": "anthropic-claude-fable-5",
+      "verified_on": "2026-09-04",
       "vendor": "anthropic",
       "display_name": "Claude Fable 5",
       "canonical_model_id": "claude-fable-5",
@@ -130,6 +202,7 @@
     },
     {
       "profile_id": "openai-gpt-5-6-sol",
+      "verified_on": "2026-09-04",
       "vendor": "openai",
       "display_name": "GPT-5.6 Sol",
       "canonical_model_id": "gpt-5.6-sol",

@@ -64,6 +64,98 @@ class CoreTests(unittest.TestCase):
                 self.assertTrue(pro_preflight.reasoning_profile(profile, "ultra")["compatible"])
         self.assertIsNone(pro_preflight.match_model_profile("unknown-future-model", catalog)[0])
 
+    def test_october_model_aliases_select_the_exact_version(self):
+        catalog = pro_preflight.load_model_catalog()
+        cases = {
+            "gpt-6.1-sol": "gpt-6.1-sol",
+            "GPT Sol 6.1": "gpt-6.1-sol",
+            "gptsol6.1": "gpt-6.1-sol",
+            "Sol6.1 max": "gpt-6.1-sol",
+            "claude-opus-5-5": "claude-opus-5-5",
+            "Claude Opus 5.5": "claude-opus-5-5",
+            "opus5.5": "claude-opus-5-5",
+            "OPUS 5.5 high": "claude-opus-5-5",
+            "claude-fable-5-1": "claude-fable-5-1",
+            "fable5.1": "claude-fable-5-1",
+        }
+        for declared, canonical in cases.items():
+            with self.subTest(declared=declared):
+                profile, _ = pro_preflight.match_model_profile(declared, catalog)
+                self.assertEqual(profile["canonical_model_id"], canonical)
+                self.assertEqual(profile["support_tier"], "preferred")
+                self.assertEqual(profile["verified_on"], "2026-10-07")
+
+    def test_unknown_versions_do_not_inherit_old_profiles(self):
+        catalog = pro_preflight.load_model_catalog()
+        for declared in ("Claude Opus 5.6", "claude-opus-5-55", "fable 5.2", "fable-5-1-2",
+                         "gpt-6.2-sol", "gpt-6.1-sol-2", "claude-opus-5-20261001", "astra-7"):
+            with self.subTest(declared=declared):
+                self.assertIsNone(pro_preflight.match_model_profile(declared, catalog)[0])
+
+    def test_october_efforts_use_documented_api_values(self):
+        catalog = pro_preflight.load_model_catalog()
+        for name, default in (("gptsol6.1", "medium"), ("opus5.5", "medium"), ("fable5.1", "high")):
+            profile, _ = pro_preflight.match_model_profile(name, catalog)
+            self.assertEqual(profile["api_default_effort"], default)
+            self.assertIsNone(pro_preflight.reasoning_profile(profile, "auto")["compatible"])
+            for effort in ("low", "medium", "high", "xhigh", "max"):
+                self.assertTrue(pro_preflight.reasoning_profile(profile, effort)["compatible"])
+            for effort in ("none", "minimal", "unsupported"):
+                self.assertFalse(pro_preflight.reasoning_profile(profile, effort)["compatible"])
+            if name != "fable5.1":
+                self.assertFalse(pro_preflight.reasoning_profile(profile, "ultra")["compatible"])
+
+    def test_profile_freshness_is_not_renewed_by_other_model_updates(self):
+        catalog = pro_preflight.load_model_catalog()
+        catalog["verified_on"] = "2000-01-01"
+        fresh = {"verified_on": pro_preflight.date.today().isoformat()}
+        self.assertFalse(pro_preflight.catalog_is_stale(catalog, fresh))
+        catalog["verified_on"] = fresh["verified_on"]
+        self.assertTrue(pro_preflight.catalog_is_stale(catalog, {"verified_on": "2000-01-01"}))
+
+    def test_catalog_rejects_invalid_efforts_aliases_and_dates(self):
+        path = self.root / "invalid-model-catalog.json"
+        for field, value in (("aliases", [""]), ("phase_effort", {"authoring": "invalid"}),
+                             ("api_default_effort", "invalid"), ("verified_on", "invalid")):
+            with self.subTest(field=field):
+                catalog = pro_preflight.load_model_catalog()
+                catalog["profiles"][0][field] = value
+                write_json(path, catalog)
+                with self.assertRaises(ValueError):
+                    pro_preflight.load_model_catalog(path)
+
+    def test_new_model_preflight_does_not_claim_runtime_or_quality_certification(self):
+        for model, platform in (("gptsol6.1", "codex"), ("opus5.5", "claude-code"), ("fable5.1", "claude-code")):
+            with self.subTest(model=model):
+                run(SCRIPTS / "pro_preflight.py", "--project-root", self.project, "--platform", platform,
+                    "--model", model, "--reasoning", "max")
+                config = read_json(self.root / "pro_config.json")
+                self.assertEqual(config["status"], "PASS")
+                self.assertEqual(config["model_support_status"], "PREFERRED")
+                self.assertEqual(config["reasoning_profile"]["normalized_effort"], "max")
+                self.assertEqual(config["checkpoint_mode"], "required")
+                self.assertEqual(config["model_profile_catalog"]["profile_verified_on"], "2026-10-07")
+                verification = config["model_verification"]
+                self.assertFalse(verification["live_model_probed"])
+                self.assertFalse(verification["host_effort_verified"])
+                self.assertFalse(verification["contest_quality_certified"])
+
+    def test_preflight_reports_unspecified_and_host_only_effort(self):
+        for model, effort, warning in (("opus5.5", "unspecified", "No reasoning effort"),
+                                      ("gptsol6.1", "ultra", "not listed"),
+                                      ("fable5.1", "ultra", "catalog only")):
+            with self.subTest(model=model, effort=effort):
+                result = run(SCRIPTS / "pro_preflight.py", "--project-root", self.project, "--platform", "codex",
+                             "--model", model, "--reasoning", effort)
+                self.assertIn(warning, result.stdout)
+
+    def test_switching_model_requires_fresh_checkpoint_approval(self):
+        approve(self.project, 1)
+        run(SCRIPTS / "pro_preflight.py", "--project-root", self.project, "--platform", "codex",
+            "--model", "gptsol6.1", "--reasoning", "max")
+        self.assertTrue(require_checkpoints(self.project, self.root, 1))
+        self.assertEqual(read_json(self.root / "checkpoint_ledger.json")["checkpoints"]["1"]["status"], "PENDING")
+
     def test_preflight_warns_ordinary_model_and_blocks_mixed_install(self):
         result = run(SCRIPTS / "pro_preflight.py", "--project-root", self.project, "--platform", "codex", "--model", "ordinary")
         self.assertIn("WARNING", result.stdout)
@@ -75,6 +167,22 @@ class CoreTests(unittest.TestCase):
                 result = run(SCRIPTS / "pro_preflight.py", "--project-root", self.project, "--platform", "codex", "--model", "astra", check=False)
                 self.assertNotEqual(result.returncode, 0)
                 shutil.rmtree(path)
+
+    def test_flash_mixed_install_is_blocked_with_or_without_marker(self):
+        for skill_root in pro_preflight.SKILL_ROOTS:
+            for marked in (False, True):
+                with self.subTest(skill_root=skill_root, marked=marked):
+                    path = self.project / skill_root / "mathmodel-flash"
+                    path.mkdir(parents=True)
+                    (path / "SKILL.md").write_text("flash test entry", encoding="utf-8")
+                    if marked:
+                        write_json(path / "MATHMODEL_EDITION.json", {"edition": "flash", "version": "2.0.0-flash.1"})
+                    result = run(SCRIPTS / "pro_preflight.py", "--project-root", self.project,
+                                 "--platform", "codex", "--model", "opus5.5", check=False)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("mixed MathModel editions", result.stdout)
+                    self.assertEqual(read_json(self.root / "pro_config.json")["status"], "BLOCKED")
+                    shutil.rmtree(path)
 
     def test_old_pro_installation_is_blocked(self):
         path = self.project / ".agents/skills/pro-workflow-orchestrator"

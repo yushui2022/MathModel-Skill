@@ -1,6 +1,6 @@
 ---
 name: pro-workflow-orchestrator
-description: "MathModel Skill Pro 总入口。用于 GPT-6 Astra、Claude Fable 5.1、Opus 5、Sonnet 5 等前沿模型执行高算力数学建模、多路线竞赛、独立复算、三次用户确认和 Word/PDF 双门禁。完整任务必须先调用本 skill。"
+description: "MathModel Skill Pro 总入口。用于 GPT-6.1 Sol、GPT-6 Astra、Claude Opus 5.5、Fable 5.1 等前沿模型执行高算力数学建模、多路线竞赛、独立复算、三次用户确认和 Word/PDF 双门禁。完整任务必须先调用本 skill。"
 ---
 
 # MathModel Pro Workflow Orchestrator
@@ -16,17 +16,20 @@ description: "MathModel Skill Pro 总入口。用于 GPT-6 Astra、Claude Fable 
 python .agents/skills/pro-workflow-orchestrator/scripts/pro_preflight.py --platform claude-code --model "<用户声明模型>" --reasoning "<档位>" --multi-agent <available|unavailable|unknown> --network <available|unavailable|unknown> --parallel-tools <available|unavailable|unknown> --async-tools <available|unavailable|unknown>
 ```
 
-Codex 将路径改为 `.agents/skills/`。首选模型为 GPT-6 Astra 与 Claude Fable 5.1；
+Codex 将路径改为 `.agents/skills/`。推荐 GPT-6.1 Sol、GPT-6 Astra、Claude Opus 5.5 与 Fable 5.1；
 Claude Opus 5、Sonnet 5、Fable 5 和 GPT-5.6 Sol 保持完整支持。其他模型仅显示
 能力警告，仍执行完整 Pro 门禁，不降级、不缩减候选和验证。
 
-若发现 Standard、Lite 或旧 Pro 混装，立即阻塞。`problem_files/` 为空也阻塞。
+若发现 Standard、Lite、Flash 或旧 Pro 混装，立即阻塞。`problem_files/` 为空也阻塞。
 
 ## 前沿模型执行契约
 
 读取 `pro_config.json` 中的 `model_profile`、`reasoning_profile` 和
 `execution_policy`。仅在平台支持时按阶段切换推理档位；不能切换时记录实际档位，
 不得假装已经切换。模型档案过期或未识别且联网可用时，先核对厂商官方资料。
+档案只验证声明与配置，不证明底层模型身份或论文质量。读取档案核验日期、API 默认档位
+及按需加载的模型指南；`ultra` 等宿主标签不是通用 API 值。换模型不复用不兼容的思考块，
+通过当前证据和上下文记录恢复；已经核验的产物也须重新检查哈希，不绕过三个批准点。
 
 P0 生成 `instruction_manifest.json` 后，读取其中每个项目指令和 Pro `SKILL.md`，
 写 `instruction_audit.json`。它必须覆盖全部当前哈希、解释冲突如何解决、没有未解决

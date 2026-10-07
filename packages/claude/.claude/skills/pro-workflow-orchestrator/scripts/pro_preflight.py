@@ -13,7 +13,7 @@ from pathlib import Path
 from pro_contracts import contract, hash_paths, output_root, read_json, sha256_file, write_json
 
 
-VERSION = "3.3.0-pro.1"
+VERSION = "3.3.0-pro.2"
 MODEL_CATALOG_PATH = Path(__file__).resolve().parents[1] / "references" / "model-profiles.json"
 MODEL_SUFFIXES = {"low", "medium", "high", "xhigh", "max", "ultra", "preview", "latest"}
 EXPECTED_EDITION = "pro"
@@ -21,6 +21,7 @@ SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".claude/skills", ".
 LEGACY_ENTRY_EDITIONS = {
     "paper-workflow-orchestrator": "standard",
     "mathmodel-lite": "lite",
+    "mathmodel-flash": "flash",
     "pro-workflow-orchestrator": "pro",
 }
 
@@ -55,12 +56,24 @@ def load_model_catalog(path: Path = MODEL_CATALOG_PATH) -> dict:
             raise ValueError(f"invalid support tier for {profile['profile_id']}")
         if not isinstance(profile["aliases"], list) or not isinstance(profile["supported_efforts"], list):
             raise ValueError(f"aliases and supported_efforts must be arrays for {profile['profile_id']}")
+        supported = set(profile["supported_efforts"])
+        phase_effort = profile["phase_effort"]
+        if not supported or not isinstance(phase_effort, dict) or not phase_effort:
+            raise ValueError(f"missing effort settings for {profile['profile_id']}")
+        effort_values = [*phase_effort.values(), *profile.get("effort_aliases", {}).values()]
+        if profile.get("api_default_effort") is not None:
+            effort_values.append(profile["api_default_effort"])
+        if any(value not in supported for value in effort_values):
+            raise ValueError(f"unsupported effort setting for {profile['profile_id']}")
+        catalog_is_stale(catalog, profile)
         profile_id = str(profile["profile_id"])
         if profile_id in profile_ids:
             raise ValueError(f"duplicate model profile_id: {profile_id}")
         profile_ids.add(profile_id)
         for alias in [profile["canonical_model_id"], *profile["aliases"]]:
             normalized = normalize_model_name(str(alias))
+            if not normalized:
+                raise ValueError(f"empty model alias for {profile_id}")
             owner = aliases.get(normalized)
             if owner and owner != profile_id:
                 raise ValueError(f"model alias {alias!r} belongs to both {owner} and {profile_id}")
@@ -80,7 +93,8 @@ def match_model_profile(declared_model: str, catalog: dict) -> tuple[dict | None
             prefix = normalized_alias + "-"
             if normalized.startswith(prefix):
                 suffix = normalized[len(prefix):]
-                if suffix and all(part in MODEL_SUFFIXES or part.isdigit() for part in suffix.split("-")):
+                # Numeric suffixes can be a newer model version, not a known alias.
+                if suffix and all(part in MODEL_SUFFIXES for part in suffix.split("-")):
                     candidates.append((len(normalized_alias), profile, str(alias)))
     if not candidates:
         return None, None
@@ -113,9 +127,9 @@ def reasoning_profile(profile: dict | None, declared_effort: str) -> dict:
     }
 
 
-def catalog_is_stale(catalog: dict) -> bool:
+def catalog_is_stale(catalog: dict, profile: dict | None = None) -> bool:
     try:
-        verified = date.fromisoformat(str(catalog["verified_on"]))
+        verified = date.fromisoformat(str((profile or {}).get("verified_on", catalog["verified_on"])))
         freshness_days = int(catalog.get("catalog_freshness_days", 90))
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError(f"invalid model catalog freshness metadata: {exc}") from exc
@@ -195,7 +209,7 @@ def mathmodel_installations(project_root: Path) -> list[dict[str, str | None]]:
                     marker_error = f"{type(exc).__name__}: {exc}"
             legacy_edition = LEGACY_ENTRY_EDITIONS.get(child.name)
             edition = str(marker.get("edition") or legacy_edition or "").strip().lower()
-            if edition not in {"standard", "lite", "pro"}:
+            if edition not in {"standard", "lite", "flash", "pro"}:
                 continue
             found.append({
                 "edition": edition,
@@ -256,13 +270,22 @@ def main() -> int:
     warnings: list[str] = []
     if not model_recommended:
         warnings.append(
-            "The declared model is outside the verified Pro profiles; Pro will continue without reducing its gates."
+            "The declared model is outside the documented Pro profiles; Pro will continue without reducing its gates."
         )
     if effort["compatible"] is False:
         warnings.append(
             f"Reasoning effort {args.reasoning!r} is not listed for {profile['display_name']}; verify the host setting before P1."
         )
-    stale_catalog = catalog_is_stale(catalog)
+    if effort["alias_applied"]:
+        warnings.append(
+            f"Legacy effort label {args.reasoning!r} maps to {effort['normalized_effort']!r} in the catalog only; "
+            "this does not change or verify the host setting."
+        )
+    if profile and effort["normalized_effort"] is None:
+        warnings.append(
+            "No reasoning effort was declared; phase efforts are recommendations, not active host settings."
+        )
+    stale_catalog = catalog_is_stale(catalog, profile)
     if stale_catalog:
         warnings.append("The bundled frontier-model catalog is stale; verify the declared model against current official vendor documentation.")
     versions = sorted({str(item["version"]) for item in installations if item["edition"] == EXPECTED_EDITION})
@@ -384,9 +407,16 @@ def main() -> int:
         preferred_model=model_preferred,
         model_support_status=support_tier.upper(),
         model_profile=profile_public,
+        model_verification={
+            "basis": "user_declaration_and_bundled_documentation",
+            "live_model_probed": False,
+            "host_effort_verified": False,
+            "contest_quality_certified": False,
+        },
         model_profile_catalog={
             "catalog_version": catalog["catalog_version"],
             "verified_on": catalog["verified_on"],
+            "profile_verified_on": profile.get("verified_on", catalog["verified_on"]) if profile else None,
             "sha256": sha256_file(MODEL_CATALOG_PATH),
             "stale": stale_catalog,
         },

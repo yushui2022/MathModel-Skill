@@ -1,11 +1,19 @@
 # Pro forward evaluation matrix
 
-Before a Pro release, run every case from a clean install on both preferred profiles:
-Claude Fable 5.1 and GPT-6 Astra. Run compatibility smoke evaluations on Claude Opus 5
+Before a Pro release, run every case from a clean install on all preferred profiles:
+Claude Fable 5.1, Claude Opus 5.5, GPT-6.1 Sol, and GPT-6 Astra.
+Run compatibility smoke evaluations on Claude Opus 5
 and Claude Sonnet 5, and retain regression coverage for Claude Fable 5 and GPT-5.6 Sol.
 Archive the declared and canonical model IDs, reasoning profile, prompts, instruction
 audit, checkpoint decisions, contract hashes, runtimes, failures, final gate, DOCX, and
 PDF.
+
+The 2026-10-07 catalog update verifies published configuration, not these model runs.
+For the three newly checked profiles, compare `high` and `max` on the same task and
+frozen inputs, recording actual host/API settings, token usage, elapsed time, tool
+failures, argument coverage, and review findings. Do not infer a model's identity from
+a gateway alias, or advertise speed/quality from synthetic contract tests. The host
+must expose the required tools and independent contexts before a run can qualify.
 
 | Case | Required capabilities | Acceptance focus |
 |---|---|---|
