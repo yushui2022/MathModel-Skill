@@ -327,6 +327,18 @@ def evaluate() -> dict[str, Any]:
 
     failures: list[str] = []
     warnings: list[str] = []
+    cleaning_paths = []
+    cleaning_path = OUTPUT_DIR / "data_cleaned/cleaning_report.json"
+    if cleaning_path.exists():
+        cleaning_paths.append(cleaning_path)
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "data-cleaning-and-visualization/scripts"))
+            from data_inputs import current_cleaning_report, project_path
+            cleaning = current_cleaning_report(BASE_DIR.resolve())
+            cleaning_paths.extend(project_path(BASE_DIR, name) for name in cleaning["input_hashes"])
+            cleaning_paths.extend(project_path(BASE_DIR, item["cleaned_output"]) for item in cleaning["datasets"])
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            failures.append(f"Data import is stale or failed: {exc}")
 
     for path, data in (
         (MODEL_ROUTE_FILE, model_route),
@@ -432,6 +444,7 @@ def evaluate() -> dict[str, Any]:
                 METRICS_FILE,
                 CONCLUSIONS_FILE,
                 TABLE_INDEX_FILE,
+                *cleaning_paths,
             )
             if path.exists()
         },

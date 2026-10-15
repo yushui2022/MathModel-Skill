@@ -30,7 +30,7 @@ description: "自动清洗赛题或爬取的数据（处理缺失/异常/格式�
 - 上游输入：优先读取 `paper_output/input_manifest.json`、`paper_output/step1/problem_analysis.json` 与 `paper_output/plan/model_route.json`；正式流程只处理 manifest 中标为 `raw_data` 且 `usable_for_modeling=true` 的附件。
 - 必须输出：`paper_output/data_cleaned/load_report.json`、`paper_output/plan/data_plan.json`、`paper_output/plan/visualization_plan.json`、`paper_output/figure_index.json`；有可处理数据时同步输出 `paper_output/data_cleaned/` 与 `paper_output/figures/`。
 - 下游交接：`quality-assurance-auditor` 审计数据/图表证据；S7 写作计划直接引用 `figure_index.json`、表格索引和结果契约。`tasks.json` 仅供 legacy/quickstart。
-- 推荐下一步：完成数据和图表计划后进入 `quality-assurance-auditor` 生成任务清单；完整论文目标应回到 `paper-workflow-orchestrator` 判断后续阶段。
+- 推荐下一步：完成数据和图表计划后回到 `paper-workflow-orchestrator`，按 S4-S6 运行模型和证据审计，再由正式主笔写作。
 - 失败回退：若没有可处理数据文件，仍尽量根据题意和模型路线生成计划文件；不得把模板图表直接当作最终真实结果。
 
 本技能用于自动处理数学建模中的原始数据，执行标准化的清洗流程，并生成基础的数据探索性分析（EDA）图表。旨在减少手动处理数据的繁琐步骤，快速获取数据的统计特征和分布情况。
@@ -43,14 +43,15 @@ description: "自动清洗赛题或爬取的数据（处理缺失/异常/格式�
 
 ## 功能特性
 
-1.  **自动发现数据源**：自动扫描 `problem_files/`（赛题附件）或 `crawled_data/`（爬虫数据）目录。
+1.  **按清单读取数据源**：只读取 manifest 中 `raw_data` 且 `usable_for_modeling=true`、哈希未变化的文件；清单缺失或损坏时停止，不回退扫描。
 2.  **读取诊断报告**：先运行 `robust_loader.py`，生成 `paper_output/data_cleaned/load_report.json`，记录 xlsx/csv/json 结构与 PDF 诊断结论；脚本会优先读取 `paper_output/input_manifest.json`，跳过 `result_template`、题面文档和不可用于建模的附件。PDF 表格抽取只作诊断，不直接视为可信原始数据。
 3.  **数据与图表计划**：生成 `data_plan.json`、`visualization_plan.json` 与 `figure_index.json`，作为后续 QA 和正文生成的图表证据交接单。
-4.  **智能清洗**：
-    -   自动识别并转换数值列。
-    -   处理缺失值（数值型填补均值/中位数，分类型填补众数）。
-    -   去除全空行/列。
-    -   简单的异常值标记/处理。
+4.  **保真导入与诊断**：
+    -   保留空值、重复记录和文本编号，不自动填补、去重或强制转数值。
+    -   CSV 字段数量异常或引号损坏时明确失败，不跳过坏行。
+    -   Excel 各工作表独立导出；合并单元格、公式或含糊表头需要赛题专用读取代码。
+    -   `cleaning_report.json` 记录来源、工作表、行数、空值、重复记录和输入输出哈希；PASS 只表示导入完成，不代表字段语义正确。
+    -   需要统计预处理时按需读 [数据处理规则](references/data-integrity.md)，在赛题代码中明确单位、缺失含义和训练/验证切分，记录变更。
 5.  **自动可视化**：
     -   数值变量：直方图、箱线图。
     -   分类变量：柱状图。
@@ -68,7 +69,7 @@ description: "自动清洗赛题或爬取的数据（处理缺失/异常/格式�
 
 -   `scripts/run_pipeline.py`
     -   **何时用**：用户提供赛题数据或完成爬虫后，需要自动完成清洗和绘图时。这是最常用的辅助脚本。
-    -   **做什么**：依次生成数据/图表计划、调用清洗和绘图脚本，并在 `paper_output/` 下生成完整结果。
+    -   **做什么**：依次诊断附件、保真导入、基于真实导出路径生成计划、绘图；任一步失败即停止。支持 `--project-root`。
 
 -   `scripts/build_data_visualization_plan.py`
     -   **何时用**：已有 `problem_analysis.json` 或 `model_route.json`，需要先明确“哪些数据支撑哪些问题、哪些图表放在哪里”时。
@@ -76,11 +77,11 @@ description: "自动清洗赛题或爬取的数据（处理缺失/异常/格式�
 
 -   `scripts/clean_data.py`
     -   **何时用**：只需要清洗数据，不需要绘图，或者需要自定义清洗逻辑时。
-    -   **做什么**：读取原始数据，输出清洗后的 CSV/Excel 文件到 `paper_output/data_cleaned/`。
+    -   **做什么**：按 manifest 导入所有可处理工作表到独立 `data_cleaned/runs/<id>/`，写入清洗报告。支持 `--project-root`；不会自动执行统计填补。
 
 -   `scripts/visualize_data.py`
     -   **何时用**：已有清洗好的数据，需要重新生成图表时。
-    -   **做什么**：读取 `paper_output/data_cleaned/` 下的数据，生成基础 EDA 图表到 `paper_output/figures/`。
+    -   **做什么**：只读取当前清洗报告绑定且哈希未变的输出，生成 EDA 草图；不扫描旧运行数据。数值列推断仅供探索，不能代替单位、编号和数据含义确认。
 
 -   `scripts/paper_figure_templates.py`
     -   **何时用**：Agent 需要生成论文级图表代码时，优先读取本文件作为代码样板。
@@ -102,8 +103,8 @@ paper_output/
 ├── figure_index.json        # 图表计划索引，供 QA 和正文生成核对
 ├── data_cleaned/       # 清洗后的数据文件
 │   ├── load_report.json # 附件读取诊断报告
-│   ├── dataset1_cleaned.csv
-│   └── ...
+│   ├── cleaning_report.json # 当前导入清单、统计与哈希
+│   └── runs/<id>/*.csv      # 各来源与工作表独立输出；旧运行不自动复用
 ├── figures/            # 生成的可视化图表
 │   ├── fig_q1_1.png     # 按 visualization_plan 生成的论文级图表草稿
 │   ├── fig_q1_2.png
@@ -124,7 +125,7 @@ paper_output/
 
 ## 前后衔接
 
-- 后续通常接：`quality-assurance-auditor`（生成任务清单）→ `paper-micro-unit-generator`（生成与合并）。
+- 后续按 S4-S6 计算和验证，再进入 `paper-formal-writer`；微单元只用于局部修复，不是正式主线。
 - 若要继续到论文草稿：回到 `paper-workflow-orchestrator`。
 
 ## 约束（必须遵守）

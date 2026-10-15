@@ -46,6 +46,9 @@ jobs:
       - name: Check complete-paper scope regressions
         run: python tests/test_paper_scope.py
 
+      - name: Check data import integrity
+        run: python tests/test_data_integrity.py
+
   render:
     name: LibreOffice render gate
     runs-on: ubuntu-latest

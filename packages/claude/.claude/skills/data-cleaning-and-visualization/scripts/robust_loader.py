@@ -10,6 +10,8 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
+from data_inputs import modeling_inputs, project_path
+
 
 BASE_DIR = Path.cwd().resolve()
 OUTPUT_DIR = BASE_DIR / "paper_output"
@@ -247,7 +249,7 @@ def inspect_pdf(path: Path) -> dict[str, Any]:
 def iter_input_files(input_dirs: list[str]) -> list[Path]:
     files: list[Path] = []
     for text in input_dirs:
-        path = (BASE_DIR / text).resolve()
+        path = project_path(BASE_DIR, text)
         if path.exists() and path.is_dir():
             files.extend(item for item in path.rglob("*") if item.is_file())
     return sorted(files, key=lambda item: item.as_posix().lower())
@@ -314,17 +316,22 @@ def inspect_file(path: Path) -> dict[str, Any] | None:
 def evaluate(input_dirs: list[str], use_manifest: bool = True) -> dict[str, Any]:
     input_manifest = load_input_manifest() if use_manifest else None
     skipped_files: list[dict[str, Any]] = []
-    if input_manifest:
-        files, skipped_files = iter_manifest_raw_data(input_manifest)
-    else:
-        files = iter_input_files(input_dirs)
+    input_errors = []
+    try:
+        if use_manifest and INPUT_MANIFEST_FILE.exists():
+            files, skipped_files = modeling_inputs(BASE_DIR)
+        else:
+            files = iter_input_files(input_dirs)
+    except (ValueError, OSError) as exc:
+        files = []
+        input_errors.append(str(exc))
     data_files: list[dict[str, Any]] = []
     pdf_diagnostics: list[dict[str, Any]] = []
     warnings: list[str] = []
-    errors: list[str] = []
+    errors: list[str] = input_errors
 
     if use_manifest and input_manifest is None and INPUT_MANIFEST_FILE.exists():
-        warnings.append("input_manifest.json 存在但无法解析，已回退为扫描 input_dirs。")
+        errors.append("input_manifest.json 无法解析；停止读取，不回退扫描。")
     if input_manifest:
         warnings.extend(
             f"{item['path']}: 跳过 role={item['role']}（{item['reason']}）。"

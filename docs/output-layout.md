@@ -23,6 +23,9 @@ paper_output/
 │   ├── modeling/
 │   └── qa/
 ├── data_cleaned/
+│   ├── load_report.json
+│   ├── cleaning_report.json # current import sources, sheets, counts and hashes
+│   └── runs/<id>/*.csv      # isolated imports; never scan previous runs
 ├── figures/
 ├── figure_index.json
 ├── tables/
@@ -72,3 +75,8 @@ paper_output/
 | `final_paper_source.md`, `final_paper.docx` | sole formal manuscript path |
 
 `tasks.json` may appear for legacy/quickstart compatibility. It is not required by S6 or formal S7.
+
+The generic data helper preserves empty cells, identifiers and repeated observations.
+Its PASS means loss-preserving import, not validated field semantics. A present but
+failed or stale cleaning report blocks S3/S6; its inputs and outputs are also bound
+into the evidence gate so later changes invalidate formal authoring.

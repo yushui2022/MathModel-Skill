@@ -1,125 +1,160 @@
-import pandas as pd
-import numpy as np
+"""Loss-preserving table import, not automatic statistical preprocessing."""
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
-SEARCH_DIRS = ["problem_files", "crawled_data"]
-OUTPUT_DIR = Path("paper_output/data_cleaned")
-FILE_EXTENSIONS = ["*.csv", "*.xlsx", "*.xls", "*.txt"]
+import pandas as pd
 
-def find_data_files():
-    found_files = []
-    root_dir = Path.cwd()
-    
-    for dir_name in SEARCH_DIRS:
-        dir_path = root_dir / dir_name
-        if not dir_path.exists():
-            continue
-        
-        for ext in FILE_EXTENSIONS:
-            files = list(dir_path.rglob(ext))
-            for f in files:
-                if "paper_output" in str(f) or "node_modules" in str(f) or ".git" in str(f):
-                    continue
-                if f.name.startswith("~"):
-                    continue
-                found_files.append(f)
-    
-    return sorted(list(set(found_files)), key=str)
+from data_inputs import modeling_inputs, project_path, sha256_file
 
-def clean_dataset(file_path: Path):
-    print(f"🔄 正在处理: {file_path.name} ...")
-    
-    try:
+
+def find_data_files(project_root: Path | None = None) -> list[Path]:
+    return modeling_inputs((project_root or Path.cwd()).resolve())[0]
+
+
+def table_frame(rows: list[list], label: str) -> pd.DataFrame:
+    if not rows:
+        return pd.DataFrame()
+    header = [str(value) if value is not None else '' for value in rows[0]]
+    if any(not name.strip() for name in header) or len(set(header)) != len(header):
+        raise ValueError(f'{label}: empty/duplicate header; explicitly resolve the header layout')
+    for index, row in enumerate(rows[1:], 2):
+        if len(row) != len(header):
+            raise ValueError(f'{label}: record {index} has {len(row)} fields, expected {len(header)}; no rows skipped')
+    return pd.DataFrame(rows[1:], columns=header, dtype=object).fillna('')
+
+
+def read_tables(path: Path) -> list[tuple[str | None, pd.DataFrame, dict]]:
+    suffix = path.suffix.lower()
+    if suffix in {'.csv', '.tsv', '.txt'}:
+        for encoding in ('utf-8-sig', 'gb18030'):
+            try:
+                with path.open('r', encoding=encoding, newline='') as handle:
+                    if suffix == '.txt':
+                        sample = handle.read(8192)
+                        delimiter = csv.Sniffer().sniff(sample, delimiters=',\t;').delimiter
+                        handle.seek(0)
+                    elif suffix == '.tsv':
+                        delimiter = '\t'
+                    else:
+                        header_sample = handle.readline()
+                        handle.seek(0)
+                        try:
+                            delimiter = csv.Sniffer().sniff(header_sample, delimiters=',\t;').delimiter
+                        except csv.Error:
+                            delimiter = ','
+                    rows = list(csv.reader(handle, delimiter=delimiter, strict=True))
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            raise ValueError(f'{path.name}: unsupported text encoding')
+        # A blank CSV record remains an empty observation, never a deleted row.
+        if rows:
+            rows = [rows[0], *[row if row else [''] * len(rows[0]) for row in rows[1:]]]
+        return [(None, table_frame(rows, path.name), {'encoding': encoding, 'delimiter': delimiter})]
+    if suffix == '.xlsx':
+        from openpyxl import load_workbook
+        workbook = load_workbook(path, read_only=False, data_only=False)
         try:
-            if file_path.suffix == '.csv':
-                try:
-                    try:
-                        df = pd.read_csv(file_path, encoding='utf-8', on_bad_lines='skip')
-                    except TypeError:
-                        df = pd.read_csv(file_path, encoding='utf-8', error_bad_lines=False)
-                except UnicodeDecodeError:
-                    try:
-                        df = pd.read_csv(file_path, encoding='gbk', on_bad_lines='skip')
-                    except TypeError:
-                        df = pd.read_csv(file_path, encoding='gbk', error_bad_lines=False)
-            elif file_path.suffix in ['.xlsx', '.xls']:
-                df = pd.read_excel(file_path)
-            elif file_path.suffix == '.txt':
-                try:
-                    try:
-                        df = pd.read_csv(file_path, sep=',', on_bad_lines='skip')
-                    except TypeError:
-                        df = pd.read_csv(file_path, sep=',', error_bad_lines=False)
-                except:
-                    try:
-                        df = pd.read_csv(file_path, sep='\t', on_bad_lines='skip')
-                    except TypeError:
-                        df = pd.read_csv(file_path, sep='\t', error_bad_lines=False)
-            else:
-                print(f"⚠️ 不支持的文件格式: {file_path.suffix}")
-                return
-        except Exception as read_err:
-            print(f"⚠️ 读取文件失败 (可能是非结构化文本): {str(read_err)}")
-            return
+            tables = []
+            for sheet in workbook.worksheets:
+                if sheet.merged_cells.ranges:
+                    raise ValueError(f'{path.name}/{sheet.title}: merged cells require an explicit extraction script')
+                rows = []
+                for row in sheet.iter_rows():
+                    if any(cell.data_type == 'f' for cell in row):
+                        raise ValueError(f'{path.name}/{sheet.title}: formulas require verified evaluated values')
+                    rows.append([cell.value if cell.value is not None else '' for cell in row])
+                if not any(any(value != '' for value in row) for row in rows):
+                    rows = []
+                tables.append((sheet.title, table_frame(rows, f'{path.name}/{sheet.title}'), {'header_row': 1}))
+            return tables
+        finally:
+            workbook.close()
+    if suffix == '.xls':
+        with pd.ExcelFile(path) as workbook:
+            return [(name, table_frame(workbook.parse(name, header=None, dtype=object,
+                     keep_default_na=False).values.tolist(), f'{path.name}/{name}'), {'header_row': 1})
+                    for name in workbook.sheet_names]
+    raise ValueError(f'{path.name}: use a task-specific reader for {suffix}; no automatic conversion')
 
-        original_shape = df.shape
-        
-        df.dropna(how='all', axis=0, inplace=True)
-        df.dropna(how='all', axis=1, inplace=True)
-        
-        for col in df.columns:
-            if df[col].dtype == 'object':
-                try:
-                    numeric_series = pd.to_numeric(df[col], errors='coerce')
-                    if numeric_series.isna().mean() < 0.5:
-                        df[col] = numeric_series
-                except:
-                    pass
 
-        num_cols = df.select_dtypes(include=[np.number]).columns
-        cat_cols = df.select_dtypes(exclude=[np.number]).columns
-        
-        for col in num_cols:
-            if df[col].isna().any():
-                df[col] = df[col].fillna(df[col].mean())
-        
-        for col in cat_cols:
-            if df[col].isna().any():
-                mode_val = df[col].mode()
-                if not mode_val.empty:
-                    df[col] = df[col].fillna(mode_val[0])
-                else:
-                    df[col] = df[col].fillna("Unknown")
+def clean_dataset(path: Path, root: Path, destination: Path) -> tuple[list[dict], list[dict]]:
+    source = path.relative_to(root).as_posix()
+    records, skipped = [], []
+    # Parse every sheet before publishing any sheet from this workbook.
+    tables = read_tables(path)
+    for index, (sheet, frame, parsing) in enumerate(tables, 1):
+        if len(frame.columns) == 0:
+            skipped.append({'path': source, 'sheet': sheet, 'reason': 'empty table'})
+            continue
+        identity = hashlib.sha256(source.encode('utf-8')).hexdigest()[:12]
+        output = destination / f'{path.stem}-{identity}-{index}_cleaned.csv'
+        frame.to_csv(output, index=False, encoding='utf-8-sig')
+        records.append({
+            'path': source, 'sheet': sheet, 'source_sha256': sha256_file(path),
+            'cleaned_output': output.relative_to(root).as_posix(), 'output_sha256': sha256_file(output),
+            'rows_before': len(frame), 'rows_after': len(frame), 'columns': list(frame.columns),
+            'empty_cells': {str(col): int((frame[col] == '').sum()) for col in frame.columns},
+            'duplicate_rows_preserved': int(frame.duplicated().sum()),
+            'parsing': parsing, 'transformations': [],
+            'semantic_validation': 'REQUIRED: confirm units, identifiers, missing-value meaning and split policy',
+        })
+    return records, skipped
 
-        df.drop_duplicates(inplace=True)
-        
-        cleaned_shape = df.shape
-        print(f"✅ 清洗完成: {file_path.name} | 原尺寸 {original_shape} -> 新尺寸 {cleaned_shape}")
-        
-        output_file = OUTPUT_DIR / f"{file_path.stem}_cleaned.csv"
-        df.to_csv(output_file, index=False, encoding='utf-8-sig')
-        print(f"💾 已保存至: {output_file}")
 
-    except Exception as e:
-        print(f"❌ 处理 {file_path.name} 时出错: {str(e)}")
+def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors='replace')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--project-root', type=Path, default=Path.cwd())
+    args = parser.parse_args()
+    root = args.project_root.resolve()
+    try:
+        directory = project_path(root, 'paper_output/data_cleaned')
+        report_path = project_path(root, 'paper_output/data_cleaned/cleaning_report.json')
+        directory.mkdir(parents=True, exist_ok=True)
+        report = {'schema_version': '1.0', 'generated_at': datetime.now(timezone.utc).isoformat(),
+                  'generated_by': 'data-cleaning-and-visualization/scripts/clean_data.py',
+                  'status': 'RUNNING', 'input_hashes': {}, 'datasets': [], 'skipped_files': [], 'errors': [],
+                  'acceptance_scope': 'LOSS_PRESERVING_IMPORT_ONLY'}
+        report_path.write_text(json.dumps(report, indent=2), encoding='utf-8')
+        try:
+            files, report['skipped_files'] = modeling_inputs(root)
+            manifest = project_path(root, 'paper_output/input_manifest.json')
+            report['input_hashes'] = {'paper_output/input_manifest.json': sha256_file(manifest),
+                                     **{p.relative_to(root).as_posix(): sha256_file(p) for p in files}}
+            destination = project_path(root, f'paper_output/data_cleaned/runs/{uuid4().hex}')
+            destination.mkdir(parents=True)
+            for path in files:
+                records, skipped = clean_dataset(path, root, destination)
+                report['datasets'].extend(records)
+                report['skipped_files'].extend(skipped)
+            for name, expected in report['input_hashes'].items():
+                if sha256_file(project_path(root, name)) != expected:
+                    raise ValueError(f'Input changed during import: {name}')
+            report['status'] = 'PASS'
+        except Exception as exc:
+            report['status'] = 'FAIL'
+            report['errors'].append(f'{type(exc).__name__}: {exc}')
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+        print(f'[{report["status"]}] {report_path}')
+        for error in report['errors']:
+            print(error)
+        return 0 if report['status'] == 'PASS' else 1
+    except (ValueError, OSError) as exc:
+        print(f'[FAIL] {exc}')
+        return 1
 
-def main():
-    if not OUTPUT_DIR.exists():
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        
-    print("🔍 开始扫描数据文件...")
-    files = find_data_files()
-    
-    if not files:
-        print("⚠️ 未找到任何数据文件 (CSV/Excel/TXT)。请确保文件在 problem_files/ 或 crawled_data/ 目录下。")
-        return
-    
-    print(f"📄 找到 {len(files)} 个文件。")
-    
-    for f in files:
-        clean_dataset(f)
-        
-    print("\n✨ 所有数据清洗任务已完成。")
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    raise SystemExit(main())

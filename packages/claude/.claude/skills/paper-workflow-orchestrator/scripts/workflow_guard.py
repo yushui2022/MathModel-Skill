@@ -289,6 +289,13 @@ def check_s2() -> dict[str, Any]:
 
 def check_s3() -> dict[str, Any]:
     failures: list[str] = []
+    if (OUTPUT_DIR / "data_cleaned/cleaning_report.json").exists():
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "data-cleaning-and-visualization/scripts"))
+            from data_inputs import current_cleaning_report
+            current_cleaning_report(BASE_DIR.resolve())
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            failures.append(f"Data import is stale or failed: {exc}")
     check_json_file(OUTPUT_DIR / "plan" / "data_plan.json", failures)
     check_json_file(OUTPUT_DIR / "plan" / "visualization_plan.json", failures)
     check_json_file(OUTPUT_DIR / "figure_index.json", failures)

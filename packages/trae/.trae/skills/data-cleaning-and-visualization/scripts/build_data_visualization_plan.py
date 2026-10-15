@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from data_inputs import current_cleaning_report, modeling_inputs, project_path
+
 
 BASE_DIR = Path.cwd().resolve()
 OUTPUT_DIR = BASE_DIR / "paper_output"
@@ -50,6 +52,8 @@ def import_pandas() -> Any | None:
 
 
 def find_data_files() -> list[Path]:
+    if (OUTPUT_DIR / "input_manifest.json").exists():
+        return modeling_inputs(BASE_DIR)[0]
     files: list[Path] = []
     for dirname in SEARCH_DIRS:
         root = BASE_DIR / dirname
@@ -500,9 +504,24 @@ def build_figure_index(visualization_plan: dict[str, Any]) -> dict[str, Any]:
 def main() -> int:
     analysis = load_json(PROBLEM_ANALYSIS_FILE)
     model_route = load_json(MODEL_ROUTE_FILE)
-    files = find_data_files()
-    data_files = [profile_data_file(path) for path in files]
-    if not data_files:
+    try:
+        report_path = OUTPUT_DIR / "data_cleaned/cleaning_report.json"
+        if report_path.exists():
+            report = current_cleaning_report(BASE_DIR)
+            data_files = []
+            for dataset in report["datasets"]:
+                profile = profile_data_file(project_path(BASE_DIR, dataset["cleaned_output"]))
+                profile.update({"path": dataset["path"], "sheet": dataset["sheet"],
+                                "cleaned_output": dataset["cleaned_output"],
+                                "semantic_validation": dataset["semantic_validation"]})
+                data_files.append(profile)
+        else:
+            files = find_data_files()
+            data_files = [profile_data_file(path) for path in files]
+    except (ValueError, OSError, KeyError) as exc:
+        print(f"[FAIL] {exc}")
+        return 1
+    if not data_files and not (OUTPUT_DIR / "input_manifest.json").exists():
         data_files = profiles_from_problem_analysis(analysis)
 
     questions = questions_from_contracts(analysis, model_route)

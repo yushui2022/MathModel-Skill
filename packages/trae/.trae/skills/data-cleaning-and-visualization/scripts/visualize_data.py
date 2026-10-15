@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import platform
+from data_inputs import current_cleaning_report, project_path
 
 INPUT_DIR = Path("paper_output/data_cleaned")
 OUTPUT_DIR = Path("paper_output/figures")
@@ -107,7 +108,13 @@ def main():
         print("请先运行数据清洗脚本 (clean_data.py)。")
         return
         
-    files = list(INPUT_DIR.glob("*.csv"))
+    root = Path.cwd().resolve()
+    try:
+        report = current_cleaning_report(root)
+        files = [project_path(root, item["cleaned_output"]) for item in report["datasets"]]
+    except (ValueError, OSError, KeyError) as exc:
+        print(f"[FAIL] {exc}")
+        return 1
     
     if not files:
         print(f"⚠️ {INPUT_DIR} 下没有 CSV 文件。")
@@ -125,4 +132,4 @@ def main():
     print("\n✨ 所有可视化任务已完成。")
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

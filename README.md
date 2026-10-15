@@ -5,7 +5,7 @@
 
 ### 从赛题分析、真实计算到可复现的数学建模论文
 
-[![Version](https://img.shields.io/badge/version-2.3.0-0f766e)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0)
+[![Version](https://img.shields.io/badge/version-2.3.1-0f766e)](./VERSION)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
@@ -13,7 +13,7 @@
 
 MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛题与附件放入项目后，Agent 按工作流分析问题、选择模型、编写并运行代码、整理图表和证据，再撰写与检查论文；它不只是让模型直接生成一篇文章的提示词。
 
-当前是默认 `standard` 分支的 **Standard 2.3.0，定位标准档**，建议搭配 GPT-6.1 Sol、Claude Opus 5.5 等具备稳定推理、长上下文和工具调用能力的模型，GPT-5.5、GPT-5.6 Sol 仍可使用。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
+当前是默认 `standard` 分支的 **Standard 2.3.1 开发版，定位标准档**，建议搭配 GPT-6.1 Sol、Claude Opus 5.5 等具备稳定推理、长上下文和工具调用能力的模型，GPT-5.5、GPT-5.6 Sol 仍可使用。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
 
 **版本分工：低负担 → 速度优先 → 标准交付 → 旗舰验证**
 
@@ -64,6 +64,8 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 **一个比赛项目只安装一个版本、一个平台包。** 不要把 Standard、Lite、Pro 或 LaTeX 包混在同一目录。
 
 从 [Standard 2.3.0 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.3.0) 下载与你的 Agent 对应的一个安装包：
+
+该 Release 是旧版固定快照，不含本次数据可靠性修复。2.3.1 尚未创建 Release；开发构建位于本分支 [dist/](./dist/)，三端均使用独立包。
 
 | 平台 | 直接下载 | 解压后的 Skill 目录 |
 |---|---|---|
@@ -138,6 +140,12 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 
 脚本、输入和输出都记录 SHA-256。证据或已审计文件变化后，依赖它们的通过状态会失效，必须重新计算或验证。安装目录只保存通用能力，当前赛题代码始终写到 `paper_output/code/`。
 
+### 附件读取与清洗可靠性
+
+2.3.1 的通用数据脚本只处理当前清单批准的原始数据；不自动填均值、删重复记录或跳过坏行。Excel 各表独立导出，含糊表头、合并单元格或公式明确要求专用读取代码。清洗报告记录来源、行数和哈希，失败或变更后阻止下游继续信任旧数据。
+
+字段单位、编号含义和预测任务的训练/验证切分仍由赛题代码明确，导入 PASS 不代表数据语义或模型正确。详见 [数据处理规则](packages/claude/.claude/skills/data-cleaning-and-visualization/references/data-integrity.md)。
+
 ### 章节写作与局部修复
 
 `paper-formal-writer` 是唯一正式主笔：先制定写作计划，再按完整章节写作与审计；全部章节通过后确定性合并，由 Agent 全文统一改写，最后生成 DOCX。
@@ -165,6 +173,7 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 python scripts/sync_platform_packages.py --check
 python -u tests/run_tests.py
 python tests/test_paper_scope.py
+python tests/test_data_integrity.py
 python scripts/build_release_packages.py --verify
 ```
 
