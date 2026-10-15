@@ -34,7 +34,7 @@ description: "根据 model_route.json、数据计划和清洗数据，为数学�
 
 ## 执行契约
 
-- 上游输入：优先读取 `paper_output/plan/model_route.json`、`data_plan.json`、`visualization_plan.json`，并扫描 `paper_output/data_cleaned/`。
+- 上游输入：读取 `paper_output/plan/model_route.json`、`data_plan.json`、`visualization_plan.json`，数据只能来自当前有效 `cleaning_report.json` 绑定的产物，不扫描历史批次。缺清洗报告时先运行数据处理技能；自定义清洗也须记录真实来源与输出哈希。
 - 必须输出：`paper_output/results/model_results.json`、`metrics.json`、`conclusions.json`、`run_manifest.json`、`paper_output/tables/table_index.json`、`paper_output/tables/*.csv`。
 - 建模代码输出：`paper_output/code/modeling/result_contract_io.py`、`run_modeling.py`、`q1_model.py`、`q2_model.py`、`q3_model.py` 或与 `question_id` 对应的 `q*_model.py`。
 - 下游交接：`quality-assurance-auditor` 直接审计结果、指标、表格、图表和结论；证据门禁 PASS 后由 `paper-formal-writer` 构建正式写作计划。
@@ -49,10 +49,13 @@ description: "根据 model_route.json、数据计划和清洗数据，为数学�
 - `scripts/result_contract_templates.py`
   - 何时用：需要了解不同任务类型应沉淀哪些指标、表格和结论字段。
   - 做什么：提供预测、优化、评价、分类、聚类、仿真、通用建模的契约模板。
+- `scripts/modeling_tools.py`
+  - 生成脚手架时复制到赛题代码目录，提供当前数据集选择、训练集内预处理的回归基线，以及线性优化解的约束/目标值复核。
+  - 需要这些工具时读取 [references/modeling-tools.md](references/modeling-tools.md)。先明确数据源、工作表、字段和样本划分，再调用工具；不要把工具输出自动升级为正式结论。
 
 ## 任务类型分发
 
-- 预测/回归/时间序列 -> forecasting scaffold：生成目标列、特征列、预测值、残差、RMSE、MAE、MAPE。
+- 预测/回归 -> forecasting scaffold：必须提供 `regression.target/features/train_rows/test_rows`，生成留出集预测、残差、RMSE、MAE 和训练均值基线误差。时序/分组数据的划分需按题意明确，不能把行号不重叠当成没有泄漏。
 - 优化/规划/调度/选址/路径 -> optimization scaffold：生成代理目标函数、方案排序、约束满足率待补项。
 - 评价/排序/权重/TOPSIS/AHP/熵权 -> evaluation scaffold：生成指标归一化、综合得分、排序和权重敏感性待补项。
 - 分类/识别/判别 -> classification scaffold：生成代理分类标签、准确率/F1 待补项。
@@ -89,9 +92,12 @@ paper_output/
 - 所有 JSON 包含 `schema_version`、`generated_by`、`generated_at`。
 - 每条结果、指标、结论和表格都应带 `question_id`。
 - 草稿或脚手架结果必须使用 `status` 或 `evidence_status` 标记。
+- 多数据集时在问题配置中指定原始 `data_source` 和必要的 `sheet`，不能默认选第一个文件。单个数据集允许省略选择，但不自动猜预测目标列。
+- `verify_linear_solution` 只核验提供的线性约束、边界、整数性与目标值；PASS 不证明全局最优，也不证明约束忠实于赛题。
 - 正式结果必须带 `execution_provenance`，至少包含 `source_code_path`、`source_code_sha256`、`run_command`、`run_exit_code` 和 `output_artifacts`。
 - 统一入口 `run_modeling.py` 必须在实际执行后写入 `paper_output/results/run_manifest.json`，记录总体 `status`、脚本 hash、`question_ids`、退出码、工作目录、Python 实现/版本/平台，以及每个输入和输出文件的 `path`、`bytes`、`sha256`、`exists`。
 - `run_manifest.json` 不是日志占位符。建模脚本、输入文件或输出产物在运行后发生变化时，必须重新运行模型，不能手改 manifest 或结果 JSON 续签旧证据。
+- 新生成的 runner 绑定当前清洗报告、来源、清洗产物、路线和建模目录内的 Python 辅助文件；运行中变化则失败。已有用户修改过的 runner 不会被覆盖，升级时须人工迁移这些检查或在独立新项目重新生成。
 - `model_results.json` 中正式条目必须有非空 `result_summary`；`metrics.json` 中 `status=computed` 的指标必须有非空、有限的 `value`，不得使用 `null`、`NaN` 或无穷值。
 - `table_index.json` 中正式表格必须指向真实存在且非空的文件；只有索引条目、没有 CSV/XLSX 产物不能作为证据。
 - official evidence gate 会重新计算脚本、输入和输出哈希，并拒绝没有真实代码运行来源、运行账本状态失败、文件被修改或运行记录无法关联 `question_id` 的结果。

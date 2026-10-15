@@ -1,4 +1,4 @@
-# Standard 2.2 Output Layout
+# Standard Output Layout
 
 All current-contest generated artifacts stay under `paper_output/`. Installed skills remain reusable and must not contain contest-specific code or results.
 
@@ -80,3 +80,9 @@ The generic data helper preserves empty cells, identifiers and repeated observat
 Its PASS means loss-preserving import, not validated field semantics. A present but
 failed or stale cleaning report blocks S3/S6; its inputs and outputs are also bound
 into the evidence gate so later changes invalidate formal authoring.
+
+New modeling scaffolds require a current cleaning report and never scan old runs.
+`code/modeling/modeling_tools.py` and `data_inputs.py` are generated, reusable helpers
+bound into the run manifest. Explicit regression baselines also emit
+`results/q1_baseline.json` and a held-out prediction table; these are not automatic
+official results. See the model-code skill's `references/modeling-tools.md` for APIs.

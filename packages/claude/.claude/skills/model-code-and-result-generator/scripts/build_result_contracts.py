@@ -11,6 +11,11 @@ from typing import Any
 
 from result_contract_templates import metric_templates, result_type, suggested_table_titles
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_SCRIPTS = SCRIPT_DIR.parents[1] / "data-cleaning-and-visualization" / "scripts"
+sys.path.insert(0, str(DATA_SCRIPTS))
+from data_inputs import current_cleaned_files
+
 
 BASE_DIR = Path.cwd().resolve()
 OUTPUT_DIR = BASE_DIR / "paper_output"
@@ -125,9 +130,7 @@ def load_questions(model_route: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 
 def find_cleaned_csv_files() -> list[Path]:
-    if not DATA_CLEANED_DIR.exists():
-        return []
-    return sorted(DATA_CLEANED_DIR.rglob("*.csv"), key=lambda p: p.as_posix().lower())
+    return current_cleaned_files(BASE_DIR)
 
 
 def read_csv_rows(path: Path, limit: int = 500) -> list[dict[str, str]]:
@@ -305,6 +308,9 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from data_inputs import current_cleaned_files
+from modeling_tools import load_current_dataset, regression_baseline
+
 
 THIS_FILE = Path(__file__).resolve()
 
@@ -408,9 +414,7 @@ def safe_slug(text: object) -> str:
 
 
 def find_cleaned_csv_files() -> list[Path]:
-    if not DATA_CLEANED_DIR.exists():
-        return []
-    return sorted(DATA_CLEANED_DIR.rglob("*.csv"), key=lambda item: item.as_posix().lower())
+    return current_cleaned_files(PROJECT_ROOT)
 
 
 def read_dataframe(path: Path) -> pd.DataFrame:
@@ -422,15 +426,12 @@ def read_dataframe(path: Path) -> pd.DataFrame:
     raise RuntimeError(f"Unable to read CSV: {path}")
 
 
-def load_first_dataset() -> tuple[pd.DataFrame | None, Path | None]:
-    for path in find_cleaned_csv_files():
-        try:
-            df = read_dataframe(path)
-        except Exception:
-            continue
-        if not df.empty:
-            return df, path
-    return None, None
+def load_first_dataset(question: dict | None = None) -> tuple[pd.DataFrame | None, Path | None]:
+    # Retain the old function name, but never select the first of several datasets.
+    if not find_cleaned_csv_files():
+        return None, None
+    question = question or {}
+    return load_current_dataset(PROJECT_ROOT, source=question.get("data_source"), sheet=question.get("sheet"))
 
 
 def numeric_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -583,55 +584,24 @@ def no_data_result(question: dict[str, Any]) -> int:
 
 def run_forecasting(question: dict[str, Any], df: pd.DataFrame, source_path: Path) -> int:
     qid = str(question.get("question_id") or "Q1")
-    num = numeric_frame(df).dropna(axis=1, how="all")
-    if num.empty:
-        return no_data_result(question)
-    target = num.columns[-1]
-    feature_cols = [col for col in num.columns if col != target]
-    y = num[target].fillna(num[target].median()).to_numpy(dtype=float)
-    if feature_cols:
-        x = num[feature_cols].fillna(num[feature_cols].median()).to_numpy(dtype=float)
-    else:
-        feature_cols = ["row_index"]
-        x = np.arange(len(num), dtype=float).reshape(-1, 1)
-    design = np.column_stack([np.ones(len(x)), x])
-    split = max(1, int(len(design) * 0.75)) if len(design) >= 4 else len(design)
-    train_x = design[:split]
-    train_y = y[:split]
-    test_x = design[split:] if split < len(design) else design
-    test_y = y[split:] if split < len(design) else y
-    try:
-        coef = np.linalg.lstsq(train_x, train_y, rcond=None)[0]
-        pred_all = design @ coef
-        pred_test = test_x @ coef
-    except Exception:
-        coef = np.array([float(np.nanmean(train_y))])
-        pred_all = np.full(len(y), coef[0])
-        pred_test = np.full(len(test_y), coef[0])
-    residual = test_y - pred_test
-    rmse = float(np.sqrt(np.nanmean(residual ** 2))) if len(residual) else 0.0
-    mae = float(np.nanmean(np.abs(residual))) if len(residual) else 0.0
-    denom = np.where(np.abs(test_y) < 1e-12, np.nan, np.abs(test_y))
-    mape = float(np.nanmean(np.abs(residual) / denom) * 100) if np.isfinite(denom).any() else 0.0
-    rows = [
-        {"row_index": idx, "actual": round_float(actual), "predicted": round_float(pred), "residual": round_float(actual - pred)}
-        for idx, (actual, pred) in enumerate(zip(y, pred_all))
-    ]
+    config = question.get("regression")
+    if not isinstance(config, dict):
+        raise ValueError("Declare regression target, features, train_rows and test_rows in model_route.json")
+    report = regression_baseline(df, **config)
     table_id = f"table_{qid.lower()}_forecasting_scaffold"
     table_path = TABLES_DIR / f"{table_id}.csv"
-    write_csv_table(table_path, rows)
+    write_csv_table(table_path, report["predictions"])
+    report_path = RESULTS_DIR / f"{safe_slug(qid)}_baseline.json"
+    write_json(report_path, report)
     upsert_question_contracts(
         question,
-        result_summary=f"{qid} 已基于 `{rel(source_path)}` 生成预测/回归脚手架结果。当前自动选择 `{target}` 作为目标列，特征列为 {', '.join(map(str, feature_cols))}；Agent 需按题意复核目标列、特征工程和评价口径。",
-        metrics=[
-            {"metric_name": "RMSE", "metric_role": "预测误差", "value": round_float(rmse), "unit": ""},
-            {"metric_name": "MAE", "metric_role": "平均绝对误差", "value": round_float(mae), "unit": ""},
-            {"metric_name": "MAPE", "metric_role": "相对误差", "value": round_float(mape), "unit": "%"},
-        ],
+        result_summary=f"{qid} 已按明确字段与训练/测试行划分运行回归基线，预处理仅拟合训练集；数据为 `{rel(source_path)}`。仍须复核赛题适用性、时间或分组隔离。",
+        metrics=[{"metric_name": name, "metric_role": "留出集误差", "value": round_float(value), "unit": ""}
+                 for name, value in report["metrics"].items()],
         tables=[table_entry(qid, table_id, f"{qid} 预测结果脚手架表", "保存实际值、预测值和残差，供 Agent 二次替换为正式建模结果。", table_path, "scaffold_result_needs_review")],
         conclusions=[{"question_id": qid, "conclusion_text": f"{qid} 已形成可运行预测脚手架，但目标列和特征列仍需按题意复核。", "evidence_status": "scaffold_result_needs_review"}],
-        outputs=[{"name": "forecast_table", "path": rel(table_path)}],
-        parameters=[{"name": "target_column", "value": str(target)}, {"name": "feature_columns", "value": list(map(str, feature_cols))}],
+        outputs=[{"name": "forecast_table", "path": rel(table_path)}, {"name": "baseline_report", "path": rel(report_path)}],
+        parameters=[{"name": "regression_config", "value": config}],
     )
     return 0
 
@@ -830,7 +800,7 @@ def run_general(question: dict[str, Any], df: pd.DataFrame, source_path: Path) -
 
 
 def run_question_scaffold(question: dict[str, Any]) -> int:
-    df, source_path = load_first_dataset()
+    df, source_path = load_first_dataset(question)
     if df is None or source_path is None:
         return no_data_result(question)
     kind = normalize_task_type(str(question.get("task_type") or ""))
@@ -860,6 +830,8 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+
+from data_inputs import cleaning_evidence_files
 
 
 THIS_DIR = Path(__file__).resolve().parent
@@ -936,12 +908,12 @@ def sha256(path: Path) -> str:
 
 
 def input_file_entries() -> list[dict[str, str]]:
-    if not DATA_CLEANED_DIR.exists():
-        return []
-    entries = []
-    for path in sorted(item for item in DATA_CLEANED_DIR.rglob("*") if item.is_file()):
-        entries.append({"path": rel(path), "bytes": path.stat().st_size, "sha256": sha256(path)})
-    return entries
+    paths = cleaning_evidence_files(PROJECT_ROOT)
+    paths.append(OUTPUT_DIR / "plan/model_route.json")
+    # Helper edits must invalidate evidence, just like question-script edits.
+    paths.extend(THIS_DIR.glob("*.py"))
+    return [{"path": rel(path), "bytes": path.stat().st_size, "sha256": sha256(path)}
+            for path in sorted(set(paths))]
 
 
 def normalize_path(path_text: object) -> str:
@@ -991,13 +963,14 @@ def artifact_entries(paths: list[str]) -> list[dict[str, object]]:
     return entries
 
 
-def write_run_manifest(runs: list[dict[str, object]]) -> None:
+def write_run_manifest(runs: list[dict[str, object]], failure: str = "") -> None:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     manifest = {
         "schema_version": "1.0",
         "generated_by": "paper_output/code/modeling/run_modeling.py",
         "generated_at": now(),
-        "status": "PASS" if all(item.get("returncode") == 0 for item in runs) else "FAIL",
+        "status": "PASS" if runs and not failure and all(item.get("returncode") == 0 for item in runs) else "FAIL",
+        "failure": failure,
         "runs": runs,
     }
     RUN_MANIFEST_FILE.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1009,7 +982,13 @@ def main() -> int:
     if not scripts:
         safe_print("No q*_model.py scripts found.")
         write_run_manifest([])
-        return 0
+        return 1
+    try:
+        initial_inputs = input_file_entries()
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        write_run_manifest([], str(exc))
+        safe_print(f"[FAIL] Current modeling inputs are invalid: {exc}")
+        return 1
     failures = 0
     runs: list[dict[str, object]] = []
     for script in scripts:
@@ -1031,7 +1010,14 @@ def main() -> int:
         )
         if result.stdout:
             safe_print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
-        if result.returncode != 0:
+        integrity_failure = ""
+        try:
+            if input_file_entries() != initial_inputs:
+                integrity_failure = "Model inputs, plan or helper code changed during execution"
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            integrity_failure = str(exc)
+        returncode = result.returncode or (1 if integrity_failure else 0)
+        if returncode != 0:
             failures += 1
             safe_print(f"[warning] {script.name} exited with code {result.returncode}")
         qids, artifacts = provenance_for_script(script)
@@ -1042,8 +1028,9 @@ def main() -> int:
                 "script_sha256": sha256(script),
                 "question_ids": qids,
                 "command": " ".join(command),
-                "returncode": result.returncode,
-                "status": "PASS" if result.returncode == 0 else "FAIL",
+                "returncode": returncode,
+                "status": "PASS" if returncode == 0 else "FAIL",
+                "integrity_failure": integrity_failure,
                 "started_at": started_at,
                 "finished_at": now(),
                 "working_directory": rel(THIS_DIR),
@@ -1052,11 +1039,13 @@ def main() -> int:
                     "implementation": platform.python_implementation(),
                     "platform": platform.platform(),
                 },
-                "input_files": input_file_entries(),
+                "input_files": initial_inputs,
                 "output_artifacts": artifact_entries(artifacts),
                 "stdout_tail": (result.stdout or "")[-4000:],
             }
         )
+        if integrity_failure:
+            break
     write_run_manifest(runs)
     safe_print(f"Run manifest written: {RUN_MANIFEST_FILE}")
     if failures:
@@ -1093,10 +1082,11 @@ def question_script_content(question: dict[str, Any], index: int) -> str:
     return f'''{MANAGED_MARKER}
 from __future__ import annotations
 
+import json
 from result_contract_io import run_question_scaffold
 
 
-QUESTION = {question_json}
+QUESTION = json.loads({question_json!r})
 
 
 if __name__ == "__main__":
@@ -1109,6 +1099,8 @@ def write_modeling_scaffolds(questions: list[dict[str, Any]]) -> list[dict[str, 
     files = [
         (MODELING_CODE_DIR / "result_contract_io.py", RESULT_CONTRACT_IO_CODE),
         (MODELING_CODE_DIR / "run_modeling.py", RUN_MODELING_CODE),
+        (MODELING_CODE_DIR / "modeling_tools.py", MANAGED_MARKER + "\n" + (SCRIPT_DIR / "modeling_tools.py").read_text(encoding="utf-8")),
+        (MODELING_CODE_DIR / "data_inputs.py", MANAGED_MARKER + "\n" + (DATA_SCRIPTS / "data_inputs.py").read_text(encoding="utf-8")),
     ]
     for path, content in files:
         generated.append({"path": rel(path), "status": write_managed_file(path, content)})
@@ -1153,7 +1145,7 @@ def write_modeling_code_readme(questions: list[dict[str, Any]], cleaned_files: l
             "## Recommended Use",
             "",
             "1. Review each `q*_model.py` against the current contest statement.",
-            "2. Replace automatically selected target columns, features, objectives, constraints, indicators, or validation rules where needed.",
+            "2. Bind data_source/sheet and explicit regression fields and row splits; use modeling_tools for baselines and linear-solution checks.",
             "3. Run `python paper_output/code/modeling/run_modeling.py` from the project root, or run an individual `q*_model.py`.",
             "4. Keep `execution_provenance` in `model_results.json`; official evidence gate requires result items to come from an executed code path.",
             "5. Only change `evidence_status` to `computed` or another formal status after the model code has been reviewed against the real contest statement.",
@@ -1164,7 +1156,7 @@ def write_modeling_code_readme(questions: list[dict[str, Any]], cleaned_files: l
             "- `paper_output/plan/model_route.json`",
             "- `paper_output/plan/data_plan.json`",
             "- `paper_output/plan/visualization_plan.json`",
-            "- `paper_output/data_cleaned/`",
+            "- Current datasets bound by `paper_output/data_cleaned/cleaning_report.json`; historical runs are excluded.",
             "",
             "## Outputs To Write Back",
             "",
@@ -1314,7 +1306,11 @@ def main() -> int:
     data_plan = load_json(DATA_PLAN_FILE)
     visualization_plan = load_json(VISUALIZATION_PLAN_FILE)
     questions = load_questions(model_route)
-    cleaned_files = find_cleaned_csv_files()
+    try:
+        cleaned_files = find_cleaned_csv_files()
+    except (ValueError, OSError, KeyError, TypeError) as exc:
+        print(f"[FAIL] Run data cleaning before building modeling code: {exc}")
+        return 1
 
     scaffold_files = write_modeling_scaffolds(questions)
     table_entries, data_summary = build_data_profile_tables(cleaned_files)

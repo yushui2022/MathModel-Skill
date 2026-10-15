@@ -61,8 +61,43 @@ def current_cleaning_report(root: Path) -> dict:
         target = project_path(root, name)
         if not target.is_file() or sha256_file(target) != expected:
             raise ValueError(f'Cleaning input changed: {name}')
-    for dataset in report['datasets']:
+    approved, _ = modeling_inputs(root)
+    approved = set(approved)
+    datasets = report.get('datasets')
+    if not isinstance(datasets, list):
+        raise ValueError('Cleaning report must contain a dataset list')
+    seen_sources, seen_outputs = set(), set()
+    for dataset in datasets:
+        if not isinstance(dataset, dict):
+            raise ValueError('Invalid cleaned dataset record')
+        source = project_path(root, dataset.get('path'))
+        sheet = dataset.get('sheet')
+        if sheet is not None and not isinstance(sheet, str):
+            raise ValueError('Invalid worksheet name')
+        identity = (source, sheet)
+        if source not in approved or identity in seen_sources:
+            raise ValueError(f'Unapproved or duplicate dataset: {identity}')
+        if hashes.get(dataset['path']) != dataset.get('source_sha256'):
+            raise ValueError(f'Dataset source is not bound to cleaning inputs: {source}')
         output = project_path(root, dataset['cleaned_output'])
+        directory = project_path(root, 'paper_output/data_cleaned')
+        if not output.is_relative_to(directory) or output in seen_outputs:
+            raise ValueError(f'Invalid or duplicate cleaned output: {output}')
         if not output.is_file() or sha256_file(output) != dataset['output_sha256']:
             raise ValueError(f'Cleaned output changed: {dataset["cleaned_output"]}')
+        seen_sources.add(identity)
+        seen_outputs.add(output)
     return report
+
+
+def current_cleaned_files(root: Path) -> list[Path]:
+    """Never discover modeling inputs by recursively scanning historical runs."""
+    report = current_cleaning_report(root)
+    return [project_path(root, item['cleaned_output']) for item in report['datasets']]
+
+
+def cleaning_evidence_files(root: Path) -> list[Path]:
+    report = current_cleaning_report(root)
+    names = {'paper_output/data_cleaned/cleaning_report.json', *report['input_hashes']}
+    names.update(item['cleaned_output'] for item in report['datasets'])
+    return sorted(project_path(root, name) for name in names)

@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SANDBOX = REPO_ROOT / "tests" / "sandbox"
 ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
 BUILD_RESULT_CONTRACTS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "model-code-and-result-generator" / "scripts" / "build_result_contracts.py"
+CLEAN_DATA = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "clean_data.py"
 EVIDENCE_GATE = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
 FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
 CHECK_PAPER_FORMAT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_paper_format.py"
@@ -1005,11 +1006,15 @@ def test_docx_visual_qa() -> None:
 
 
 def test_modeling_run_manifest() -> None:
-    cwd = SANDBOX / "scenario_7_real_data"
+    cwd, output = make_preflighted_scenario("scenario_current_modeling_data")
+    result = run([sys.executable, str(CLEAN_DATA)], cwd)
+    assert_true(result.returncode == 0, f"data import should pass\n{result.stdout}")
     output = cwd / "paper_output"
     write_json(
         output / "plan" / "model_route.json",
-        {"questions": [{"question_id": "Q1", "title": "问题一", "task_type": "预测/回归", "main_model": "线性基线"}]},
+        {"questions": [{"question_id": "Q1", "title": "问题一", "task_type": "预测/回归", "main_model": "线性基线",
+                        "data_source": "problem_files/data.csv", "sheet": None,
+                        "regression": {"target": "y", "features": ["x"], "train_rows": [0, 1], "test_rows": [2]}}]},
     )
     write_json(output / "plan" / "data_plan.json", {"datasets": [{"path": "paper_output/data_cleaned/sample_cleaned.csv"}]})
     write_json(output / "plan" / "visualization_plan.json", {"figures": []})
@@ -1032,11 +1037,9 @@ def test_modeling_run_manifest() -> None:
 
 
 def test_evidence_gate_passes_for_computed_run() -> None:
-    cwd = SANDBOX / "scenario_9_computed_run"
-    if cwd.exists():
-        shutil.rmtree(cwd)
-    output = cwd / "paper_output"
-    output.mkdir(parents=True)
+    cwd, output = make_preflighted_scenario("scenario_9_computed_run")
+    result = run([sys.executable, str(CLEAN_DATA)], cwd)
+    assert_true(result.returncode == 0, f"data import should pass\n{result.stdout}")
     write_json(output / "plan" / "model_route.json", {"questions": [{"question_id": "Q1", "title": "question one", "task_type": "baseline", "main_model": "computed baseline"}]})
     write_json(output / "plan" / "data_plan.json", {"datasets": [{"path": "paper_output/data_cleaned/sample_cleaned.csv"}]})
     write_json(output / "plan" / "visualization_plan.json", {"figures": []})

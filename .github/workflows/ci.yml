@@ -49,6 +49,9 @@ jobs:
       - name: Check data import integrity
         run: python tests/test_data_integrity.py
 
+      - name: Check numerical tools and current-run data bindings
+        run: python tests/test_modeling_tools.py
+
   render:
     name: LibreOffice render gate
     runs-on: ubuntu-latest
