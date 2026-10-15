@@ -59,7 +59,7 @@ class FreshOutputTests(unittest.TestCase):
         archive = self.output / "runs" / second["run_id"] / "previous"
         self.assertEqual((archive / "tables/q1.csv").read_bytes(), old_table)
         self.assertTrue((archive / "paper.docx").exists())
-        self.assertEqual(json.loads((archive / "run_manifest.json").read_text())["run_id"], first["run_id"])
+        self.assertEqual(json.loads((archive / "run_manifest.json").read_text(encoding="utf-8"))["run_id"], first["run_id"])
         self.assertNotEqual(fixtures.run(fixtures.FINALIZER, self.root).returncode, 0)
 
     def test_old_nested_figure_not_enrolled(self):
@@ -84,7 +84,7 @@ class FreshOutputTests(unittest.TestCase):
         path = self.root / "unrecorded.csv"
         path.write_text("metric,value\nslope,2\n", encoding="utf-8")
         model = self.output / "code/model.py"
-        model.write_text(model.read_text().replace("paper_output_flash/tables/q1.csv", "unrecorded.csv"), encoding="utf-8")
+        model.write_text(model.read_text(encoding="utf-8").replace("paper_output_flash/tables/q1.csv", "unrecorded.csv"), encoding="utf-8")
         self.run_model()
         result = fixtures.run(fixtures.FINALIZER, self.root)
         self.assertNotEqual(result.returncode, 0)
@@ -92,7 +92,7 @@ class FreshOutputTests(unittest.TestCase):
 
     def test_recorded_input_can_be_cited(self):
         model = self.output / "code/model.py"
-        model.write_text(model.read_text().replace("paper_output_flash/tables/q1.csv", "problem_files/data.csv"), encoding="utf-8")
+        model.write_text(model.read_text(encoding="utf-8").replace("paper_output_flash/tables/q1.csv", "problem_files/data.csv"), encoding="utf-8")
         self.run_model()
         result = fixtures.run(fixtures.FINALIZER, self.root)
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -109,7 +109,7 @@ class FreshOutputTests(unittest.TestCase):
         self.run_model()
         (self.output / "code/model.py").write_text("raise RuntimeError('failed experiment')\n", encoding="utf-8")
         self.assertNotEqual(fixtures.run(fixtures.RUNNER, self.root).returncode, 0)
-        report = json.loads((self.output / "run_manifest.json").read_text())
+        report = json.loads((self.output / "run_manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(report["status"], "FAIL")
         self.assertEqual(report["outputs"], [])
         self.assertFalse((self.output / "tables/q1.csv").exists())
