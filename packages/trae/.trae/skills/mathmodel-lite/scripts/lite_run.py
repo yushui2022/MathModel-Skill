@@ -14,7 +14,8 @@ from uuid import uuid4
 from lite_common import safe_path, configure_stdio
 
 
-ROOT = Path.cwd()
+# Normalize Windows short-name aliases before comparing paths for links.
+ROOT = Path.cwd().resolve()
 OUTPUT_DIR = ROOT / "paper_output_lite"
 MANIFEST_FILE = OUTPUT_DIR / "input_manifest.json"
 MODEL_FILE = OUTPUT_DIR / "code" / "model.py"
