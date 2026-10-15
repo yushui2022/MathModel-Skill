@@ -5,7 +5,7 @@
 
 ### 用高吞吐模型快速生成带真实实验的基础长篇数学建模论文
 
-[![Version](https://img.shields.io/badge/version-2.0.0--flash.1-D97706)](https://github.com/yushui2022/MathModel-Skill/tree/flash)
+[![Version](https://img.shields.io/badge/version-2.0.0--flash.2-D97706)](./VERSION)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
@@ -87,6 +87,8 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 
 ## 原理介绍
 
+当前为 2.0.0-flash.2 开发版，新增实验输出隔离。本分支 [dist/](./dist/) 包含修复；尚未创建新 Release，上面的旧 Release 不含此修复。
+
 ```text
 赛题与附件
 → 输入哈希预检
@@ -98,6 +100,8 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 ```
 
 Flash 用少量固定脚本守住最低真实性底线：预检记录输入，运行器绑定计划、脚本和结果，终检检查每个问题、关键数值、图表和 DOCX 重开内容。它刻意不加入 Pro 的高成本研究闭环，以保持 Flash 模型的速度优势。
+
+每次计算前将旧结果、图表、运行记录和 Word 归档到 `runs/<run_id>/previous/`，再创建空输出目录。证据只接受本轮清单绑定的输入或输出，旧版运行记录需重跑；不增加模型检查点。归档可能增长，清理前确认不再需要历史记录，一个项目同时只运行一个实验入口。
 
 ### 论文长度说明
 
@@ -111,6 +115,8 @@ Flash PASS 不是数学正确性证明，也不是正式竞赛验收。没有严
 
 ```bash
 python scripts/sync_platform_packages.py --check
+python tests/run_flash_tests.py
+python tests/test_fresh_outputs.py
 python scripts/build_release_packages.py --verify
 ```
 

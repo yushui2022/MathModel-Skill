@@ -4,11 +4,13 @@ import hashlib
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 from flash_common import safe_path, configure_stdio
 
 
@@ -19,6 +21,29 @@ MODEL_FILE = OUTPUT_DIR / "code" / "model.py"
 RESULTS_FILE = OUTPUT_DIR / "results.json"
 RUN_FILE = OUTPUT_DIR / "run_manifest.json"
 PLAN_FILE = OUTPUT_DIR / "plan.json"
+RUN_ID = uuid4().hex
+
+
+def prepare_fresh_outputs() -> str:
+    """Preserve old artifacts but never enroll them as this run's outputs."""
+    names = ("results.json", "figures", "tables", "run_manifest.json", "paper.docx", "flash_report.json")
+    paths = [OUTPUT_DIR / name for name in names]
+    # Validate the complete move set before changing any directory.
+    for path in paths:
+        for node in [path, *path.rglob("*")] if path.is_dir() else [path]:
+            checked = safe_path(ROOT, node.relative_to(ROOT).as_posix())
+            if checked != node.absolute() or node.is_symlink():
+                raise ValueError(f"linked output is not allowed: {node}")
+    archive = safe_path(ROOT, f"paper_output_flash/runs/{RUN_ID}/previous")
+    if archive != (OUTPUT_DIR / "runs" / RUN_ID / "previous").absolute():
+        raise ValueError("linked archive directories are not allowed")
+    archive.mkdir(parents=True, exist_ok=False)
+    for path in paths:
+        if path.exists():
+            shutil.move(str(path), str(archive / path.name))
+    for name in ("figures", "tables"):
+        (OUTPUT_DIR / name).mkdir()
+    return rel(archive)
 
 
 def load_json(path: Path) -> Any:
@@ -75,7 +100,9 @@ def output_records() -> list[dict[str, object]]:
         if folder.exists():
             paths.extend(path for path in folder.rglob("*") if path.is_file())
     for path in paths:
-        safe_path(ROOT, path.relative_to(ROOT).as_posix())
+        checked = safe_path(ROOT, path.relative_to(ROOT).as_posix())
+        if checked != path.absolute() or path.is_symlink():
+            raise ValueError(f"linked output is not allowed: {path}")
     return [
         {"path": rel(path), "bytes": path.stat().st_size, "sha256": sha256_file(path)}
         for path in sorted(set(paths))
@@ -93,6 +120,8 @@ def write_run(status: str, failures: list[str], completed: subprocess.CompletedP
             status = "FAIL"
     run = {
         "schema_version": "1.0",
+        "run_id": RUN_ID,
+        "output_policy": "fresh-directories-v1",
         "generated_by": "mathmodel-flash/scripts/flash_run.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "status": status,
@@ -136,9 +165,12 @@ def main() -> int:
         return 1
 
     initial = {rel(p): sha256_file(p) for p in (MODEL_FILE, PLAN_FILE, MANIFEST_FILE)}
-    # A no-op run must not reuse a previous successful results.json.
-    if RESULTS_FILE.exists():
-        RESULTS_FILE.unlink()
+    try:
+        prepare_fresh_outputs()
+    except (ValueError, OSError) as exc:
+        write_run("FAIL", [f"cannot isolate previous outputs: {exc}"], None, initial)
+        print(f"[FAIL] {exc}")
+        return 1
     write_run("RUNNING", [], None, initial)
     try:
         completed = subprocess.run(
@@ -154,6 +186,9 @@ def main() -> int:
         )
     except subprocess.TimeoutExpired:
         write_run("FAIL", [f"model exceeded {args.timeout} seconds; inspect or explicitly raise --timeout"], None, initial)
+        return 1
+    except OSError as exc:
+        write_run("FAIL", [f"model process could not start: {exc}"], None, initial)
         return 1
     for name, expected in initial.items():
         if not resolve(name).is_file() or sha256_file(resolve(name)) != expected:

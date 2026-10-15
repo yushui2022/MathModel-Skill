@@ -43,6 +43,9 @@ jobs:
       - name: Run Flash test suite
         run: python tests/run_flash_tests.py
 
+      - name: Check fresh-output isolation
+        run: python tests/test_fresh_outputs.py
+
   packages:
     name: Deterministic tracked Flash packages
     runs-on: ubuntu-latest
