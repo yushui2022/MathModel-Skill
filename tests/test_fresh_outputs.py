@@ -4,8 +4,11 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import runpy
+import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import run_flash_tests as fixtures
 
@@ -29,6 +32,16 @@ class FreshOutputTests(unittest.TestCase):
         model = self.output / "code/model.py"
         lines = model.read_text(encoding="utf-8").splitlines()
         model.write_text("\n".join(line for line in lines if not line.startswith("table.write_text")) + "\n", encoding="utf-8")
+
+    def test_project_root_is_normalized_before_link_checks(self):
+        alias = self.root / "problem_files" / ".."
+        with patch.object(Path, "cwd", return_value=alias), patch.object(
+            sys, "path", [str(fixtures.RUNNER.parent), *sys.path]
+        ):
+            runner = runpy.run_path(str(fixtures.RUNNER))
+        self.assertEqual(runner["ROOT"], self.root.resolve())
+        archive = runner["prepare_fresh_outputs"]()
+        self.assertTrue((self.root / archive).is_dir())
 
     def test_old_table_not_enrolled_and_old_word_archived(self):
         first = self.run_model()
