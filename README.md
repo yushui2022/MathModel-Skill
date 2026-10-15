@@ -5,13 +5,13 @@
 
 ### 一个入口、六步流程，完成基础数学建模报告
 
-[![Version](https://img.shields.io/badge/version-2.2.1--lite.3-0f766e)](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.2.1-lite.3)
+[![Version](https://img.shields.io/badge/version-2.2.1--lite.4-0f766e)](./VERSION)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
 </div>
 
-MathModel Skill 帮助编程 Agent 从赛题和附件出发，分析问题、运行建模代码、整理真实结果并生成论文或报告。**Lite 2.2.1-lite.3 定位入门档**，建议 DeepSeek 等模型或需要低负担运行的用户从此版本开始。它只提供一个 `mathmodel-lite` 入口，减少流程选择和中间文件负担，也适合较旧或短上下文模型。
+MathModel Skill 帮助编程 Agent 从赛题和附件出发，分析问题、运行建模代码、整理真实结果并生成论文或报告。**Lite 2.2.1-lite.4 开发版定位入门档**，建议 DeepSeek 等模型或需要低负担运行的用户从此版本开始。它只提供一个 `mathmodel-lite` 入口，减少流程选择和中间文件负担，也适合较旧或短上下文模型。
 
 Lite 会产出建模代码、计算结果、图表、Markdown 与基础 Word 报告，并检查输入和运行结果是否发生变化。它不提供原生 Word 公式、严格引文审计或 PDF 渲染验收，不能把基础报告检查通过当作约 20 页正式竞赛论文验收。
 
@@ -116,6 +116,8 @@ your-project/
 
 ## 原理介绍
 
+本次输出隔离修复位于开发构建 [dist/](./dist/)，尚未创建新 Release；上面的旧 Release 不含此修复，版本不会被覆盖。
+
 ### 一条线性流程
 
 ```text
@@ -128,7 +130,9 @@ your-project/
 
 ### 用脚本守住真实性底线
 
-预检记录附件清单和 SHA-256，运行时绑定计划、代码、输入与输出。输入、计划或代码发生变化后必须重新预检或运行；每次运行清除旧 `results.json`，不能用空操作冒充新计算。
+预检记录附件清单和 SHA-256，运行时绑定计划、代码、输入与输出。每次运行先将旧结果、图表、运行记录和 Word 归档到 `runs/<run_id>/previous/`，再从空图表目录计算。本轮证据必须绑定本轮输入或输出，不能把残留旧表格重新记为新结果；旧版运行记录需重跑。
+
+输入、计划或代码变化后重新预检或运行。归档保留用于复核，清理前确认不再需要历史记录；一个项目同时只运行一个实验入口。
 
 执行默认超时 300 秒，可根据算法显式调整；文件路径必须留在项目内。这些是运行与文件完整性保护，不是针对任意代码的安全沙箱。
 
@@ -151,6 +155,7 @@ your-project/
 ```bash
 python scripts/sync_platform_packages.py --check
 python tests/run_lite_tests.py
+python tests/test_fresh_outputs.py
 python scripts/build_release_packages.py --verify
 ```
 

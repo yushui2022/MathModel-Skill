@@ -153,6 +153,8 @@ def evaluate() -> dict[str, Any]:
     if not isinstance(run, dict) or run.get("status") != "PASS":
         failures.append("缺少通过的 run_manifest.json；请运行 lite_run.py。")
     else:
+        if run.get("output_policy") != "fresh-directories-v1" or not run.get("run_id"):
+            failures.append("legacy run receipt lacks output isolation; rerun lite_run.py")
         if not MODEL_FILE.exists() or sha256_file(MODEL_FILE) != run.get("script_sha256"):
             failures.append("model.py 在运行后已变化；请重新运行 lite_run.py。")
         failures.extend(validate_records(run.get("inputs"), "运行输入"))
@@ -176,6 +178,12 @@ def evaluate() -> dict[str, Any]:
     }
     if len(result_map) != len(result_questions) or set(result_map) != set(plan_ids):
         failures.append("results must cover exactly the planned question IDs without duplicates")
+    recorded_evidence = {
+        rel(resolve(record.get("path")))
+        for key in ("inputs", "outputs")
+        for record in (run.get(key, []) if isinstance(run, dict) else [])
+        if isinstance(record, dict)
+    }
     for qid in plan_ids:
         item = result_map.get(qid)
         if not item:
@@ -189,6 +197,8 @@ def evaluate() -> dict[str, Any]:
             failures.append(f"{qid} evidence 必须是列表。")
         for path_text in evidence if isinstance(evidence, list) else []:
             path = resolve(path_text)
+            if rel(path) not in recorded_evidence:
+                failures.append(f"{qid} evidence is not bound to this run: {path_text}")
             if not path.exists() or not path.is_file() or path.stat().st_size == 0:
                 failures.append(f"{qid} 证据文件缺失或为空：{rel(path)}")
 

@@ -104,7 +104,9 @@ python .claude/skills/mathmodel-lite/scripts/lite_preflight.py
 python .claude/skills/mathmodel-lite/scripts/lite_run.py
 ```
 
-该脚本运行 `model.py`，记录计划、脚本、输入和输出的 SHA-256，清除旧 `results.json` 防止空操作复用。默认超时 300 秒，较长计算可显式使用 `--timeout 900`；这不是代码安全沙箱。运行失败时修复后重跑，不要手改状态。
+该脚本运行 `model.py`，记录计划、脚本、输入和输出的 SHA-256。每次先将旧结果、图表、运行记录及 Word 归档到 `runs/<run_id>/previous/`，再创建空图表目录；旧文件不能算本轮输出。默认超时 300 秒，可显式使用 `--timeout 900`；这不是代码安全沙箱。运行失败时修复后重跑，不要手改状态。
+
+`model.py` 必须重新生成本轮引用的产物，不读取归档作新结果；需要复用的数据应放入 `problem_files/` 并重新预检。`evidence` 只能引用本轮清单绑定的输入或输出；旧版无隔离标记的运行记录需要重跑。一个项目同时只运行一个实验入口，归档可能增长，清理前确认不再需要历史记录。
 
 ### 5. 写基础论文
 
