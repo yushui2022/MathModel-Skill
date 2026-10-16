@@ -61,6 +61,13 @@ The authoritative S7 contracts are:
 
 ## Draft And Audit
 
+For numerical results, read [references/metric-claims.md](references/metric-claims.md).
+Formal preparation binds each required metric to its unit, sample/split, CSV row and
+successful experiment. Missing metadata blocks S7 instead of being guessed from prose.
+Maintain a sibling `.claims.json` for each draft and the final source; use an empty
+claims list for chapters without numbers. Only declared conversions are allowed.
+Never promote a feasible solution to an optimal one without recorded verification.
+
 Write only to the path recorded for the current unit in `authoring_state.json`. Each chapter must be a complete, coherent section and must include its required removable marker:
 
 ```html
@@ -91,7 +98,7 @@ python .trae/skills/paper-formal-writer/scripts/assemble_sections.py
 python .trae/skills/paper-formal-writer/scripts/validate_authoring.py --assembled
 ```
 
-The assembler follows outline order, strips evidence comments, and preserves existing numbering. It writes `paper_output/drafts/assembled_draft.md`.
+The assembler follows outline order, strips evidence comments, merges claim sidecars, and preserves existing numbering. It writes `paper_output/drafts/assembled_draft.md`.
 
 Then read the entire assembled draft and evidence chain, and rewrite the paper globally into:
 
@@ -100,6 +107,8 @@ paper_output/final_paper_source.md
 ```
 
 This pass must unify terminology, notation, transitions, argument order, citations, captions, and conclusions. Copying the assembled draft unchanged is rejected.
+Update `final_paper_source.claims.json` with the revised quotes and exact source hash;
+do not copy stale bindings. Sidecars remain outside the rendered manuscript.
 
 Run the final source audit:
 

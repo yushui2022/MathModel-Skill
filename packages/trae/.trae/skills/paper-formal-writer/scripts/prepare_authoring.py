@@ -103,6 +103,13 @@ def main() -> int:
         path = safe_relative_path(project_root, path_text)
         if path.is_file():
             input_hashes[relative(path, project_root)] = expected
+    from claim_bindings import build_catalog, VERSION
+    try:
+        catalog, claim_hashes = build_catalog(project_root, sections, gate) if delivery["mode"] != "smoke-test" else ({}, {})
+    except (ValueError, OSError, TypeError, KeyError) as exc:
+        print(f"[BLOCKED] Metric bindings: {exc}", file=sys.stderr)
+        return 1
+    input_hashes.update(claim_hashes)
     plan = contract(
         producer_role="paper-formal-writer/prepare-authoring",
         status="PASS",
@@ -115,6 +122,8 @@ def main() -> int:
         target_chars={**(outline.get("target_words") or {}), "ideal": ideal},
         evidence_gate_sha256=sha256_file(out / "qa" / "evidence_gate_report.json"),
         evidence_marker="<!-- mathmodel-evidence: evidence-id-1, evidence-id-2 -->",
+        claim_binding_version=VERSION,
+        metric_catalog=catalog,
         global_constraints={
             "numbering_style": outline.get("numbering_style") or "1 / 1.1 / 1.1.1",
             "formal_source": "paper_output/final_paper_source.md",

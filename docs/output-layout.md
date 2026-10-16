@@ -45,16 +45,18 @@ paper_output/
 │   ├── authoring_state.json
 │   └── workflow_memory.json
 ├── drafts/
-│   ├── sections/
+│   ├── sections/           # <id>.md and <id>.claims.json
 │   ├── repairs/
 │   ├── legacy/
 │   │   ├── micro_units/
 │   │   ├── legacy_scaffold.md
 │   │   ├── legacy_scaffold.docx
 │   │   └── legacy_ref_check.md
-│   └── assembled_draft.md
+│   ├── assembled_draft.md
+│   └── assembled_draft.claims.json
 ├── quickstart/
 ├── final_paper_source.md
+├── final_paper_source.claims.json
 ├── final_paper.docx
 ├── format_check_report.md
 └── format_check_report.json
@@ -73,6 +75,7 @@ paper_output/
 | `drafts/repairs/` | queued micro repair |
 | `drafts/legacy/`, `quickstart/` | non-formal scaffolds |
 | `final_paper_source.md`, `final_paper.docx` | sole formal manuscript path |
+| `drafts/**/*.claims.json`, `final_paper_source.claims.json` | numerical claim bindings; audit only, not rendered |
 
 `tasks.json` may appear for legacy/quickstart compatibility. It is not required by S6 or formal S7.
 
@@ -86,3 +89,10 @@ New modeling scaffolds require a current cleaning report and never scan old runs
 bound into the run manifest. Explicit regression baselines also emit
 `results/q1_baseline.json` and a held-out prediction table; these are not automatic
 official results. See the model-code skill's `references/modeling-tools.md` for APIs.
+
+When a writing plan has required metrics, each formal draft has a sibling
+`.claims.json` with its source SHA-256 and exact result-sentence bindings.
+Global mode uses `drafts/global_draft.md` and `drafts/global_draft.claims.json`.
+The assembler merges bindings; the final writer updates them after revision.
+See the formal writer's `references/metric-claims.md` for metric metadata,
+CSV row selectors, permissible conversions and verification requirements.

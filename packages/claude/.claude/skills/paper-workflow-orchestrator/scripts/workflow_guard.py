@@ -412,6 +412,8 @@ def check_s6() -> dict[str, Any]:
 
 
 def check_s7() -> dict[str, Any]:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "paper-formal-writer" / "scripts"))
+    from claim_bindings import check_plan, record_errors
     failures: list[str] = []
     check_json_file(OUTPUT_DIR / "plan" / "paper_outline.json", failures)
     writing_plan = check_json_file(OUTPUT_DIR / "plan" / "writing_plan.json", failures)
@@ -419,6 +421,7 @@ def check_s7() -> dict[str, Any]:
     check_text_file(OUTPUT_DIR / "final_paper_source.md", failures)
     check_text_file(OUTPUT_DIR / "final_paper.docx", failures)
     if isinstance(writing_plan, dict):
+        failures.extend(check_plan(writing_plan))
         if str(writing_plan.get("status") or "").upper() != "PASS":
             failures.append("writing_plan.json status 不是 PASS。")
         failures.extend(contract_hash_failures(writing_plan, "writing_plan.json"))
@@ -448,6 +451,7 @@ def check_s7() -> dict[str, Any]:
                 expected = str(record.get("approved_sha256") or "").strip().lower()
                 if not path.is_file() or not expected or sha256_file(path) != expected:
                     failures.append(f"写作章节 {section_id} 在审计后缺失或发生变化。")
+                failures.extend(record_errors(BASE_DIR, path, record, writing_plan or {}))
         for label in ("assembled", "final"):
             record = authoring_state.get(label)
             if not isinstance(record, dict) or str(record.get("status") or "").upper() != "PASS":
@@ -461,6 +465,7 @@ def check_s7() -> dict[str, Any]:
             expected = str(record.get("sha256") or "").strip().lower()
             if not path.is_file() or not expected or sha256_file(path) != expected:
                 failures.append(f"{label} 文稿在审计后缺失或发生变化。")
+            failures.extend(record_errors(BASE_DIR, path, record, writing_plan or {}))
         final_record = authoring_state.get("final") or {}
         if str(final_record.get("path") or "").replace("\\", "/") != "paper_output/final_paper_source.md":
             failures.append("正式源稿路径必须是 paper_output/final_paper_source.md。")

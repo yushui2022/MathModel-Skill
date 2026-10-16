@@ -1,4 +1,4 @@
-# Standard 2.3 Formal Paper Authoring
+# Standard Formal Paper Authoring
 
 `paper-formal-writer` is the sole formal author. `paper-micro-unit-generator` is limited to queued local repair and explicit legacy/quickstart scaffolds.
 
@@ -42,6 +42,27 @@ python .claude/skills/paper-formal-writer/scripts/validate_authoring.py --sectio
 ```
 
 The first repeated issue stays with a section rewrite. The second repeated category creates a micro-repair queue. The third blocks S7. Global mode falls back to section mode after two repeated categories.
+
+### Numerical Claim Semantics
+
+Formal preparation now resolves required metrics from computed `metrics.json`,
+checks their CSV cells and successful run records, and freezes their IDs, units,
+sample scopes, splits and permitted conversions in the writing plan. Read the
+installed writer's `references/metric-claims.md` for the complete producer schema.
+Missing metadata is a modeling repair, not permission to infer it during writing.
+
+Each draft and final source has a sibling `.claims.json` binding exact visible
+result sentences to those metrics. Section, assembly and final audits reject
+wrong train/test populations, units, values, undeclared percentage conversions
+and unsupported feasibility/optimality claims. Use `claims: []` when a draft has
+no metrics. The sidecar records the exact Markdown SHA-256; update it after edits.
+Assembly merges the records automatically. Global revision needs updated final
+quotes, and changing approved bindings blocks DOCX export. Sidecars never appear
+in the paper. Rules cover registered metrics and recognized wording, not arbitrary
+semantic inference; reviewers still assess experiment design and mathematical claims.
+
+Old formal writing plans need to be rebuilt. The explicit installation-only
+`smoke-test` mode is not a numerical-claim certification.
 
 ## Assemble And Globally Revise
 

@@ -160,6 +160,8 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 
 ### 篇幅、证据与渲染检查
 
+2.4 开发版增加[数值结论绑定](packages/claude/.claude/skills/paper-formal-writer/references/metric-claims.md)：关键指标连接单位、样本范围、训练/测试划分、实验记录和来源表格。章节稿及最终稿通过旁路 JSON 记录逐句核对，拦截口径混淆、未经声明的百分比换算和无验证依据的最优性表述；记录不进入 Word 正文。旧正式写作计划需要重新准备，缺失元数据须回到计算环节补齐。这是可追踪性和一致性检查，不代替数学正确性审阅。
+
 默认完整稿规划至少 14000 有效字符，检查主稿至少 8000 有效字符、附录前渲染页数至少 18 页。**这些是防止极短稿的项目默认值，不是所有比赛的统一规定，也不是优秀论文标准。** 具体比赛的页数上限和计页方式仍要单独核对。
 
 每问需要实质性的建模、计算结果与解释；注释、代码块和附录不能用于填补主稿长度。范围调整或短报告必须明确说明理由，不用空页、放大排版或重复正文凑数。
@@ -181,6 +183,7 @@ python -u tests/run_tests.py
 python tests/test_paper_scope.py
 python tests/test_data_integrity.py
 python tests/test_modeling_tools.py
+python tests/test_claim_bindings.py
 python scripts/build_release_packages.py --verify
 ```
 

@@ -146,6 +146,8 @@ def approved_draft_errors(project_root: Path, plan: dict[str, Any], state: dict[
             errors.append(f"section {section_id} has no approved_sha256")
         elif sha256_file(path) != expected_hash:
             errors.append(f"section {section_id} changed after validation")
+        from claim_bindings import record_errors
+        errors.extend(record_errors(project_root, path, record, plan))
     return errors
 
 
@@ -159,6 +161,8 @@ def authoring_pass_errors(project_root: Path) -> list[str]:
     except ValueError as exc:
         return [str(exc)]
     errors: list[str] = []
+    from claim_bindings import check_plan, record_errors
+    errors.extend(check_plan(plan))
     if str(plan.get("schema_version") or "") != SCHEMA_VERSION or str(plan.get("status") or "").upper() != "PASS":
         errors.append("writing plan envelope is not Standard 2.2 PASS")
     if str(state.get("schema_version") or "") != SCHEMA_VERSION:
@@ -189,6 +193,7 @@ def authoring_pass_errors(project_root: Path) -> list[str]:
             errors.append(f"{label} authoring record has no sha256")
         elif sha256_file(path) != expected_hash:
             errors.append(f"{label} authoring file changed after validation")
+        errors.extend(record_errors(project_root, path, record, plan))
     final_record = state.get("final") or {}
     if str(final_record.get("path") or "").replace("\\", "/") != "paper_output/final_paper_source.md":
         errors.append("formal source must be paper_output/final_paper_source.md")
@@ -300,7 +305,7 @@ def collect_requirements(section: dict[str, Any]) -> dict[str, list[dict[str, An
                 continue
             kind = str(item.get("type") or "evidence")
             name = item.get("name") or item.get("role") or index
-            eid = str(item.get("evidence_id") or f"{kind}:{qid}:{slug(name)}")
+            eid = str(item.get("evidence_id") or f"{kind}:{qid}:{item.get('metric_id') or slug(name)}")
             result["evidence"].append({"evidence_id": eid, "question_id": qid, **item})
         for key, destination, id_key in (
             ("required_figures", "figures", "figure_id"),
@@ -352,7 +357,7 @@ def flatten_numeric_requirements(section: dict[str, Any]) -> list[tuple[str, obj
             ],
         )
         for item in requirements.get("evidence", [])
-        if isinstance(item, dict) and numeric_variants(item.get("value"))
+        if isinstance(item, dict) and not item.get("metric_id") and numeric_variants(item.get("value"))
     ]
 
 

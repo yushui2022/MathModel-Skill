@@ -183,6 +183,7 @@ def evidence_for_question(
                 "value": item.get("value"),
                 "unit": item.get("unit"),
                 "status": item.get("status"),
+                **({"metric_id": item["metric_id"]} if item.get("metric_id") else {}),
             }
         )
     for item in conclusion_map.get(qid, []):

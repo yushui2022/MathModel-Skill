@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from authoring_contracts import output_root, read_json, relative, safe_relative_path, sha256_file, strip_markers, utc_now, validate_hashes, write_json
+from claim_bindings import assemble_claims, check_plan, record_errors, claims_path
 
 
 def main() -> int:
@@ -23,6 +24,7 @@ def main() -> int:
         return 1
     errors = validate_hashes(project_root, state.get("input_hashes"), "authoring state")
     errors.extend(validate_hashes(project_root, plan.get("input_hashes"), "writing plan"))
+    errors.extend(check_plan(plan))
     units: list[tuple[str, dict]] = []
     if state.get("mode") == "global":
         units = [("GLOBAL", (state.get("sections") or {}).get("GLOBAL", {}))]
@@ -33,6 +35,7 @@ def main() -> int:
             if isinstance(item, dict) and item.get("section_id")
         ]
     parts: list[str] = []
+    paths: list[Path] = []
     for section_id, record in units:
         if not isinstance(record, dict) or record.get("status") != "PASS":
             errors.append(f"section {section_id} is not PASS")
@@ -46,6 +49,8 @@ def main() -> int:
             errors.append(f"section {section_id} changed after validation")
             continue
         parts.append(strip_markers(path.read_text(encoding="utf-8")))
+        paths.append(path)
+        errors.extend(record_errors(project_root, path, record, plan))
     if errors:
         state["status"] = "BLOCKED"
         state["blocking_reason"] = "; ".join(sorted(set(errors)))
@@ -57,11 +62,13 @@ def main() -> int:
     assembled_path = out / "drafts" / "assembled_draft.md"
     assembled_path.parent.mkdir(parents=True, exist_ok=True)
     assembled_path.write_text("\n\n".join(part.strip() for part in parts if part.strip()) + "\n", encoding="utf-8")
+    assemble_claims(project_root, paths, assembled_path, plan)
     state["status"] = "ASSEMBLED"
     state["assembled"] = {
         "path": relative(assembled_path, project_root),
         "sha256": sha256_file(assembled_path),
         "status": "PASS",
+        "claims_sha256": sha256_file(claims_path(assembled_path)) if claims_path(assembled_path).is_file() else None,
     }
     state["final"] = {"path": "paper_output/final_paper_source.md", "sha256": None, "status": "PENDING"}
     state["blocking_reason"] = None

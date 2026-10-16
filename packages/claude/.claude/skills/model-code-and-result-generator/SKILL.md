@@ -99,6 +99,7 @@ paper_output/
 - `run_manifest.json` 不是日志占位符。建模脚本、输入文件或输出产物在运行后发生变化时，必须重新运行模型，不能手改 manifest 或结果 JSON 续签旧证据。
 - 新生成的 runner 绑定当前清洗报告、来源、清洗产物、路线和建模目录内的 Python 辅助文件；运行中变化则失败。已有用户修改过的 runner 不会被覆盖，升级时须人工迁移这些检查或在独立新项目重新生成。
 - `model_results.json` 中正式条目必须有非空 `result_summary`；`metrics.json` 中 `status=computed` 的指标必须有非空、有限的 `value`，不得使用 `null`、`NaN` 或无穷值。
+- 供正式论文引用的数值指标须由计算代码同时输出稳定的 `metric_id`、`unit`、`split`、`sample_scope` 和唯一 CSV 行定位 `source_table`；同名训练/测试指标使用不同 ID。参阅 [指标与结论绑定契约](../paper-formal-writer/references/metric-claims.md)。缺元数据会在 S7 阻塞，不允许写作者猜测；最优性声明还需同次运行的验证报告。
 - `table_index.json` 中正式表格必须指向真实存在且非空的文件；只有索引条目、没有 CSV/XLSX 产物不能作为证据。
 - official evidence gate 会重新计算脚本、输入和输出哈希，并拒绝没有真实代码运行来源、运行账本状态失败、文件被修改或运行记录无法关联 `question_id` 的结果。
 - 正文中引用的表格必须能在 `paper_output/tables/table_index.json` 找到。

@@ -34,6 +34,7 @@ from authoring_contracts import (
     write_audit,
     write_json,
 )
+from claim_bindings import audit_claims, check_plan, claims_path, record_errors
 
 
 def issue(category: str, message: str, *, section_id: str, expected: list[str] | None = None) -> dict[str, Any]:
@@ -153,7 +154,7 @@ def save_queue(
 
 
 def state_inputs_fresh(project_root: Path, state: dict[str, Any], plan: dict[str, Any]) -> list[str]:
-    errors: list[str] = []
+    errors: list[str] = check_plan(plan)
     if str(plan.get("schema_version") or "") != "2.2" or str(plan.get("status") or "").upper() != "PASS":
         errors.append("writing plan envelope is not Standard 2.2 PASS")
     if str(state.get("schema_version") or "") != "2.2":
@@ -182,9 +183,14 @@ def validate_section(project_root: Path, section_id: str, plan: dict[str, Any], 
         return 1
     text = draft_path.read_text(encoding="utf-8")
     issues, metrics = validate_common(text, section, section_id, require_marker=True)
+    claim_errors, resolved, claim_hashes = audit_claims(project_root, draft_path, plan, section)
+    issues.extend(issue("claim-binding", message, section_id=section_id) for message in claim_errors)
+    metrics["resolved_claims"] = resolved
     draft_hash = sha256_file(draft_path)
     signature = section_issue_signature(issues)
-    changed_attempt = draft_hash != section_state.get("last_attempt_sha256")
+    sidecar_hash = claim_hashes.get(relative(claims_path(draft_path), project_root))
+    changed_attempt = (draft_hash != section_state.get("last_attempt_sha256")
+                       or sidecar_hash != section_state.get("last_claims_sha256"))
     if changed_attempt:
         section_state["attempts"] = int(section_state.get("attempts") or 0) + 1
         if issues and signature == section_state.get("last_issue_signature"):
@@ -192,12 +198,14 @@ def validate_section(project_root: Path, section_id: str, plan: dict[str, Any], 
         else:
             section_state["same_issue_count"] = 1 if issues else 0
         section_state["last_attempt_sha256"] = draft_hash
+        section_state["last_claims_sha256"] = sidecar_hash
         section_state["last_issue_signature"] = signature if issues else None
     section_state["issues"] = issues
     queue: list[dict[str, Any]] = []
     if not issues:
         section_state["status"] = "PASS"
         section_state["approved_sha256"] = draft_hash
+        section_state["claims_sha256"] = sidecar_hash
         state["status"] = "DRAFTING"
     elif section_id == "GLOBAL" and int(section_state.get("same_issue_count") or 0) >= 2:
         state["mode"] = "section"
@@ -225,13 +233,13 @@ def validate_section(project_root: Path, section_id: str, plan: dict[str, Any], 
         plan_path,
         queue,
         "BLOCKED" if state["status"] == "BLOCKED" else ("PENDING" if queue else "PASS"),
-        {relative(draft_path, project_root): draft_hash},
+        {relative(draft_path, project_root): draft_hash, **claim_hashes},
     )
     write_audit(
         out,
         scope=f"section:{section_id}",
         status="PASS" if not issues else "BLOCKED",
-        input_hashes={relative(draft_path, project_root): draft_hash, relative(plan_path, project_root): sha256_file(plan_path)},
+        input_hashes={relative(draft_path, project_root): draft_hash, relative(plan_path, project_root): sha256_file(plan_path), **claim_hashes},
         issues=issues,
         metrics=metrics,
     )
@@ -262,6 +270,9 @@ def validate_document(project_root: Path, scope: str, plan: dict[str, Any], stat
     }
     text = path.read_text(encoding="utf-8")
     issues, metrics = validate_common(text, merged_section, scope.upper(), require_marker=False)
+    claim_errors, resolved, claim_hashes = audit_claims(project_root, path, plan, merged_section)
+    issues.extend(issue("claim-binding", message, section_id=scope.upper()) for message in claim_errors)
+    metrics["resolved_claims"] = resolved
     from paper_scope import scope_errors
     try:
         for message in scope_errors(text, plan):
@@ -280,6 +291,8 @@ def validate_document(project_root: Path, scope: str, plan: dict[str, Any], stat
         except ValueError as exc:
             issues.append(issue("stale-assembly", str(exc), section_id="FINAL"))
         else:
+            for message in record_errors(project_root, assembled_path, state.get("assembled") or {}, plan):
+                issues.append(issue("stale-assembly", message, section_id="FINAL"))
             if not assembled_path.is_file() or sha256_file(assembled_path) != (state.get("assembled") or {}).get("sha256"):
                 issues.append(issue("stale-assembly", "assembled draft is missing or changed after assembly", section_id="FINAL"))
             else:
@@ -294,9 +307,10 @@ def validate_document(project_root: Path, scope: str, plan: dict[str, Any], stat
     if not issues:
         record["status"] = "PASS"
         record["sha256"] = current_hash
+        record["claims_sha256"] = claim_hashes.get(relative(claims_path(path), project_root))
         state["status"] = "PASS" if scope == "final" else "ASSEMBLED"
         state["blocking_reason"] = None
-        save_queue(project_root, plan_path, [], "PASS", {relative(path, project_root): current_hash})
+        save_queue(project_root, plan_path, [], "PASS", {relative(path, project_root): current_hash, **claim_hashes})
     else:
         record["status"] = "BLOCKED"
         record["sha256"] = current_hash
@@ -309,7 +323,7 @@ def validate_document(project_root: Path, scope: str, plan: dict[str, Any], stat
         out,
         scope=scope,
         status="PASS" if not issues else "BLOCKED",
-        input_hashes={relative(path, project_root): current_hash, relative(plan_path, project_root): sha256_file(plan_path)},
+        input_hashes={relative(path, project_root): current_hash, relative(plan_path, project_root): sha256_file(plan_path), **claim_hashes},
         issues=issues,
         metrics=metrics,
     )
