@@ -1,0 +1,2 @@
+# Optional linear/integer optimization backend; prediction tools need no extra deps.
+scipy>=1.11,<2

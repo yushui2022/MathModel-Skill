@@ -310,6 +310,8 @@ import pandas as pd
 
 from data_inputs import current_cleaned_files
 from modeling_tools import load_current_dataset, regression_baseline
+from validation_tools import backtest_regression
+from solver_evidence import solve_linear_problem
 
 
 THIS_FILE = Path(__file__).resolve()
@@ -377,6 +379,8 @@ def execution_provenance(outputs: list[dict[str, Any]], input_files: list[str] |
 
 def normalize_task_type(task_type: str) -> str:
     text = str(task_type or "").lower()
+    if text in ("forecasting", "optimization", "evaluation", "classification", "clustering", "simulation", "general"):
+        return text
     if any(key in text for key in ("预测", "回归", "forecast", "regression", "时间序列")):
         return "forecasting"
     if any(key in text for key in ("优化", "规划", "调度", "选址", "路径", "决策")):
@@ -587,6 +591,9 @@ def run_forecasting(question: dict[str, Any], df: pd.DataFrame, source_path: Pat
     config = question.get("regression")
     if not isinstance(config, dict):
         raise ValueError("Declare regression target, features, train_rows and test_rows in model_route.json")
+    if "validation" in config:
+        report = backtest_regression(df, **config)
+        return write_validation_result(question, report, "backtest")
     report = regression_baseline(df, **config)
     table_id = f"table_{qid.lower()}_forecasting_scaffold"
     table_path = TABLES_DIR / f"{table_id}.csv"
@@ -606,8 +613,60 @@ def run_forecasting(question: dict[str, Any], df: pd.DataFrame, source_path: Pat
     return 0
 
 
+def write_validation_result(question: dict, report: dict, kind: str) -> int:
+    qid = str(question.get("question_id") or "Q1")
+    stem = safe_slug(qid)
+    report_path = RESULTS_DIR / f"{stem}_{kind}.json"
+    write_json(report_path, report)
+    if report["status"] != "PASS":
+        upsert_question_contracts(question, f"{qid}: {kind} failed; see diagnostic report", [], [], [],
+                                  [{"name": kind, "path": rel(report_path)}], status="needs_real_modeling")
+        raise ValueError(f"{kind} failed: {report.get('solver_status', report['status'])}")
+    rows = report["metrics"] if kind == "backtest" else [{
+        "metric_key": "objective", "metric_name": "objective_value", "value": report["objective_value"],
+        "unit": report["unit"], "split": "not_applicable", "sample_scope": question["optimization"]["sample_scope"]}]
+    metric_path = TABLES_DIR / f"table_{stem}_{kind}_metrics.csv"
+    write_csv_table(metric_path, rows)
+    outputs = [{"name": kind, "path": rel(report_path)}, {"name": "metrics", "path": rel(metric_path)}]
+    tables = [table_entry(qid, f"table_{stem}_{kind}_metrics", f"{qid} {kind} metrics",
+                          "Numerical evidence; task suitability still requires review", metric_path, "computed")]
+    metrics = []
+    for row in rows:
+        metric = {**row, "metric_id": f"{qid}.{kind}.{row['metric_key']}", "status": "computed",
+                  "source_table": {"path": rel(metric_path), "row": {"metric_key": row["metric_key"]},
+                                   "value_column": "value", "unit_column": "unit", "split_column": "split",
+                                   "sample_scope_column": "sample_scope", "metric_name_column": "metric_name"}}
+        if kind == "optimization":
+            metric.update(claim_strength="optimal" if report["optimality_verified"] else "feasible",
+                          verification_path=rel(report_path))
+        metrics.append(metric)
+    if kind == "backtest":
+        prediction_path = TABLES_DIR / f"table_{stem}_backtest_predictions.csv"
+        write_csv_table(prediction_path, report["predictions"])
+        outputs.append({"name": "predictions", "path": rel(prediction_path)})
+        tables.append(table_entry(qid, f"table_{stem}_backtest_predictions", f"{qid} held-out predictions",
+                                  "One row per held-out sample", prediction_path, "computed"))
+    # Supersede only this question's placeholder indexes; preserve computed tables.
+    index_path = TABLES_DIR / "table_index.json"
+    index = load_json(index_path, {"tables": []})
+    index["tables"] = [item for item in index.get("tables", []) if not (
+        item.get("question_id") == qid and item.get("status") in
+        ("draft_contract", "needs_real_modeling", "to_be_filled"))]
+    write_json(index_path, index)
+    upsert_question_contracts(question, f"{qid}: {kind} computed for explicitly declared inputs; review task suitability",
+                              metrics, tables, [], outputs, status="scaffold_result_needs_review")
+    return 0
+
+
 def run_optimization(question: dict[str, Any], df: pd.DataFrame, source_path: Path) -> int:
     qid = str(question.get("question_id") or "Q1")
+    if "optimization" in question:
+        config = dict(question["optimization"])
+        scope = config.pop("sample_scope", None)
+        if not isinstance(scope, str) or not scope.strip():
+            raise ValueError("Declare optimization sample_scope")
+        report = solve_linear_problem(metric_id=f"{qid}.optimization.objective", **config)
+        return write_validation_result(question, report, "optimization")
     num = numeric_frame(df)
     if num.empty:
         return no_data_result(question)
@@ -1100,6 +1159,8 @@ def write_modeling_scaffolds(questions: list[dict[str, Any]]) -> list[dict[str, 
         (MODELING_CODE_DIR / "result_contract_io.py", RESULT_CONTRACT_IO_CODE),
         (MODELING_CODE_DIR / "run_modeling.py", RUN_MODELING_CODE),
         (MODELING_CODE_DIR / "modeling_tools.py", MANAGED_MARKER + "\n" + (SCRIPT_DIR / "modeling_tools.py").read_text(encoding="utf-8")),
+        (MODELING_CODE_DIR / "validation_tools.py", MANAGED_MARKER + "\n" + (SCRIPT_DIR / "validation_tools.py").read_text(encoding="utf-8")),
+        (MODELING_CODE_DIR / "solver_evidence.py", MANAGED_MARKER + "\n" + (SCRIPT_DIR / "solver_evidence.py").read_text(encoding="utf-8")),
         (MODELING_CODE_DIR / "data_inputs.py", MANAGED_MARKER + "\n" + (DATA_SCRIPTS / "data_inputs.py").read_text(encoding="utf-8")),
     ]
     for path, content in files:

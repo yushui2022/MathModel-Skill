@@ -52,11 +52,14 @@ description: "根据 model_route.json、数据计划和清洗数据，为数学�
 - `scripts/modeling_tools.py`
   - 生成脚手架时复制到赛题代码目录，提供当前数据集选择、训练集内预处理的回归基线，以及线性优化解的约束/目标值复核。
   - 需要这些工具时读取 [references/modeling-tools.md](references/modeling-tools.md)。先明确数据源、工作表、字段和样本划分，再调用工具；不要把工具输出自动升级为正式结论。
+- `scripts/validation_tools.py` / `scripts/solver_evidence.py`
+  - 预测验证或线性/整数优化时读取 [references/experiment-validation.md](references/experiment-validation.md)：时间留出、滚动回测、分组留出、特征可用时点、可选 SciPy/HiGHS 求解与独立约束复核。
+  - 报告、预测表和指标 CSV 自动连接运行账本及数值声明；工具成功不自动通过 S6。求解限时/非零差距不能被写成最优。
 
 ## 任务类型分发
 
-- 预测/回归 -> forecasting scaffold：必须提供 `regression.target/features/train_rows/test_rows`，生成留出集预测、残差、RMSE、MAE 和训练均值基线误差。时序/分组数据的划分需按题意明确，不能把行号不重叠当成没有泄漏。
-- 优化/规划/调度/选址/路径 -> optimization scaffold：生成代理目标函数、方案排序、约束满足率待补项。
+- 预测/回归 -> forecasting scaffold：显式选择 `regression.validation` 验证方案，或保留旧 `target/features/train_rows/test_rows` 接口。新接口要求单位与特征可用性声明；不能把行号不重叠当成没有泄漏。
+- 优化/规划/调度/选址/路径 -> optimization scaffold：显式 `optimization` 配置调用线性/整数求解适配；未配置时仍只是代理方案脚手架，不是正式最优解。
 - 评价/排序/权重/TOPSIS/AHP/熵权 -> evaluation scaffold：生成指标归一化、综合得分、排序和权重敏感性待补项。
 - 分类/识别/判别 -> classification scaffold：生成代理分类标签、准确率/F1 待补项。
 - 聚类/分群 -> clustering scaffold：生成代理聚类标签、聚类数、簇内紧凑度。

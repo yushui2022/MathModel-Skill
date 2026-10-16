@@ -13,7 +13,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parents[1] / "packages/claude/.claude/skills/paper-formal-writer/scripts"
 sys.path.insert(0, str(SCRIPTS))
 from authoring_contracts import collect_requirements, sha256_file, write_json, authoring_pass_errors
-from claim_bindings import build_catalog, audit_claims, claims_path, record_errors, check_plan
+from claim_bindings import VERSION, build_catalog, audit_claims, claims_path, record_errors, check_plan
 
 
 class ClaimBindingTests(unittest.TestCase):
@@ -56,7 +56,7 @@ class ClaimBindingTests(unittest.TestCase):
 
     def plan(self):
         catalog, hashes = build_catalog(self.root, [self.section], self.gate)
-        return {"claim_binding_version": 1, "metric_catalog": catalog, "input_hashes": hashes,
+        return {"claim_binding_version": VERSION, "metric_catalog": catalog, "input_hashes": hashes,
                 "delivery": {"mode": "short-report"}}
 
     def audit(self, text=None, claims=None, plan=None):
@@ -71,6 +71,11 @@ class ClaimBindingTests(unittest.TestCase):
         self.assertEqual(resolved[0]["run_id"], "experiment-001")
         self.assertEqual(resolved[0]["source_table"]["row"], {"id": "test.rmse"})
         self.assertEqual(len(hashes), 1)
+
+    def test_cached_old_claim_policy_cannot_bypass_solver_checks(self):
+        plan = self.plan()
+        plan['claim_binding_version'] = 1
+        self.assertTrue(check_plan(plan))
 
     def test_wrong_split_scope_unit_or_value_is_blocked(self):
         for old, new in [("测试集", "训练集"), ("2024", "2023"), ("万元", "元"), ("万元", "万元/年"),
@@ -227,7 +232,14 @@ class ClaimBindingTests(unittest.TestCase):
         report["optimality_verified"] = True
         write_json(proof, report)
         self.refresh(extra_artifacts=[{"path": self.metric["verification_path"], "sha256": sha256_file(proof)}])
-        self.assertEqual(self.audit(quote, [{**self.claim, "quote": quote, "assertion": "optimal"}])[0], [])
+        with self.assertRaisesRegex(ValueError, "solver evidence"):
+            self.plan()
+        # Legacy feasibility records remain readable; optimum needs solver evidence.
+        self.metric["claim_strength"] = "feasible"
+        report["optimality_verified"] = False
+        write_json(proof, report)
+        self.refresh(extra_artifacts=[{"path": self.metric["verification_path"], "sha256": sha256_file(proof)}])
+        self.plan()
         report["unit"] = "元"
         write_json(proof, report)
         self.refresh(extra_artifacts=[{"path": self.metric["verification_path"], "sha256": sha256_file(proof)}])

@@ -1,0 +1,46 @@
+{
+  "schema_version": "1",
+  "description": "Synthetic software acceptance cases, not historical contest benchmarks",
+  "questions": [
+    {
+      "question_id": "Q1",
+      "title": "Forecast a deterministic linear series",
+      "task_type": "forecasting",
+      "main_model": "OLS",
+      "baseline_model": "training mean and last observed value",
+      "data_source": "problem_files/series.csv",
+      "regression": {
+        "target": "y",
+        "features": ["x"],
+        "unit": "kg",
+        "feature_availability": {"x": "known_in_advance"},
+        "validation": {
+          "kind": "rolling_origin",
+          "time_column": "date",
+          "min_train_size": 4,
+          "test_size": 2
+        }
+      }
+    },
+    {
+      "question_id": "Q2",
+      "title": "Allocate integer resources",
+      "task_type": "optimization",
+      "main_model": "declared integer linear model",
+      "baseline_model": "exhaustive enumeration in test oracle",
+      "data_source": "problem_files/series.csv",
+      "optimization": {
+        "unit": "kg",
+        "sample_scope": "declared resource allocation",
+        "problem": {
+          "c": [3, 1],
+          "bounds": [[0, 2], [0, 2]],
+          "A_ub": [[1, 1]],
+          "b_ub": [3],
+          "integer_indices": [0, 1],
+          "sense": "max"
+        }
+      }
+    }
+  ]
+}

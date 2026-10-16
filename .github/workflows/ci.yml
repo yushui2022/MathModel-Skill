@@ -29,7 +29,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: python -m pip install -r requirements.txt -r requirements-modeling.txt
 
       - name: Verify dependencies
         run: python -m pip check
@@ -54,6 +54,12 @@ jobs:
 
       - name: Check numerical claim semantics and authoring freshness
         run: python tests/test_claim_bindings.py
+
+      - name: Check split designs and solver evidence
+        run: python tests/test_validation_tools.py
+
+      - name: Run offline evidence-to-claim benchmarks
+        run: python tests/test_validation_integration.py
 
   render:
     name: LibreOffice render gate

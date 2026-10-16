@@ -3,6 +3,7 @@
 只在需要数据选择、数值回归基线或线性解复核时读取本文件。
 `build_result_contracts.py` 会把 `modeling_tools.py` 与共享的 `data_inputs.py`
 复制到 `paper_output/code/modeling/`，不增加依赖；工具使用现有 NumPy/Pandas。
+时间/分组验证和主动求解见 [实验验证工具](experiment-validation.md)；其中优化后端按需安装 SciPy。
 
 ## 1. 当前数据与显式绑定
 

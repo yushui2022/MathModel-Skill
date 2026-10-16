@@ -39,6 +39,10 @@ The modeling program must emit each key metric in `results/metrics.json` with:
 - `unit` is explicit; dimensionless quantities use `"1"`, not a missing unit.
 - `source_table` selects exactly one CSV row. Export a CSV evidence table when
   the native output is XLSX/another format. Keep numerical cells machine-readable.
+  New validation helpers also set `unit_column`, `split_column`,
+  `sample_scope_column` and `metric_name_column`; these metadata must match the
+  recorded row, not only the numeric cell. Add these bindings to custom tables
+  where those columns exist. Legacy tables without them cannot verify that context.
 - Register the CSV and verification reports in execution `output_artifacts`.
   The writer matches the question and table to exactly one successful run.
   Optional `run_id` disambiguates multiple runs; otherwise it is resolved from
@@ -51,11 +55,14 @@ The modeling program must emit each key metric in `results/metrics.json` with:
 For `claim_strength: feasible` or `optimal`, supply `verification_path` pointing
 to a JSON artifact from that same run. Required fields are `status: PASS`, the
 matching `metric_id`, `unit` and `objective_value`, and `feasibility_verified: true`.
-`optimal` additionally requires `optimality_verified: true`. The producer must
-provide a real solver certificate/bound or mathematically justified check; a
-feasibility-only checker, a zero exit code or a handwritten Boolean is not an
-optimality certificate. The writer checks provenance and report consistency,
-not the mathematical validity of arbitrary certificate implementations.
+`optimal` requires a supported `solver-evidence/1` report produced by
+`solver_evidence.solve_linear_problem`, not merely `optimality_verified: true`.
+The writer rechecks the problem hash, constraints, objective, solver termination
+and bounds/gap before accepting the verdict. Legacy feasibility records remain
+readable; legacy optimality booleans do not. Unsupported solver certificates
+need a tested adapter, not relabeling. This verifies numerical consistency, not
+formal mathematical proof or whether the declared constraints match the task.
+See [experiment validation](../../model-code-and-result-generator/references/experiment-validation.md).
 
 ## Prepare And Migrate
 
@@ -65,7 +72,8 @@ hashes, and freezes the catalog in `writing_plan.json`. Missing context blocks
 preparation with the field name; return to modeling and regenerate evidence.
 Do not fill missing context by editing a passed writing plan.
 
-Old formal plans must be prepared again. `competition` and `short-report` use
+Claim policy version is now 2; old formal plans must be prepared again, even if
+their file hashes still match. `competition` and `short-report` use
 the same checks. The explicit `smoke-test` delivery keeps compatibility with
 installation fixtures and does not certify numerical claims.
 

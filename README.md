@@ -150,7 +150,11 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 
 2.4 开发版将当前数据绑定延伸到建模代码与运行记录，不再递归扫描旧清洗批次。新增明确字段/样本划分的回归基线：只在训练集拟合预处理，输出留出集误差、均值基线和残差。另提供线性优化解的约束、边界、整数性和目标值复核；不声称自动证明最优性。
 
-这些工具复用现有 NumPy/Pandas，不增加安装依赖，不替代赛题分析。用法见 [建模工具接口](packages/claude/.claude/skills/model-code-and-result-generator/references/modeling-tools.md)。已有人工修改的赛题代码不会被覆盖，升级旧项目时需要迁移新的输入绑定与运行检查。
+基础工具复用现有 NumPy/Pandas，不增加必装依赖，不替代赛题分析。用法见 [建模工具接口](packages/claude/.claude/skills/model-code-and-result-generator/references/modeling-tools.md)。已有人工修改的赛题代码不会被覆盖，升级旧项目时需要迁移新的输入绑定与运行检查。
+
+新增[实验验证工具](packages/claude/.claude/skills/model-code-and-result-generator/references/experiment-validation.md)：显式时间留出、滚动回测、分组留出，检查声明的特征可用时点，保存逐样本预测和相同划分上的基线。指标自动连接单位、样本范围及来源 CSV。
+
+线性/整数优化可选安装 `requirements-modeling.txt`，使用 SciPy/HiGHS 求解并独立复核约束和目标。记录状态、界、差距与容差，区分可行和数值最优；不以退出码或一个布尔值冒充最优性证明。S7 策略版本更新，旧写作计划及旧最优性报告需重新生成。工具输出仍需题意审查，不自动放行正式写作。
 
 ### 章节写作与局部修复
 
@@ -170,6 +174,7 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 
 ## 验证状态与详细文档
 
+- 新增[两个原创离线验收案例](benchmarks/validation/README.md)，覆盖真实 runner、S6 和 S7 数值声明连接，并用解析关系/穷举核算结果。这些是软件验收案例，不是竞赛论文质量评测。
 - 发布提交已通过原有 42 项回归和新增 14 项范围与渲染检查；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940797268) 覆盖 Windows/Ubuntu、Python 3.11/3.12，并含 LibreOffice 渲染任务。
 - 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
 - [安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md)
@@ -183,6 +188,9 @@ python -u tests/run_tests.py
 python tests/test_paper_scope.py
 python tests/test_data_integrity.py
 python tests/test_modeling_tools.py
+python -m pip install -r requirements-modeling.txt
+python tests/test_validation_tools.py
+python tests/test_validation_integration.py
 python tests/test_claim_bindings.py
 python scripts/build_release_packages.py --verify
 ```

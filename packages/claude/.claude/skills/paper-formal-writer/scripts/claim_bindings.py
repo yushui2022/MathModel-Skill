@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import csv
 import re
+import sys
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 from authoring_contracts import read_json, relative, safe_relative_path, sha256_file, write_json
 from paper_scope import visible_prose
 
-VERSION = 1
+VERSION = 2
 SPLITS = {
     "train": ("训练集", "training set", "train set"),
     "test": ("测试集", "test set", "held-out set"),
@@ -114,12 +115,19 @@ def build_catalog(root, sections, gate):
             rows = [r for r in csv.DictReader(stream) if all(r.get(k) == str(v) for k, v in source["row"].items())]
         if len(rows) != 1 or number(rows[0].get(source.get("value_column"))) != number(metric["value"]):
             raise ValueError(f"{mid}: source table row is ambiguous or disagrees with the metric")
-        if source.get("unit_column") and rows[0].get(source["unit_column"]) != metric["unit"]:
-            raise ValueError(f"{mid}: source table unit disagrees with the metric")
+        for field in ("unit", "split", "sample_scope", "metric_name"):
+            column = source.get(f"{field}_column")
+            if column and rows[0].get(column) != metric[field]:
+                raise ValueError(f"{mid}: source table {field} disagrees with the metric")
         hashes[table_key] = digest
         if strength != "observed":
             proof, digest = artifact_hash(root, metric.get("verification_path"), run)
             report = read_json(proof)
+            if strength == "optimal" or report.get("schema_version") == "solver-evidence/1":
+                # Ordinary prose auditing does not need to load the numerical stack.
+                sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'model-code-and-result-generator/scripts'))
+                from solver_evidence import validate_solver_report
+                validate_solver_report(report)
             if (report.get("status") != "PASS" or report.get("metric_id") != mid
                     or report.get("feasibility_verified") is not True
                     or report.get("unit") != metric["unit"]

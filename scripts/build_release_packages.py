@@ -46,6 +46,7 @@ class PackageSpec:
 COMMON_DOCS = (
     (REPO_ROOT / "LICENSE", Path("LICENSE")),
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
+    (REPO_ROOT / "requirements-modeling.txt", Path("requirements-modeling.txt")),
     (REPO_ROOT / "docs" / "starter-prompts.md", Path("docs/starter-prompts.md")),
     (REPO_ROOT / "docs" / "agent-native-workflow.md", Path("docs/agent-native-workflow.md")),
     (REPO_ROOT / "docs" / "cumcm-paper-standard.md", Path("docs/cumcm-paper-standard.md")),
