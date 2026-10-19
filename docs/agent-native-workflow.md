@@ -16,7 +16,7 @@ S0 preflight
 -> S8 native Word and required PDF render QA
 ```
 
-Start with `$paper-workflow-orchestrator`. On resume, run `workflow_guard.py --status` and trust current artifacts and hashes over remembered conversation state.
+Start with `paper-workflow-orchestrator`. On resume, run `workflow_guard.py --status` and trust current artifacts and hashes over remembered conversation state.
 
 ## Input And Code Boundary
 
@@ -40,33 +40,33 @@ S5 must actually execute model code and write `run_manifest.json`, model results
 Codex command:
 
 ```bash
-python .agents/skills/quality-assurance-auditor/scripts/evidence_gate.py --mode official
+python "<SKILL_ROOT>/quality-assurance-auditor/scripts/evidence_gate.py" --mode official
 ```
 
-Claude Code uses `.claude/skills`; Trae uses `.trae/skills`.
+Replace `<SKILL_ROOT>` with the actual parent directory of the loaded Skill folder. Run commands from the contest project root, not from the installed Skill directory.
 
 ## Authoring Boundary
 
 After S6 PASS, use `paper-formal-writer`:
 
 ```bash
-python .agents/skills/paper-formal-writer/scripts/build_paper_outline.py
-python .agents/skills/paper-formal-writer/scripts/prepare_authoring.py --mode auto
+python "<SKILL_ROOT>/paper-formal-writer/scripts/build_paper_outline.py"
+python "<SKILL_ROOT>/paper-formal-writer/scripts/prepare_authoring.py" --mode auto
 ```
 
 Normal papers use complete sections. Validate each section, use queued micro repair only after two repeated categories, assemble passed sections deterministically, then globally revise the whole manuscript. The formal source is `paper_output/final_paper_source.md`; legacy and quickstart scaffolds never become formal inputs.
 
 ```bash
-python .agents/skills/paper-formal-writer/scripts/assemble_sections.py
-python .agents/skills/paper-formal-writer/scripts/validate_authoring.py --assembled
-python .agents/skills/paper-formal-writer/scripts/validate_authoring.py --final
+python "<SKILL_ROOT>/paper-formal-writer/scripts/assemble_sections.py"
+python "<SKILL_ROOT>/paper-formal-writer/scripts/validate_authoring.py" --assembled
+python "<SKILL_ROOT>/paper-formal-writer/scripts/validate_authoring.py" --final
 ```
 
 ## Delivery Boundary
 
 ```bash
-python .agents/skills/paper-formal-writer/scripts/format_formal_docx.py
-python .agents/skills/paper-formal-writer/scripts/check_paper_format.py --render required
+python "<SKILL_ROOT>/paper-formal-writer/scripts/format_formal_docx.py"
+python "<SKILL_ROOT>/paper-formal-writer/scripts/check_paper_format.py" --render required
 ```
 
 Formal Word requires fresh S6 and S7 state. Equations must be editable OMML. Final delivery requires LibreOffice PDF rendering, pages, extractable text, complete citations, valid figures/tables, and current hashes.

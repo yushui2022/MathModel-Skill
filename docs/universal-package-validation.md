@@ -1,0 +1,58 @@
+# Standard 通用包迁移验收
+
+## 范围与基线
+
+- 开发分支：`unified-skills`；版本：`2.4.0-dev.2`。
+- 运行完整性基线：`47423bf`，提交前通过 126 项单元/集成测试及原有 42 项工作流回归。
+- 原 Claude canonical 迁入 `skills/`，删除两个镜像 payload 和三个旧平台 ZIP；十个 Skill 和 S0-S8 业务流程保留。
+- Lite、Flash、Pro、LaTeX 分支及既有 B 题示例未修改；不创建 Tag/Release，不调用付费模型。
+
+## 本地验证
+
+实际环境为 Windows、Python 3.11；安装器测试通过 `python -S` 验证不依赖第三方库。
+
+| 检查 | 本地结果 |
+|---|---|
+| `python -m unittest discover -s tests -p 'test_*.py'` | 150 项运行，149 项通过，1 项因 Windows 符号链接创建权限跳过 |
+| 新增主目录保护后的 `python -S tests/test_installation.py` | 22 项运行，21 项通过，1 项同样因符号链接创建权限跳过 |
+| `python -u tests/run_tests.py` | 原有 42 项回归全部通过，平台测试改为实际安装通用 ZIP |
+| Skill Creator 校验 | 十个 Skill 全部通过 |
+| `scripts/check_skills.py` | 单一 payload、版本、所需文件、内部引用及硬编码路径检查通过 |
+| Python 编译、`pip check`、工作流 YAML 解析 | 通过 |
+| LibreOffice | 原回归与从通用 ZIP 安装后的 DOCX/PDF 渲染测试通过；最终单元测试设置 `MATHMODEL_REQUIRE_RENDER=1` |
+
+安装覆盖首次、重复、只读检查、手动安装、同主版本托管升级、旧包冲突、用户文件改动、全局目录拒绝、五种根目录混装、Flash 识别、清单篡改、并发、正常异常回滚和进程硬中断恢复。
+普通符号链接测试因本机权限跳过，但 Windows 目录联接拒绝测试通过。恢复备份被用户修改时，恢复停止且文件快照保持不变。
+
+三个目标位置均从 ZIP 解压后调用同一个安装器；逐文件比较安装内容，并确认原项目配置、附件、其他 Skill 和旧论文产物未变化。
+预测与整数优化两个合成案例使用安装后的代码执行真实 runner、S6 和 S7 数值审计。Quickstart 从不同工作目录运行，草稿仍只写赛题的 quickstart 目录。已有预检 PASS 后修改已安装 Skill，也会被后续 workflow guard 拦截。
+
+## 分发与维护
+
+只生成 `dist/MathModel-Skill-Standard.zip` 与 `dist/SHA256SUMS.txt`。固定 ZIP 元数据、使用 ZIP_STORED、显式文本类型转 LF；本地三份构建的 SHA-256 一致，发布包另行逐文件及整包验证。
+
+安装器复用包清单和 Edition marker，安装记录只包含自身文件。`--upgrade` 不接管无记录安装，不跨 edition/主版本，不降级，不重新签署已有论文证据。
+源文件新增或删除后，应同步入口 Edition marker 的 `required_files` 清单，再运行 `check_skills.py` 和打包验证；普通内容编辑不需要更改该文件列表。
+
+## 远端验证
+
+[PR #4](https://github.com/yushui2022/MathModel-Skill/pull/4) 已触发 Windows/Ubuntu/macOS × Python 3.11/3.12 的标准库安装及确定性构建矩阵，以及核心回归和强制 LibreOffice 渲染。
+
+首轮 CI 发现两项本地环境未暴露的问题，已补修复及回归用例：
+
+- 英文 Windows 的默认输出编码无法打印中文项目路径；安装器统一使用 UTF-8 输出，不依赖用户设置环境变量。
+- macOS 的 `/var` 系统别名被误判为项目符号链接；仅放行 root 拥有且解析到固定 `/private` 对应路径的系统别名，项目内链接和 Windows 目录联接仍拒绝。
+
+跨系统验证结果以 PR 最新提交的 Checks 为准，旧提交的成功结果不替代最新提交验收。
+
+提交 `8dd9c95` 的 push 与 pull_request 两轮 CI 均已全绿，每轮 11 个任务。Windows/Ubuntu/macOS × Python 3.11/3.12 安装和 ZIP 字节一致性、Windows/Ubuntu 核心回归及强制 LibreOffice 渲染均通过。
+
+## 宿主发现验收
+
+2026-10-19 使用真实宿主进程的本地接口检查，未发送模型任务：Codex 桌面内置引擎 `0.163.0-alpha.10.2` 与 Claude Code `2.1.150` 标准启动模式均发现十个项目 Skill；旧 Codex CLI `0.88.0` 未发现 `.agents/skills/`。Trae GUI 验收按用户要求暂缓，不标记为通过。详见 [宿主发现验收](host-discovery-validation.md)。
+
+## 尚未验证
+
+- Trae 的 GUI 发现与菜单刷新尚未验证；Codex/Claude 已通过本地发现接口验收，但没有执行模型自动选用或调用 Skill 正文的任务。
+- 合成测试和短文渲染不是完整真实赛题、20 页终稿或获奖质量验证。
+- 文件哈希是完整性检查，不是可信发布者签名，也不是能抵御恶意本地进程的安全沙箱。

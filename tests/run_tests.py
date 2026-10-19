@@ -15,31 +15,23 @@ import setup_sandbox
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SANDBOX = REPO_ROOT / "tests" / "sandbox"
-ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
-BUILD_RESULT_CONTRACTS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "model-code-and-result-generator" / "scripts" / "build_result_contracts.py"
-CLEAN_DATA = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "clean_data.py"
-EVIDENCE_GATE = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
-FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
-CHECK_PAPER_FORMAT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_paper_format.py"
-PREPARE_AUTHORING = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "prepare_authoring.py"
-VALIDATE_AUTHORING = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "validate_authoring.py"
-ASSEMBLE_SECTIONS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "assemble_sections.py"
-GENERATE_LEGACY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-micro-unit-generator" / "scripts" / "generate_all_offline.py"
-MERGE_LEGACY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-micro-unit-generator" / "scripts" / "merge.py"
+ROBUST_LOADER = REPO_ROOT / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
+BUILD_RESULT_CONTRACTS = REPO_ROOT / "skills" / "model-code-and-result-generator" / "scripts" / "build_result_contracts.py"
+CLEAN_DATA = REPO_ROOT / "skills" / "data-cleaning-and-visualization" / "scripts" / "clean_data.py"
+EVIDENCE_GATE = REPO_ROOT / "skills" / "quality-assurance-auditor" / "scripts" / "evidence_gate.py"
+FORMAT_DOCX = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
+CHECK_PAPER_FORMAT = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "check_paper_format.py"
+PREPARE_AUTHORING = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "prepare_authoring.py"
+VALIDATE_AUTHORING = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "validate_authoring.py"
+ASSEMBLE_SECTIONS = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "assemble_sections.py"
+GENERATE_LEGACY = REPO_ROOT / "skills" / "paper-micro-unit-generator" / "scripts" / "generate_all_offline.py"
+MERGE_LEGACY = REPO_ROOT / "skills" / "paper-micro-unit-generator" / "scripts" / "merge.py"
 BUILD_PACKAGES = REPO_ROOT / "scripts" / "build_release_packages.py"
-UPDATE_WORKFLOW_MEMORY = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "context-memory-keeper" / "scripts" / "update_workflow_memory.py"
-CLAUDE_SKILLS = REPO_ROOT / "packages" / "claude" / ".claude" / "skills"
-CODEX_SKILLS = REPO_ROOT / "packages" / "codex" / ".agents" / "skills"
-TRAE_SKILLS = REPO_ROOT / "packages" / "trae" / ".trae" / "skills"
-CLAUDE_ORCHESTRATOR_SCRIPTS = CLAUDE_SKILLS / "paper-workflow-orchestrator" / "scripts"
-CODEX_ORCHESTRATOR_SCRIPTS = CODEX_SKILLS / "paper-workflow-orchestrator" / "scripts"
-TRAE_ORCHESTRATOR_SCRIPTS = TRAE_SKILLS / "paper-workflow-orchestrator" / "scripts"
-PREFLIGHT = CLAUDE_ORCHESTRATOR_SCRIPTS / "preflight_check.py"
-WORKFLOW_GUARD = CLAUDE_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
-CODEX_PREFLIGHT = CODEX_ORCHESTRATOR_SCRIPTS / "preflight_check.py"
-CODEX_WORKFLOW_GUARD = CODEX_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
-TRAE_PREFLIGHT = TRAE_ORCHESTRATOR_SCRIPTS / "preflight_check.py"
-TRAE_WORKFLOW_GUARD = TRAE_ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
+UPDATE_WORKFLOW_MEMORY = REPO_ROOT / "skills" / "context-memory-keeper" / "scripts" / "update_workflow_memory.py"
+SKILLS = REPO_ROOT / "skills"
+ORCHESTRATOR_SCRIPTS = SKILLS / "paper-workflow-orchestrator" / "scripts"
+PREFLIGHT = ORCHESTRATOR_SCRIPTS / "preflight_check.py"
+WORKFLOW_GUARD = ORCHESTRATOR_SCRIPTS / "workflow_guard.py"
 
 
 def run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -481,8 +473,12 @@ def test_orchestrator_guard_allows_fresh_entry() -> None:
     assert_true(report["recommended_skill"] == "paper-workflow-orchestrator", "fresh project should stay in orchestrator")
 
 
-def assert_platform_orchestrator_smoke(name: str, preflight_script: Path, workflow_guard_script: Path) -> None:
+def assert_platform_orchestrator_smoke(name: str, platform: str) -> None:
+    from install_fixture import install_bundle
     cwd = make_problem_scenario(name)
+    installed = install_bundle(cwd, platform)
+    preflight_script = installed / "paper-workflow-orchestrator/scripts/preflight_check.py"
+    workflow_guard_script = installed / "paper-workflow-orchestrator/scripts/workflow_guard.py"
     output = cwd / "paper_output"
 
     result = run([sys.executable, str(preflight_script)], cwd)
@@ -507,11 +503,11 @@ def assert_platform_orchestrator_smoke(name: str, preflight_script: Path, workfl
 
 
 def test_codex_package_smoke() -> None:
-    assert_platform_orchestrator_smoke("scenario_codex_package_smoke", CODEX_PREFLIGHT, CODEX_WORKFLOW_GUARD)
+    assert_platform_orchestrator_smoke("scenario_codex_package_smoke", "codex")
 
 
 def test_trae_package_smoke() -> None:
-    assert_platform_orchestrator_smoke("scenario_trae_package_smoke", TRAE_PREFLIGHT, TRAE_WORKFLOW_GUARD)
+    assert_platform_orchestrator_smoke("scenario_trae_package_smoke", "trae")
 
 
 def test_workflow_status_after_code_generation() -> None:
@@ -1055,6 +1051,7 @@ def test_evidence_gate_passes_for_computed_run() -> None:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -1064,6 +1061,8 @@ OUTPUT = PROJECT_ROOT / "paper_output"
 (OUTPUT / "tables" / "q1_table.csv").write_text("metric,value\\nscore,1.0\\n", encoding="utf-8")
 
 provenance = {
+    "execution_schema_version": "1.1",
+    "run_id": os.environ["MATHMODEL_RUN_ID"],
     "source_code_path": "paper_output/code/modeling/q1_model.py",
     "run_command": "python paper_output/code/modeling/q1_model.py",
     "run_exit_code": 0,
@@ -1269,7 +1268,7 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
         "quality-assurance-auditor",
     }
     for skill in sorted(expected):
-        text = (CLAUDE_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
+        text = (SKILLS / skill / "SKILL.md").read_text(encoding="utf-8").replace('"', "")
         assert_true("workflow_guard.py" in text, f"{skill} should use the workflow guard")
         if skill != "paper-workflow-orchestrator":
             assert_true(f"workflow_guard.py --skill {skill}" in text, f"{skill} should call workflow guard with its own skill name")
@@ -1280,7 +1279,7 @@ def test_skill_docs_have_workflow_guard_contract() -> None:
 
 def test_skill_docs_are_readable() -> None:
     bad_fragments = ["??", "\ufffd", "杩", "缂", "鏂", "閫", "寤", "妯", "璇", "棰"]
-    for root in (CLAUDE_SKILLS, CODEX_SKILLS, TRAE_SKILLS):
+    for root in (SKILLS,):
         for skill_doc in sorted(root.glob("*/SKILL.md")):
             text = skill_doc.read_text(encoding="utf-8")
             rel = skill_doc.relative_to(REPO_ROOT).as_posix()
@@ -1297,71 +1296,22 @@ def test_release_packages_are_isolated_and_deterministic() -> None:
         result = run([sys.executable, str(BUILD_PACKAGES), "--verify", "--output-dir", str(target)], REPO_ROOT)
         assert_true(result.returncode == 0, f"release package verification should pass\n{result.stdout}")
 
-    archives = {
-        "Codex": "MathModel-Skill-Codex.zip",
-        "Claude": "MathModel-Skill-Claude-Code.zip",
-        "Trae": "MathModel-Skill-Trae.zip",
-    }
-    for name in archives.values():
-        assert_true((first / name).read_bytes() == (second / name).read_bytes(), f"{name} should be byte-for-byte deterministic")
-    assert_true((first / "SHA256SUMS.txt").read_bytes() == (second / "SHA256SUMS.txt").read_bytes(), "checksum manifests should be deterministic")
-
-    with zipfile.ZipFile(first / archives["Codex"]) as archive:
+    name = "MathModel-Skill-Standard.zip"
+    assert_true((first / name).read_bytes() == (second / name).read_bytes(), "universal ZIP must be deterministic")
+    assert_true((first / "SHA256SUMS.txt").read_bytes() == (second / "SHA256SUMS.txt").read_bytes(), "checksums differ")
+    with zipfile.ZipFile(first / name) as archive:
         names = set(archive.namelist())
-        assert_true(any(path.startswith(".agents/skills/") for path in names), "Codex archive should use .agents/skills")
-        assert_true(not any(path.startswith("skills/") for path in names), "Codex archive should not retain legacy skills root")
-        assert_true(".agents/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Codex archive should contain edition marker")
-        assert_true("AGENTS.md" not in names and "CLAUDE.md" not in names, "Codex archive should not overwrite root instructions")
-        assert_true(archive.read("VERSION").decode("utf-8").strip() == (REPO_ROOT / "VERSION").read_text().strip(), "Codex archive should report the current version")
-    with zipfile.ZipFile(first / archives["Claude"]) as archive:
-        names = set(archive.namelist())
-        assert_true(".claude/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Claude archive should contain edition marker")
-        assert_true("CLAUDE.md" not in names and "AGENTS.md" not in names, "Claude archive should not overwrite root instructions")
-    with zipfile.ZipFile(first / archives["Trae"]) as archive:
-        names = set(archive.namelist())
-        assert_true(".trae/skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "Trae archive should contain edition marker")
-        assert_true("CLAUDE.md" not in names and "AGENTS.md" not in names, "Trae archive should not overwrite root instructions")
+        assert_true("skills/paper-workflow-orchestrator/MATHMODEL_EDITION.json" in names, "missing edition marker")
+        assert_true("install.py" in names, "missing installer")
+        assert_true("AGENTS.md" not in names and "CLAUDE.md" not in names, "root instructions must not be packaged")
+        assert_true(not any(path.startswith((".agents/", ".claude/", ".trae/", ".codex/")) for path in names), "host-specific tree leaked")
+        assert_true(archive.read("VERSION").decode().strip() == (REPO_ROOT / "VERSION").read_text().strip(), "version mismatch")
 
 
-def test_platform_packages_stay_synced() -> None:
-    for claude_skill in sorted(CLAUDE_SKILLS.glob("*/SKILL.md")):
-        skill = claude_skill.parent.name
-        claude_text = claude_skill.read_text(encoding="utf-8")
-        codex_text = (CODEX_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
-        trae_text = (TRAE_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8")
-        assert_true(codex_text == claude_text.replace(".claude/skills", ".agents/skills"), f"codex SKILL.md drift: {skill}")
-        assert_true(trae_text == claude_text.replace(".claude/skills", ".trae/skills"), f"trae SKILL.md drift: {skill}")
-
-    def tracked_payload_files(root: Path) -> set[Path]:
-        result = set()
-        for path in root.rglob("*"):
-            if not path.is_file():
-                continue
-            rel = path.relative_to(root)
-            if "__pycache__" in rel.parts or "agents" in rel.parts or rel.name == "SKILL.md":
-                continue
-            result.add(rel)
-        return result
-
-    claude_payloads = tracked_payload_files(CLAUDE_SKILLS)
-    assert_true(tracked_payload_files(CODEX_SKILLS) == claude_payloads, "codex payload file set should match claude")
-    assert_true(tracked_payload_files(TRAE_SKILLS) == claude_payloads, "trae payload file set should match claude")
-
-    for rel in sorted(claude_payloads):
-        claude_path = CLAUDE_SKILLS / rel
-        codex_path = CODEX_SKILLS / rel
-        trae_path = TRAE_SKILLS / rel
-        try:
-            claude_text = claude_path.read_text(encoding="utf-8-sig")
-            codex_text = codex_path.read_text(encoding="utf-8-sig")
-            trae_text = trae_path.read_text(encoding="utf-8-sig")
-        except UnicodeDecodeError:
-            claude_bytes = claude_path.read_bytes()
-            assert_true(codex_path.read_bytes() == claude_bytes, f"codex binary payload drift: {rel}")
-            assert_true(trae_path.read_bytes() == claude_bytes, f"trae binary payload drift: {rel}")
-            continue
-        assert_true(codex_text == (claude_text if Path(rel).name == "preflight_check.py" else claude_text.replace(".claude/skills", ".agents/skills")), f"codex payload drift: {rel}")
-        assert_true(trae_text == (claude_text if Path(rel).name == "preflight_check.py" else claude_text.replace(".claude/skills", ".trae/skills")), f"trae payload drift: {rel}")
+def test_portable_payload_and_claude_installation() -> None:
+    result = run([sys.executable, str(REPO_ROOT / "scripts/check_skills.py")], REPO_ROOT)
+    assert_true(result.returncode == 0, result.stdout)
+    assert_platform_orchestrator_smoke("scenario_claude_universal_smoke", "claude")
 
 
 def main() -> int:
@@ -1408,7 +1358,7 @@ def main() -> int:
         test_skill_docs_have_workflow_guard_contract,
         test_skill_docs_are_readable,
         test_release_packages_are_isolated_and_deterministic,
-        test_platform_packages_stay_synced,
+        test_portable_payload_and_claude_installation,
     ]
     for test in tests:
         test()

@@ -26,10 +26,10 @@ Therefore the preserved demo must not be presented as having passed the new adap
 Run the current `paper-workflow-orchestrator` from S0. After official S6 evidence PASS:
 
 ```bash
-python .agents/skills/paper-formal-writer/scripts/build_paper_outline.py
-python .agents/skills/paper-formal-writer/scripts/prepare_authoring.py --mode auto
+python "<SKILL_ROOT>/paper-formal-writer/scripts/build_paper_outline.py"
+python "<SKILL_ROOT>/paper-formal-writer/scripts/prepare_authoring.py" --mode auto
 ```
 
-Use `.claude/skills` or `.trae/skills` on those platforms. Draft and audit complete sections, deterministically assemble them, globally revise the paper, validate the final Markdown, then generate DOCX and run required render QA.
+Replace `<SKILL_ROOT>` with the actual installed skills directory and run from the contest project root. Draft and audit complete sections, deterministically assemble them, globally revise the paper, validate the final Markdown, then generate DOCX and run required render QA.
 
 Official CUMCM problem files are not distributed in this repository. Users must obtain and place authorized contest materials in their own `problem_files/` directory.

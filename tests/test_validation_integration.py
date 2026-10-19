@@ -13,7 +13,7 @@ import tempfile
 import unittest
 
 REPO = Path(__file__).resolve().parents[1]
-SKILLS = REPO / 'packages/claude/.claude/skills'
+SKILLS = REPO / 'skills'
 FIXTURES = REPO / 'benchmarks/validation'
 sys.path.insert(0, str(SKILLS / 'paper-formal-writer/scripts'))
 from authoring_contracts import sha256_file, write_json
@@ -26,16 +26,20 @@ class ValidationIntegrationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='mathmodel-validation-')
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        self.skill_root = SKILLS
+        if getattr(self, 'install_platform', None):
+            from install_fixture import install_bundle
+            self.skill_root = install_bundle(self.root, self.install_platform)
         self.output = self.root / 'paper_output'
         source = self.root / 'problem_files/series.csv'
         source.parent.mkdir()
         shutil.copyfile(FIXTURES / 'series.csv', source)
         write_json(self.output / 'input_manifest.json', {'entries': [
             {'path': 'problem_files/series.csv', 'role': 'raw_data', 'usable_for_modeling': True, 'sha256': sha256_file(source)}]})
-        self.invoke(SKILLS / 'data-cleaning-and-visualization/scripts/clean_data.py')
+        self.invoke(self.skill_root / 'data-cleaning-and-visualization/scripts/clean_data.py')
         self.route = json.loads((FIXTURES / 'cases.json').read_text(encoding='utf-8'))
         write_json(self.output / 'plan/model_route.json', self.route)
-        self.invoke(SKILLS / 'model-code-and-result-generator/scripts/build_result_contracts.py')
+        self.invoke(self.skill_root / 'model-code-and-result-generator/scripts/build_result_contracts.py')
         for q in self.route['questions']:
             shutil.copyfile(FIXTURES / 'benchmark_question.py', self.output / f'code/modeling/{q["question_id"].lower()}_model.py')
         write_json(self.output / 'figure_index.json', {'figures': []})
@@ -53,12 +57,24 @@ class ValidationIntegrationTests(unittest.TestCase):
         return json.loads((self.output / path).read_text(encoding='utf-8'))
 
     def gate(self):
-        self.invoke(SKILLS / 'quality-assurance-auditor/scripts/evidence_gate.py')
+        self.invoke(self.skill_root / 'quality-assurance-auditor/scripts/evidence_gate.py')
         return self.load('qa/evidence_gate_report.json')
 
     def section(self, metric):
         return {'requirements': {'evidence': [{'type': 'metric', 'question_id': metric['question_id'],
                  'metric_id': metric['metric_id'], 'name': metric['metric_name'], 'value': metric['value']}]}}
+
+    def inject_metric_error(self, qid, metric_id, field, value):
+        # A buggy producer, not a post-run edit: S7 must still catch semantic errors
+        # even when execution hashes correctly attest to those exact wrong outputs.
+        original = (FIXTURES / 'benchmark_question.py').read_text(encoding='utf-8')
+        mutation = ('    from result_contract_io import write_json\n'
+                    '    data = load_json(RESULTS_DIR / "metrics.json", {})\n'
+                    f'    metric = next(m for m in data["items"] if m.get("metric_id") == {metric_id!r})\n'
+                    f'    metric[{field!r}] = {value!r}\n'
+                    '    write_json(RESULTS_DIR / "metrics.json", data)\n')
+        (self.output / f'code/modeling/{qid.lower()}_model.py').write_text(
+            original.replace('    return 0', mutation + '    return 0'), encoding='utf-8')
 
     def test_two_forward_cases_and_real_claim_audit(self):
         self.invoke(self.runner)
@@ -95,9 +111,9 @@ class ValidationIntegrationTests(unittest.TestCase):
         # Rebuild managed question scripts in a fresh location without fixture promotion.
         code = self.output / 'code/modeling/q1_model.py'
         code.unlink()
-        self.invoke(SKILLS / 'model-code-and-result-generator/scripts/build_result_contracts.py')
+        self.invoke(self.skill_root / 'model-code-and-result-generator/scripts/build_result_contracts.py')
         self.invoke(self.runner)
-        result = self.invoke(SKILLS / 'quality-assurance-auditor/scripts/evidence_gate.py', success=False)
+        result = self.invoke(self.skill_root / 'quality-assurance-auditor/scripts/evidence_gate.py', success=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.load('qa/evidence_gate_report.json')['status'], 'FAIL')
 
@@ -111,11 +127,10 @@ class ValidationIntegrationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
     def test_metric_csv_disagreement_is_blocked_before_writing(self):
+        self.inject_metric_error('Q2', 'Q2.optimization.objective', 'value', 999)
         self.invoke(self.runner)
         data = self.load('results/metrics.json')
         metric = next(m for m in data['items'] if m['metric_id'] == 'Q2.optimization.objective')
-        metric['value'] = 999
-        write_json(self.output / 'results/metrics.json', data)
         gate = self.gate()
         with self.assertRaisesRegex(ValueError, 'disagrees'):
             build_catalog(self.root, [self.section(metric)], gate)
@@ -132,17 +147,14 @@ class ValidationIntegrationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
     def test_metric_context_must_agree_with_recorded_csv(self):
-        self.invoke(self.runner)
-        data = self.load('results/metrics.json')
-        metric = next(m for m in data['items'] if m['metric_id'] == 'Q1.backtest.pooled.RMSE')
         for field, changed in [('split', 'train'), ('sample_scope', 'different sample'), ('metric_name', 'MAE')]:
-            original = metric[field]
-            metric[field] = changed
-            write_json(self.output / 'results/metrics.json', data)
+            self.inject_metric_error('Q1', 'Q1.backtest.pooled.RMSE', field, changed)
+            self.invoke(self.runner)
+            data = self.load('results/metrics.json')
+            metric = next(m for m in data['items'] if m['metric_id'] == 'Q1.backtest.pooled.RMSE')
             gate = self.gate()
             with self.subTest(field=field), self.assertRaisesRegex(ValueError, f'{field} disagrees'):
                 build_catalog(self.root, [self.section(metric)], gate)
-            metric[field] = original
 
 
 if __name__ == '__main__':

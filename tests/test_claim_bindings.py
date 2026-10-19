@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPTS = Path(__file__).resolve().parents[1] / "packages/claude/.claude/skills/paper-formal-writer/scripts"
+SCRIPTS = Path(__file__).resolve().parents[1] / "skills/paper-formal-writer/scripts"
 sys.path.insert(0, str(SCRIPTS))
 from authoring_contracts import collect_requirements, sha256_file, write_json, authoring_pass_errors
 from claim_bindings import VERSION, build_catalog, audit_claims, claims_path, record_errors, check_plan
