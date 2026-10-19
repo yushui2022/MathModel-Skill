@@ -14,27 +14,15 @@ my-mm-demo/
 examples/quickstart/problem_files/ -> my-mm-demo/problem_files/
 ```
 
-## 2. 复制对应平台 Skill 包
+## 2. 安装通用 Skill 包
 
-Trae:
+解压分支的通用 ZIP，用安装器选择一个项目位置。不要复制根配置文件。
 
-```text
-packages/trae/.trae/skills/ -> my-mm-demo/.trae/skills/
+```bash
+python "<解压目录>/install.py" --project-root "my-mm-demo" --platform codex
 ```
 
-Claude Code:
-
-```text
-packages/claude/.claude/skills/ -> my-mm-demo/.claude/skills/
-packages/claude/CLAUDE.md       -> my-mm-demo/CLAUDE.md
-```
-
-Codex:
-
-```text
-packages/codex/skills/   -> my-mm-demo/skills/
-packages/codex/AGENTS.md -> my-mm-demo/AGENTS.md
-```
+其他目标参数和手动安装见[安装说明](agent-install-guide.md)。
 
 ## 3. 安装依赖
 
@@ -64,22 +52,10 @@ Agent 应优先读取 `paper-workflow-orchestrator/SKILL.md`，再按 workflow �
 
 如果你只是想验证安装和示例链路，也可以手动运行随 skill 附带的 quickstart 辅助脚本。它只生成验证草稿，不代表正式比赛论文质量：
 
-Trae:
+从赛题根运行，`<SKILL_ROOT>` 替换为实际安装的所有 Skill 的父目录：
 
 ```bash
-python .trae/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
-```
-
-Claude Code:
-
-```bash
-python .claude/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
-```
-
-Codex:
-
-```bash
-python skills/paper-workflow-orchestrator/scripts/quickstart_run.py
+python "<SKILL_ROOT>/paper-workflow-orchestrator/scripts/quickstart_run.py" --project-root "<赛题目录>"
 ```
 
 ## 5. 检查输出

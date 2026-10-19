@@ -12,7 +12,7 @@
 写完后运行 format_formal_docx.py 生成 paper_output/final_paper.docx，再运行 check_paper_format.py。证据门禁和格式门禁未同时通过时，不要把当前 Word 称为最终稿。
 写作时可以引用 paper-micro-unit-generator 中保留的微单元提示词资产，但不要机械拼接，要按当前题目的模型、结果和评分点整体成文。
 注意：skills 里的 scripts 是样板和代码级提示词，遇到真实赛题数据时，请先读取这些脚本，再根据当前字段、单位、指标和图表需求二次生成或修改专用代码。
-当前赛题专用代码统一写入 paper_output/code/，不要写回 .trae/skills/、.claude/skills/ 或 skills/。
+当前赛题专用代码统一写入 paper_output/code/，不要写回 <SKILL_ROOT>/、<SKILL_ROOT>/ 或 skills/。
 JSON 文件是 skill 之间的结构化交接单，不是平台内置标准；请把关键结论沉淀到 paper_output/ 中再进入下一阶段。
 ```
 
@@ -96,10 +96,6 @@ JSON 文件是 skill 之间的结构化交接单，不是平台内置标准；�
 如果不能作为最终比赛稿提交，请列出必须修改项。
 ```
 
-## 平台入口路径
+## 实际入口路径
 
-```text
-Trae        -> .trae/skills/paper-workflow-orchestrator/SKILL.md
-Claude Code -> .claude/skills/paper-workflow-orchestrator/SKILL.md
-Codex       -> skills/paper-workflow-orchestrator/SKILL.md
-```
+所有平台读取 `<SKILL_ROOT>/paper-workflow-orchestrator/SKILL.md`；`<SKILL_ROOT>` 替换为实际加载目录，不在安装目录写入赛题产物。

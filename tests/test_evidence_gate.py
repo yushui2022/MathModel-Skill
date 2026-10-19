@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-SKILLS = REPO / "packages/claude/.claude/skills"
+SKILLS = REPO / "skills"
 GATE = SKILLS / "quality-assurance-auditor/scripts/evidence_gate.py"
 sys.path.insert(0, str(SKILLS / "paper-formal-writer/scripts"))
 from artifact_checks import artifact_errors

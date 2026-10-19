@@ -6,7 +6,7 @@ MathModel Skill 的生成物必须有固定位置。这个约定的目的不是�
 
 - Skill 包目录只放可复用能力和样板，不放当前赛题生成物。
 - 当前赛题的所有运行产物统一写入 `paper_output/`。
-- 当前赛题专用代码统一写入 `paper_output/code/`，不要写回 `.trae/skills/`、`.claude/skills/` 或 `skills/`。
+- 当前赛题专用代码统一写入 `paper_output/code/`，不要写回 `<SKILL_ROOT>/`、`<SKILL_ROOT>/` 或 `skills/`。
 - 所有 JSON 契约和索引中的路径使用相对路径。
 
 ## Top-Level Layout
@@ -15,8 +15,8 @@ MathModel Skill 的生成物必须有固定位置。这个约定的目的不是�
 your-project/
 ├── problem_files/                 # 赛题 PDF/Word 和官方附件数据
 ├── crawled_data/                  # 可选，外部权威数据或手动补充数据
-├── .trae/skills/                  # Trae skill 包，或
-├── .claude/skills/                # Claude Code skill 包，或
+├── <SKILL_ROOT>/                  # Trae skill 包，或
+├── <SKILL_ROOT>/                # Claude Code skill 包，或
 ├── skills/                        # Codex skill 包
 └── paper_output/                  # 当前赛题所有生成物
 ```
@@ -74,7 +74,7 @@ paper_output/code/
     └── ...                        # 可选，当前赛题专用检查脚本
 ```
 
-`packages/*/skills/*/scripts/` 里的代码是 skill 自带样板；`paper_output/code/` 里的代码是当前赛题产物。真实赛题中，Agent 应先读取 skill 样板，再在 `paper_output/code/` 中生成或修改专用代码。
+`skills/*/scripts/` 里的代码是 skill 自带样板；`paper_output/code/` 里的代码是当前赛题产物。真实赛题中，Agent 应先读取 skill 样板，再在 `paper_output/code/` 中生成或修改专用代码。
 `paper-workflow-orchestrator/scripts/prepare_output_layout.py` 会先创建这些目录和 README，帮助 Agent 在开工前明确落点；这一步只规划工作区，不替代真实的数据处理、绘图和建模。
 
 ## Data And Figures

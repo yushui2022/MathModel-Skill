@@ -1,8 +1,0 @@
-interface:
-  display_name: "Model Result Generator"
-  short_description: "生成结果证据契约和 q1/q2/q3 建模代码脚手架"
-  brand_color: "#0F766E"
-  default_prompt: "Use $model-code-and-result-generator to create model result contracts and q1/q2/q3 modeling scaffolds for the MathModel Skill workflow."
-
-policy:
-  allow_implicit_invocation: true

@@ -64,20 +64,13 @@ examples/cumcm2024-b-demo/paper_output/final_paper.docx
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
 Push-Location examples\cumcm2024-b-demo
-python ..\..\packages\codex\skills\quality-assurance-auditor\scripts\evidence_gate.py
-python ..\..\packages\codex\skills\paper-formal-writer\scripts\build_paper_outline.py
-python ..\..\packages\codex\skills\paper-formal-writer\scripts\format_formal_docx.py
-python ..\..\packages\codex\skills\paper-formal-writer\scripts\check_paper_format.py
+python ..\..\skills\quality-assurance-auditor\scripts\evidence_gate.py
+python ..\..\skills\paper-formal-writer\scripts\build_paper_outline.py
+python ..\..\skills\paper-formal-writer\scripts\format_formal_docx.py
+python ..\..\skills\paper-formal-writer\scripts\check_paper_format.py
 Pop-Location
 ```
 
-不同平台只需要替换 skill 前缀：
-
-```text
-Trae        -> ..\..\packages\trae\.trae\skills\
-Claude Code -> ..\..\packages\claude\.claude\skills\
-Codex       -> ..\..\packages\codex\skills\
-```
 
 复核完成后检查：
 

@@ -1,133 +1,57 @@
-# Agent 安装指南
+# MathModel Skill LaTeX 通用安装
 
-MathModel Skill 按完整 skill 包分发。请选择你使用的 Agent 平台，优先下载对应 zip；也可以从源码目录复制对应平台包。
+每版一份源码、一个 ZIP；版本内部原有协作 Skill 全部保留。安装位置不改变工作流。
 
-| Agent | 推荐下载包 | 源码复制来源 | 复制到项目内 | 原生入口 | 可选验证命令 |
-|---|---|---|---|---|---|
-| Trae | `dist/MathModel-Skill-Trae.zip` | `packages/trae/.trae/skills/` | `.trae/skills/` | `.trae/skills/*/SKILL.md` | `python .trae/skills/paper-workflow-orchestrator/scripts/quickstart_run.py` |
-| Claude Code | `dist/MathModel-Skill-Claude-Code.zip` | `packages/claude/.claude/skills/` + `packages/claude/CLAUDE.md` | `.claude/skills/` + `CLAUDE.md` | `.claude/skills/*/SKILL.md` | `python .claude/skills/paper-workflow-orchestrator/scripts/quickstart_run.py` |
-| Codex | `dist/MathModel-Skill-Codex.zip` | `packages/codex/skills/` + `packages/codex/AGENTS.md` | `skills/` + `AGENTS.md` | `skills/*/SKILL.md` | `python skills/paper-workflow-orchestrator/scripts/quickstart_run.py` |
+### 1. 下载一个通用包
 
-## 推荐使用方式
+当前分支版本为 **2.0.0-latex.1**。下载 [MathModel-Skill-LaTeX.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/Latex/dist/MathModel-Skill-LaTeX.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
 
-安装后，普通用户不需要先手动运行 Python 命令。把赛题和附件放进 `problem_files/` 后，直接对 Agent 说：
+**同一份内容适用于不同宿主，不再分别下载 Claude、Codex、Trae 包。** ZIP 内有完整 `skills/`、安全安装器、依赖与启动说明。
 
-```text
-开始生成数学建模论文
-```
+### 2. 选择一个项目安装位置
 
-Agent 应优先读取 `paper-workflow-orchestrator/SKILL.md`，再按流程调用其他 skill。表格里的命令主要用于安装验证、quickstart 演示或调试，不是 skill 的唯一入口。
-
-更明确的可复制提示词见 [Starter Prompts](starter-prompts.md)。
-完整生成位置规划见 [Output Layout](output-layout.md)。核心规则是：skill 包目录只放可复用能力，当前赛题生成或二次修改的代码统一写入 `paper_output/code/`。
-
-如果用户不知道该从哪个 skill 开始，也不要让用户选择。默认先进入总控 skill：
-
-```text
-Trae        -> .trae/skills/paper-workflow-orchestrator/SKILL.md
-Claude Code -> .claude/skills/paper-workflow-orchestrator/SKILL.md
-Codex       -> skills/paper-workflow-orchestrator/SKILL.md
-```
-
-## 最小示例
-
-安装后建议先跑仓库内置示例，确认 skill 包路径和 Python 依赖正常：
-
-```text
-examples/quickstart/problem_files/ -> your-project/problem_files/
-```
-
-完整演示步骤见 [Quickstart Demo Walkthrough](demo-walkthrough.md)。
-
-## 输入目录
-
-所有平台都使用相同输入目录：
-
-```text
-problem_files/      # 赛题 PDF/Word 和官方附件数据
-crawled_data/       # 可选，外部补充数据
-```
-
-## 输出目录
-
-所有平台都使用相同输出目录：
-
-```text
-paper_output/
-├── OUTPUT_LAYOUT.md
-├── step1/
-│   ├── problem_analysis.json
-│   ├── A_题意对齐.md
-│   ├── B_论文大纲.md
-│   ├── C_评分点对齐表.md
-│   └── D_模型路线.json
-├── plan/
-│   ├── model_route.json
-│   ├── rubric_alignment.json
-│   ├── scoring_strategy.md
-│   ├── data_plan.json
-│   └── visualization_plan.json
-├── figure_index.json
-├── code/
-│   ├── README.md
-│   ├── data_processing/
-│   ├── visualization/
-│   ├── modeling/
-│   └── qa/
-├── results/
-│   ├── model_results.json
-│   ├── metrics.json
-│   └── conclusions.json
-├── tables/
-│   ├── table_index.json
-│   └── *.csv
-├── final_paper.docx
-├── final_paper.md
-├── tasks.json
-├── generate_log.json
-├── ref_check.md
-├── data_cleaned/
-├── micro_units/
-└── figures/
-```
-
-`problem_analysis.json` 是三端共同使用的结构化题意契约。总编排器会先生成它，再生成 `paper_output/plan/model_route.json` 与 `rubric_alignment.json`。数据清洗 skill 会补充 `data_plan.json`、`visualization_plan.json` 和 `figure_index.json`；结果证据 skill 会补充 `paper_output/results/` 与 `paper_output/tables/`；QA 再根据模型路线、评分证据、图表计划和结果证据生成动态 `tasks.json`。
-
-`paper_output/code/` 用来存放当前赛题专用代码：`data_processing/` 放清洗和特征工程脚本，`visualization/` 放绘图脚本，`modeling/` 放 q1/q2/q3 建模脚本，`qa/` 放可选检查脚本。不要把这些赛题专用代码写回 skill 包里的 `scripts/`。
-
-## Skill 包结构
-
-每个 skill 都是完整文件夹，不是单个 Markdown：
-
-```text
-skill-name/
-├── SKILL.md
-├── scripts/
-├── references/
-├── assets/
-└── 其他资源
-```
-
-其中 `scripts/`、`references/`、`assets/` 不是每个 skill 都必有，但如果原版存在，平台包中会完整保留。
-
-## 更新方式
-
-后续更新时，重新复制对应平台目录即可：
-
-```text
-Trae        -> packages/trae/.trae/skills/
-Claude Code -> packages/claude/.claude/skills/
-Codex       -> packages/codex/skills/
-```
-
-如果你修改过本地 skill，请先备份再覆盖。
-
-## 重新生成发布包
-
-维护者更新 skill 后，在仓库根目录运行：
+先解压到独立下载目录，再执行（赛题目录必须已经存在）：
 
 ```bash
-python scripts/build_release_packages.py --clean
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex --check
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex
 ```
 
-脚本会生成 `dist/` 下的三端 zip，并自动排除缓存、赛题输入、运行输出和本地爬取数据。
+| 宿主 | 安装参数 | 项目内目标目录 |
+|---|---|---|
+| Codex | `--platform codex` | `.agents/skills/` |
+| Claude Code | `--platform claude` | `.claude/skills/` |
+| Trae | `--platform trae` | `.trae/skills/` |
+
+一个项目只选一个位置。安装器仅使用 Python 3.11+ 标准库，不联网、不自动安装依赖，不覆盖 `AGENTS.md`、`CLAUDE.md`、其他 Skill、附件或已有论文。手动安装可完整复制 `skills/` 内全部目录到一个目标位置，不要只复制 `SKILL.md`。
+
+无记录旧包、混装、用户修改和不完整安装会阻塞，不会自动清理。已托管且未改动的同主版本安装，先停止建模任务，再用 `--check --upgrade` 检查，确认后用 `--upgrade`；中断时用 `--recover` 回滚。安装器不重新批准任何旧证据。
+
+### 3. 准备环境并启动
+
+在选定的 Python 环境中手动安装依赖：
+
+```bash
+python -m pip install -r "<解压目录>/requirements.txt"
+python -m pip check
+```
+
+把题面和原始附件放到赛题目录的 `problem_files/`，用宿主打开该赛题目录并刷新 Skill 列表。让 Agent 读取实际安装位置中的 **paper-workflow-orchestrator/SKILL.md**，按[启动提示词](starter-prompts.md)开始。
+
+`<SKILL_ROOT>` 指实际加载的所有 Skill 的父目录，须替换为真实绝对路径；脚本从赛题根目录运行，不在安装目录生成结果。Pro 的平台参数仅记录宿主能力，不改变 payload。详细见[安装与恢复说明](agent-install-guide.md)。
+
+LaTeX 仍是旧版工作流的实验性导出分支，不等同于新版 Standard；生成 PDF 需要单独配置 XeLaTeX。通用安装不会改变论文门禁或替代 TeX 编译器。
+
+
+
+## 校验与恢复
+
+- `--check` 只读，列出拟执行操作；不会创建安装记录。
+- 安装记录为项目内 `.mathmodel/install.json`，包含托管文件 SHA-256 和目标目录。它不是论文门禁。
+- 内容完全相同的重复安装为无操作。版本不同必须显式 `--upgrade`，不支持降级、跨 edition 或跨主版本升级。
+- 用户改动、未知同名文件、多位置安装、符号链接或目录联接会阻塞。可再生 Python 缓存不参与托管文件核验。
+- `python "<解压目录>/install.py" --project-root "<赛题目录>" --recover` 只回滚经过日志与哈希验证的安装文件；日志中的文件若已被用户改动则停止，不删除修改。
+- 无安装记录的手动安装可以运行，但不能自动纳入托管升级。旧包先备份并由用户处理，再重新安装。
+- 不把下载包目录本身当作赛题项目；存放在项目下载子目录的包不会被递归误判为启用位置。
+- 升级后重新预检，按该版本原有规则复核证据与交付门禁。不要在建模任务运行时升级。
+- 安装测试证明文件与脚本行为，不等于真实宿主自动发现、多代理或模型成文质量已经实测。

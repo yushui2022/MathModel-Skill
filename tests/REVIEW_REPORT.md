@@ -67,12 +67,12 @@ python tests/setup_sandbox.py
 
 # 跑 5 个常规场景的预检
 for S in tests/sandbox/scenario_1_empty tests/sandbox/scenario_2_only_doc tests/sandbox/scenario_3_broken_xlsx tests/sandbox/scenario_4_suspicious_template tests/sandbox/scenario_5_stale_output; do
-  (cd "$S" && python ../../../packages/claude/.claude/skills/paper-workflow-orchestrator/scripts/preflight_check.py)
+  (cd "$S" && python ../../../skills/paper-workflow-orchestrator/scripts/preflight_check.py)
 done
 
 # 场景 6：缺 pypdf 依赖（用 runtime import-blocker 模拟，不真的卸载）
 cd tests/sandbox/scenario_6_no_pypdf
-PREFLIGHT="$(pwd)/../../../packages/claude/.claude/skills/paper-workflow-orchestrator/scripts/preflight_check.py" python -c "
+PREFLIGHT="$(pwd)/../../../skills/paper-workflow-orchestrator/scripts/preflight_check.py" python -c "
 import os, sys, runpy
 class Blocker:
     def find_module(self, name, path=None):
@@ -90,8 +90,8 @@ except SystemExit as e:
 
 # 跑格式门禁（scenario_4）
 cd tests/sandbox/scenario_4_suspicious_template
-python ../../../packages/claude/.claude/skills/paper-formal-writer/scripts/format_formal_docx.py                # expect exit 2
-python ../../../packages/claude/.claude/skills/paper-formal-writer/scripts/format_formal_docx.py --allow-draft  # expect draft
+python ../../../skills/paper-formal-writer/scripts/format_formal_docx.py                # expect exit 2
+python ../../../skills/paper-formal-writer/scripts/format_formal_docx.py --allow-draft  # expect draft
 ```
 
 ## 6. Round-1.5 后续修订（响应 Codex 审议）

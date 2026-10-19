@@ -10,12 +10,12 @@ import setup_sandbox
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SANDBOX = REPO_ROOT / "tests" / "sandbox"
-PREFLIGHT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "preflight_check.py"
-WORKFLOW_GUARD = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-workflow-orchestrator" / "scripts" / "workflow_guard.py"
-ROBUST_LOADER = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
-FORMAT_DOCX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
-FORMAT_LATEX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "format_formal_latex.py"
-CHECK_LATEX = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "paper-formal-writer" / "scripts" / "check_latex_format.py"
+PREFLIGHT = REPO_ROOT / "skills" / "paper-workflow-orchestrator" / "scripts" / "preflight_check.py"
+WORKFLOW_GUARD = REPO_ROOT / "skills" / "paper-workflow-orchestrator" / "scripts" / "workflow_guard.py"
+ROBUST_LOADER = REPO_ROOT / "skills" / "data-cleaning-and-visualization" / "scripts" / "robust_loader.py"
+FORMAT_DOCX = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "format_formal_docx.py"
+FORMAT_LATEX = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "format_formal_latex.py"
+CHECK_LATEX = REPO_ROOT / "skills" / "paper-formal-writer" / "scripts" / "check_latex_format.py"
 
 
 def run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:

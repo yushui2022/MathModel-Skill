@@ -33,7 +33,7 @@ python tests/test_latex_integrity.py
 python tests/test_evidence_gate.py
 python tests/test_preview_evidence.py
 python tests/run_tests.py
-python scripts/sync_latex_hotfix.py --check
+python scripts/check_skills.py
 python scripts/build_release_packages.py
 ```
 

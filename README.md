@@ -32,7 +32,7 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是另一个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
 
-**一个项目只安装一个版本、一个平台包，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
+**一个项目只安装一个版本、一个安装位置，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
 
 ## 小红书
 
@@ -59,73 +59,45 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 ## 快速导入使用
 
-### 1. 下载对应平台的实验包
+### 1. 下载一个通用包
 
-从 [LaTeX 2026.09.05 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/latex-2026.09.05) 下载一个安装包：
+当前分支版本为 **2.0.0-latex.1**。下载 [MathModel-Skill-LaTeX.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/Latex/dist/MathModel-Skill-LaTeX.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
 
-| 平台 | 直接下载 | 解压后的 Skill 目录 |
+**同一份内容适用于不同宿主，不再分别下载 Claude、Codex、Trae 包。** ZIP 内有完整 `skills/`、安全安装器、依赖与启动说明。
+
+### 2. 选择一个项目安装位置
+
+先解压到独立下载目录，再执行（赛题目录必须已经存在）：
+
+```bash
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex --check
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex
+```
+
+| 宿主 | 安装参数 | 项目内目标目录 |
 |---|---|---|
-| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/latex-2026.09.05/MathModel-Skill-Codex.zip) | `skills/`（旧版路径） |
-| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/latex-2026.09.05/MathModel-Skill-Claude-Code.zip) | `.claude/skills/` |
-| Trae | [Trae 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/latex-2026.09.05/MathModel-Skill-Trae.zip) | `.trae/skills/` |
+| Codex | `--platform codex` | `.agents/skills/` |
+| Claude Code | `--platform claude` | `.claude/skills/` |
+| Trae | `--platform trae` | `.trae/skills/` |
 
-**包名与 Standard 相同，但内容不同，必须从本 Release 下载。一个项目只安装一个版本、一个平台包。** 可用 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/latex-2026.09.05/SHA256SUMS.txt) 核对文件。GitHub 的仓库源码 ZIP 不是平台安装包。
+一个项目只选一个位置。安装器仅使用 Python 3.11+ 标准库，不联网、不自动安装依赖，不覆盖 `AGENTS.md`、`CLAUDE.md`、其他 Skill、附件或已有论文。手动安装可完整复制 `skills/` 内全部目录到一个目标位置，不要只复制 `SKILL.md`。
 
-### 2. 导入并准备运行环境
+无记录旧包、混装、用户修改和不完整安装会阻塞，不会自动清理。已托管且未改动的同主版本安装，先停止建模任务，再用 `--check --upgrade` 检查，确认后用 `--upgrade`；中断时用 `--recover` 回滚。安装器不重新批准任何旧证据。
 
-把完整安装包解压到独立建模项目。不要覆盖用户已有 `AGENTS.md` / `CLAUDE.md`；包内的 `docs/AGENTS.example.md` 或 `docs/CLAUDE.example.md` 仅为旧版入口示例，不应整份替换用户配置。
+### 3. 准备环境并启动
 
-建议使用本次完整性 CI 测试的 Python **3.11 或 3.12**。在项目根目录安装旧版工作流的依赖：
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-只导出 `.tex` 不需要 TeX 发行版；编译 PDF 需要安装带 CTeX 中文支持的 TeX Live、MiKTeX 或 MacTeX，并确保 `xelatex` 在 PATH 中。可先运行：
+在选定的 Python 环境中手动安装依赖：
 
 ```bash
-xelatex --version
+python -m pip install -r "<解压目录>/requirements.txt"
+python -m pip check
 ```
 
-### 3. 放入题目并生成论文源稿
+把题面和原始附件放到赛题目录的 `problem_files/`，用宿主打开该赛题目录并刷新 Skill 列表。让 Agent 读取实际安装位置中的 **paper-workflow-orchestrator/SKILL.md**，按[启动提示词](docs/starter-prompts.md)开始。
 
-创建 `problem_files/`，放入赛题与附件，再让 Agent 读取当前平台的入口文件：
+`<SKILL_ROOT>` 指实际加载的所有 Skill 的父目录，须替换为真实绝对路径；脚本从赛题根目录运行，不在安装目录生成结果。Pro 的平台参数仅记录宿主能力，不改变 payload。详细见[安装与恢复说明](docs/agent-install-guide.md)。
 
-| 平台 | 要读取的入口 |
-|---|---|
-| Codex | `skills/paper-workflow-orchestrator/SKILL.md` |
-| Claude Code | `.claude/skills/paper-workflow-orchestrator/SKILL.md` |
-| Trae | `.trae/skills/paper-workflow-orchestrator/SKILL.md` |
-
-Codex 这里使用旧版路径，不能假定会像现代包一样自动发现；直接让 Agent 读取上表文件。启动提示词：
-
-```text
-请读取当前平台的 paper-workflow-orchestrator/SKILL.md，使用这个 LaTeX 分支。
-赛题和附件已放在 problem_files/，全部当前赛题产物写入 paper_output/。
-先分析题意、编写并运行代码、核验证据，再完成正式 Markdown 源稿与旧版 Word 工作流。
-之后从同一源稿导出 LaTeX；需要 PDF 时实际编译并执行 --require-pdf 检查。
-缺少依赖或检查失败时报告原因，不得把旧 PDF 或 SOURCE_ONLY 当作 PDF 交付通过。
-```
-
-### 4. 导出 LaTeX，检查 PDF
-
-以下以 Claude Code 为例；Codex 将整个 `.claude/skills/` 前缀替换为 `skills/`，Trae 替换为 `.trae/skills/`。
-
-只需要 TeX 源文件时：
-
-```bash
-python .claude/skills/paper-formal-writer/scripts/format_formal_latex.py
-python .claude/skills/paper-formal-writer/scripts/check_latex_format.py
-```
-
-需要 PDF 时：
-
-```bash
-python .claude/skills/paper-formal-writer/scripts/format_formal_latex.py --compile
-python .claude/skills/paper-formal-writer/scripts/check_latex_format.py --require-pdf
-```
-
-完成后查看 `paper_output/final_paper.tex`、`final_paper.pdf` 和 `latex_check_report.json`。只生成 TeX 的检查状态是 `SOURCE_ONLY`，不代表 PDF 已验收。旧版 Word 文件仍在 `paper_output/final_paper.docx`。
+LaTeX 仍是旧版工作流的实验性导出分支，不等同于新版 Standard；生成 PDF 需要单独配置 XeLaTeX。通用安装不会改变论文门禁或替代 TeX 编译器。
 
 ## 原理介绍
 
@@ -165,16 +137,18 @@ XeLaTeX 使用超时保护并禁用 shell escape。最终检查核对编译记�
 
 ## 验证状态与详细文档
 
-本轮本地验证及未覆盖范围见[证据加固验收记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
+本轮通用包验证见[安装迁移验收记录](docs/universal-package-validation.md)，之前的门禁修复见[证据加固记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
 
-- 发布提交通过 16 项导出完整性、故障注入及确定性打包测试；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940774139) 覆盖 Windows/Ubuntu、Python 3.11/3.12。
+- 历史发布提交通过 16 项导出完整性、故障注入及确定性打包测试；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940774139) 覆盖 Windows/Ubuntu、Python 3.11/3.12。
 - **上述测试不等于真实 XeLaTeX 编译验收，也不是整套旧版工作流的全面认证。** 当前保持 Preview 状态。
 - 历史 [B 题工程示例](examples/cumcm2024-b-demo/README.md) 未重生成，只用于查看历史产物，不证明满足新增门槛。原理与旧流程细节见 [工作流契约](docs/workflow-contracts.md)。
-- 当前分支以日期快照发布；分支 `dist/` 随提交更新，Release 标签与附件保持不变。
+- 历史 Release 使用日期快照；新通用构建使用 VERSION 中的语义版本；分支 `dist/` 随提交更新，Release 标签与附件保持不变。
 
 维护者可在仓库中执行：
 
 ```bash
-python scripts/sync_latex_hotfix.py --check
+python scripts/check_skills.py
+python -S tests/test_installation.py
+python tests/test_installed_workflow.py
 python tests/test_latex_integrity.py
 ```

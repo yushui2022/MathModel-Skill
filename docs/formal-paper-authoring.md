@@ -24,16 +24,15 @@ Agent 负责基于证据链全局写作
 -> 最终 QA
 ```
 
-Codex 路径示例：
+从赛题根运行，`<SKILL_ROOT>` 替换为实际加载的 Skill 父目录：
 
 ```bash
-python skills/quality-assurance-auditor/scripts/evidence_gate.py
-python skills/paper-formal-writer/scripts/build_paper_outline.py
-python skills/paper-formal-writer/scripts/format_formal_docx.py
-python skills/paper-formal-writer/scripts/check_paper_format.py
+python "<SKILL_ROOT>/quality-assurance-auditor/scripts/evidence_gate.py"
+python "<SKILL_ROOT>/paper-formal-writer/scripts/build_paper_outline.py"
+python "<SKILL_ROOT>/paper-formal-writer/scripts/format_formal_docx.py"
+python "<SKILL_ROOT>/paper-formal-writer/scripts/check_paper_format.py"
 ```
 
-Trae 与 Claude Code 用户分别将 `skills/` 替换为 `.trae/skills/` 或 `.claude/skills/`。
 
 ## `paper_outline.json`
 

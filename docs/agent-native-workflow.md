@@ -60,7 +60,7 @@ paper_output/code/
 └── qa/
 ```
 
-不要把当前赛题的 `q1_model.py`、绘图脚本或清洗脚本写回 `.trae/skills/`、`.claude/skills/` 或 `skills/`。
+不要把当前赛题的 `q1_model.py`、绘图脚本或清洗脚本写回 `<SKILL_ROOT>/`、`<SKILL_ROOT>/` 或 `skills/`。
 
 ## 证据门禁
 
@@ -73,8 +73,8 @@ python skills/quality-assurance-auditor/scripts/evidence_gate.py
 Trae 和 Claude Code 用户按平台路径替换：
 
 ```bash
-python .trae/skills/quality-assurance-auditor/scripts/evidence_gate.py
-python .claude/skills/quality-assurance-auditor/scripts/evidence_gate.py
+python "<SKILL_ROOT>/quality-assurance-auditor/scripts/evidence_gate.py"
+python "<SKILL_ROOT>/quality-assurance-auditor/scripts/evidence_gate.py"
 ```
 
 如果任一子问题仍是以下状态，不得把 Word 称为最终稿：

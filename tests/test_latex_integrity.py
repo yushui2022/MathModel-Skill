@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "packages/claude/.claude/skills/paper-formal-writer/scripts"
+SCRIPTS = ROOT / "skills/paper-formal-writer/scripts"
 sys.path.insert(0, str(SCRIPTS))
 import format_formal_latex as exporter
 import check_latex_format as checker
@@ -147,7 +147,7 @@ class LatexIntegrityTests(unittest.TestCase):
         for directory in (self.root / "build-a", self.root / "build-b"):
             with patch.object(builder, "DIST_DIR", directory):
                 for spec in builder.PACKAGE_SPECS:
-                    output, _ = builder.build_package(spec)
+                    output, _ = builder.build_package(spec, directory)
                     self.assertEqual(output.read_bytes(), (ROOT / "dist" / output.name).read_bytes())
                     with zipfile.ZipFile(output) as archive:
                         self.assertNotIn("AGENTS.md", archive.namelist())

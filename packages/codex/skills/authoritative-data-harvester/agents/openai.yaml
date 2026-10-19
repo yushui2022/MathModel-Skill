@@ -1,8 +1,0 @@
-interface:
-  display_name: "Authoritative Data Harvester"
-  short_description: "获取权威公开数据并记录来源"
-  brand_color: "#0EA5E9"
-  default_prompt: "Use $authoritative-data-harvester to locate authoritative public data sources for this modeling problem."
-
-policy:
-  allow_implicit_invocation: true

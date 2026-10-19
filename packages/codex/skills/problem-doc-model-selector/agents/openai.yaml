@@ -1,8 +1,0 @@
-interface:
-  display_name: "Problem Doc Model Selector"
-  short_description: "解析赛题并选择建模方法"
-  brand_color: "#7C3AED"
-  default_prompt: "Use $problem-doc-model-selector to parse the problem document and select suitable models."
-
-policy:
-  allow_implicit_invocation: true
