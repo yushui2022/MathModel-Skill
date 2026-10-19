@@ -152,6 +152,8 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 
 基础工具复用现有 NumPy/Pandas，不增加必装依赖，不替代赛题分析。用法见 [建模工具接口](packages/claude/.claude/skills/model-code-and-result-generator/references/modeling-tools.md)。已有人工修改的赛题代码不会被覆盖，升级旧项目时需要迁移新的输入绑定与运行检查。
 
+新 runner 为每问绑定本次执行 ID，防止零退出却沿用上次结果；结束时记录四份结果契约哈希，手改指标或结论会使 S6 失败。默认每问 600 秒超时，可显式调整；同一项目禁止并发运行，完整日志落盘。旧账本兼容但会提示保障不足，迁移方式与边界见 [运行记录](packages/claude/.claude/skills/model-code-and-result-generator/references/execution-records.md)。这些不是安全沙箱或数学正确性证明。
+
 新增[实验验证工具](packages/claude/.claude/skills/model-code-and-result-generator/references/experiment-validation.md)：显式时间留出、滚动回测、分组留出，检查声明的特征可用时点，保存逐样本预测和相同划分上的基线。指标自动连接单位、样本范围及来源 CSV。
 
 线性/整数优化可选安装 `requirements-modeling.txt`，使用 SciPy/HiGHS 求解并独立复核约束和目标。记录状态、界、差距与容差，区分可行和数值最优；不以退出码或一个布尔值冒充最优性证明。S7 策略版本更新，旧写作计划及旧最优性报告需重新生成。工具输出仍需题意审查，不自动放行正式写作。
@@ -188,6 +190,7 @@ python -u tests/run_tests.py
 python tests/test_paper_scope.py
 python tests/test_data_integrity.py
 python tests/test_modeling_tools.py
+python tests/test_runner_integrity.py
 python -m pip install -r requirements-modeling.txt
 python tests/test_validation_tools.py
 python tests/test_validation_integration.py

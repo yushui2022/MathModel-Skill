@@ -19,6 +19,15 @@ Contracts are machine-readable handoff records, not substitutes for reasoning. C
 | `results/conclusions.json` | model runner | evidence-backed conclusions |
 | `qa/evidence_gate_report.json` | QA | S6 status and input hashes |
 
+New `run_manifest.json` records use schema `1.1`: each result's provenance must
+match its current invocation `run_id`. The runner atomically writes `RUNNING`
+before computation and records `PASS`/`FAIL` after it. `contract_files` snapshots
+the four shared result contracts (model results, metrics, conclusions, table
+index), in addition to per-run input/output hashes. S6 rejects subsequent edits.
+Legacy `1.0` receipts remain readable with an explicit weaker-guarantee warning;
+new provenance cannot use a legacy receipt. See the modeling skill's
+`references/execution-records.md` for timeout, logs, and migration rules.
+
 ## S7 Adaptive Authoring
 
 Every S7 stage-status contract includes `schema_version`, UTC creation time, producer role, status, and upstream `input_hashes`.

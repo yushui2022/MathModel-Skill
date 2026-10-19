@@ -52,6 +52,9 @@ jobs:
       - name: Check numerical tools and current-run data bindings
         run: python tests/test_modeling_tools.py
 
+      - name: Check execution receipt integrity and timeouts
+        run: python tests/test_runner_integrity.py
+
       - name: Check numerical claim semantics and authoring freshness
         run: python tests/test_claim_bindings.py
 

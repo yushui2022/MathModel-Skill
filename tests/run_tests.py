@@ -1055,6 +1055,7 @@ def test_evidence_gate_passes_for_computed_run() -> None:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -1064,6 +1065,8 @@ OUTPUT = PROJECT_ROOT / "paper_output"
 (OUTPUT / "tables" / "q1_table.csv").write_text("metric,value\\nscore,1.0\\n", encoding="utf-8")
 
 provenance = {
+    "execution_schema_version": "1.1",
+    "run_id": os.environ["MATHMODEL_RUN_ID"],
     "source_code_path": "paper_output/code/modeling/q1_model.py",
     "run_command": "python paper_output/code/modeling/q1_model.py",
     "run_exit_code": 0,

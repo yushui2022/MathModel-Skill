@@ -5,7 +5,7 @@ import math
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 
@@ -107,7 +107,7 @@ def status_of(item: dict[str, Any] | None) -> str:
 
 
 def resolve_artifact(path_text: object) -> Path:
-    text = str(path_text or "").strip().strip("<>")
+    text = str(path_text or "").strip().strip("<>").replace("\\", "/")
     path = Path(text)
     if path.is_absolute():
         return path
@@ -202,6 +202,15 @@ def run_manifest_failures(item: dict[str, Any], run_manifest: Any) -> list[str]:
     provenance = item.get("execution_provenance")
     if not isinstance(provenance, dict):
         return ["缺少 execution_provenance，无法匹配 run_manifest"]
+    version = str(run_manifest.get("schema_version") or "1.0")
+    if version not in ("1.0", "1.1"):
+        return [f"Unsupported run_manifest schema_version: {version}"]
+    if version != "1.1" and (provenance.get("execution_schema_version") == "1.1" or provenance.get("run_id")):
+        return ["Current execution provenance requires run_manifest schema 1.1; rerun modeling"]
+    if version == "1.1":
+        current_failures = current_receipt_failures(item, run_manifest)
+        if current_failures:
+            return current_failures
     source_code = normalized_artifact(provenance.get("source_code_path"))
     qid = str(item.get("question_id") or "").strip()
     matches = [
@@ -249,6 +258,51 @@ def run_manifest_failures(item: dict[str, Any], run_manifest: Any) -> list[str]:
     for entry in run.get("output_artifacts", []) or []:
         if isinstance(entry, dict):
             failures.extend(recorded_file_failures(entry, "运行输出"))
+    return failures
+
+
+def current_receipt_failures(item: dict[str, Any], manifest: dict[str, Any]) -> list[str]:
+    """Bind current-invocation results and shared contracts before inspecting files."""
+    failures = []
+    contracts = manifest.get("contract_files")
+    required = {"paper_output/results/model_results.json", "paper_output/results/metrics.json",
+                "paper_output/results/conclusions.json", "paper_output/tables/table_index.json"}
+    if not isinstance(contracts, list) or len(contracts) != len(required):
+        return ["run_manifest requires all four result contract snapshots"]
+    if any(not isinstance(e, dict) for e in contracts):
+        return ["Invalid run_manifest contract_files entry"]
+    if {e.get('path') for e in contracts if isinstance(e.get('path'), str)} != required:
+        return ["run_manifest contract_files does not match required result contracts"]
+    provenance = item['execution_provenance']
+    run_id = provenance.get('run_id')
+    matches = [run for run in manifest['runs'] if isinstance(run, dict) and run.get('run_id') == run_id]
+    if not isinstance(run_id, str) or not run_id or len(matches) != 1:
+        return ["Result does not match exactly one current invocation run_id"]
+    run = matches[0]
+    if str(item.get('question_id')) not in (run.get('question_ids') or []):
+        failures.append("Current invocation does not contain result question_id")
+    if run.get('timed_out') is not False or run.get('status') != 'PASS':
+        failures.append("Current invocation timed out or did not pass")
+    entries = list(contracts)
+    for name in ('input_files', 'output_artifacts'):
+        value = run.get(name)
+        if not isinstance(value, list) or not value or any(not isinstance(e, dict) for e in value):
+            return [f"Current invocation requires nonempty {name}"]
+        entries.extend(value)
+    paths = [e.get('path') for e in entries] + [run.get('script'), provenance.get('source_code_path')]
+    for value in paths:
+        if not isinstance(value, str) or not value or '\x00' in value:
+            return ["Invalid current-invocation evidence path"]
+        text = value.replace('\\', '/')
+        if Path(text).is_absolute() or PureWindowsPath(text).drive or ':' in text or '..' in text.split('/'):
+            return [f"Current-invocation evidence path must be project-relative: {value}"]
+        path = (BASE_DIR / text).resolve()
+        if path == BASE_DIR.resolve() or not path.is_relative_to(BASE_DIR.resolve()):
+            return [f"Current-invocation evidence path escapes project: {value}"]
+    if normalized_artifact(run.get('script')) != normalized_artifact(provenance.get('source_code_path')):
+        failures.append("Current invocation script differs from result provenance")
+    for entry in contracts:
+        failures.extend(recorded_file_failures(entry, "运行结果契约"))
     return failures
 
 
@@ -327,6 +381,8 @@ def evaluate() -> dict[str, Any]:
 
     failures: list[str] = []
     warnings: list[str] = []
+    if isinstance(run_manifest, dict) and str(run_manifest.get('schema_version') or '1.0') == '1.0':
+        warnings.append("Legacy run_manifest 1.0: no current-invocation ID or result-contract snapshot; regenerate the runner and rerun for 1.1 checks.")
     cleaning_paths = []
     cleaning_path = OUTPUT_DIR / "data_cleaned/cleaning_report.json"
     if cleaning_path.exists():

@@ -98,6 +98,7 @@ paper_output/
 - 多数据集时在问题配置中指定原始 `data_source` 和必要的 `sheet`，不能默认选第一个文件。单个数据集允许省略选择，但不自动猜预测目标列。
 - `verify_linear_solution` 只核验提供的线性约束、边界、整数性与目标值；PASS 不证明全局最优，也不证明约束忠实于赛题。
 - 正式结果必须带 `execution_provenance`，至少包含 `source_code_path`、`source_code_sha256`、`run_command`、`run_exit_code` 和 `output_artifacts`。
+- 新 runner 使用 1.1 账本：来源须带本次 `run_id`，结束时绑定四份共享结果契约；默认每问 600 秒超时，日志写文件。编写自定义代码、失败排查或旧项目迁移时读取 [运行记录与迁移](references/execution-records.md)，不要复用旧 ID 或手改账本。
 - 统一入口 `run_modeling.py` 必须在实际执行后写入 `paper_output/results/run_manifest.json`，记录总体 `status`、脚本 hash、`question_ids`、退出码、工作目录、Python 实现/版本/平台，以及每个输入和输出文件的 `path`、`bytes`、`sha256`、`exists`。
 - `run_manifest.json` 不是日志占位符。建模脚本、输入文件或输出产物在运行后发生变化时，必须重新运行模型，不能手改 manifest 或结果 JSON 续签旧证据。
 - 新生成的 runner 绑定当前清洗报告、来源、清洗产物、路线和建模目录内的 Python 辅助文件；运行中变化则失败。已有用户修改过的 runner 不会被覆盖，升级时须人工迁移这些检查或在独立新项目重新生成。

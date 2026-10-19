@@ -60,6 +60,18 @@ class ValidationIntegrationTests(unittest.TestCase):
         return {'requirements': {'evidence': [{'type': 'metric', 'question_id': metric['question_id'],
                  'metric_id': metric['metric_id'], 'name': metric['metric_name'], 'value': metric['value']}]}}
 
+    def inject_metric_error(self, qid, metric_id, field, value):
+        # A buggy producer, not a post-run edit: S7 must still catch semantic errors
+        # even when execution hashes correctly attest to those exact wrong outputs.
+        original = (FIXTURES / 'benchmark_question.py').read_text(encoding='utf-8')
+        mutation = ('    from result_contract_io import write_json\n'
+                    '    data = load_json(RESULTS_DIR / "metrics.json", {})\n'
+                    f'    metric = next(m for m in data["items"] if m.get("metric_id") == {metric_id!r})\n'
+                    f'    metric[{field!r}] = {value!r}\n'
+                    '    write_json(RESULTS_DIR / "metrics.json", data)\n')
+        (self.output / f'code/modeling/{qid.lower()}_model.py').write_text(
+            original.replace('    return 0', mutation + '    return 0'), encoding='utf-8')
+
     def test_two_forward_cases_and_real_claim_audit(self):
         self.invoke(self.runner)
         gate = self.gate()
@@ -111,11 +123,10 @@ class ValidationIntegrationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
     def test_metric_csv_disagreement_is_blocked_before_writing(self):
+        self.inject_metric_error('Q2', 'Q2.optimization.objective', 'value', 999)
         self.invoke(self.runner)
         data = self.load('results/metrics.json')
         metric = next(m for m in data['items'] if m['metric_id'] == 'Q2.optimization.objective')
-        metric['value'] = 999
-        write_json(self.output / 'results/metrics.json', data)
         gate = self.gate()
         with self.assertRaisesRegex(ValueError, 'disagrees'):
             build_catalog(self.root, [self.section(metric)], gate)
@@ -132,17 +143,14 @@ class ValidationIntegrationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
 
     def test_metric_context_must_agree_with_recorded_csv(self):
-        self.invoke(self.runner)
-        data = self.load('results/metrics.json')
-        metric = next(m for m in data['items'] if m['metric_id'] == 'Q1.backtest.pooled.RMSE')
         for field, changed in [('split', 'train'), ('sample_scope', 'different sample'), ('metric_name', 'MAE')]:
-            original = metric[field]
-            metric[field] = changed
-            write_json(self.output / 'results/metrics.json', data)
+            self.inject_metric_error('Q1', 'Q1.backtest.pooled.RMSE', field, changed)
+            self.invoke(self.runner)
+            data = self.load('results/metrics.json')
+            metric = next(m for m in data['items'] if m['metric_id'] == 'Q1.backtest.pooled.RMSE')
             gate = self.gate()
             with self.subTest(field=field), self.assertRaisesRegex(ValueError, f'{field} disagrees'):
                 build_catalog(self.root, [self.section(metric)], gate)
-            metric[field] = original
 
 
 if __name__ == '__main__':
