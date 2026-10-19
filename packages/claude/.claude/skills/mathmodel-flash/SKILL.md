@@ -5,6 +5,14 @@ description: "速度优先的数学建模长文工作流。Use when 用户明确
 
 # MathModel Flash
 
+## 证据检查补充
+
+- 审题必须核对原题中的显式问题、表格、图片及公式；提取文本不完整时先查原件，不自行补出题意。
+- 子问题可省略独立状态并继承顶层 `computed`；若声明 `status` 或 `evidence_status`，所有字段都必须为 computed/verified/validated/pass（不区分大小写）。失败、未知、冲突状态或 exploratory 不能交付。
+- 运行产生的位图须可解码，CSV/TSV 使用 UTF-8、唯一非空表头及等宽数据行；XLSX 不保留空的占位工作表。原始输入不受输出编码要求限制。
+- 完成后重新运行最终检查；报告 `evidence_policy_version=2` 并绑定实际证据哈希。不能只把旧报告改成 PASS。
+
+
 Flash 是独立的快速版本。它把模型输出速度和长文初稿完成度放在第一位，适合快速得到一份包含实验、图表、结果和 Word 文件的基础论文草稿。它不是 Standard 或 Pro 的质量替代品，也不保证直接满足正式竞赛终稿要求。
 
 ## 适用边界

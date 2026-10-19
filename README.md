@@ -87,7 +87,15 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 
 ## 原理介绍
 
-当前为 2.0.0-flash.2 开发版，新增实验输出隔离。本分支 [dist/](./dist/) 包含修复；尚未创建新 Release，上面的旧 Release 不含此修复。
+### 本轮证据加固
+
+- 顶层 `computed` 不再掩盖子问题的失败、未知或冲突状态；未单独声明子问题状态的旧格式仍兼容。
+- 本轮生成的 PNG/JPEG 等位图必须能解码；CSV/TSV 必须为 UTF-8、具有唯一非空表头和等宽数据行，XLSX 每个工作表都需有效。
+- 最终报告绑定实际输入和输出哈希，而非只记录运行清单。原始附件不会因输出表格规则被重写或强制转换。
+- 这仍是 Flash 的基础交付检查，不增加多代理、用户检查点或 PDF 验收。升级后重新运行最终检查，不沿用旧 PASS 报告。
+
+
+当前为 2.0.0-flash.3 开发版，新增实验输出隔离。本分支 [dist/](./dist/) 包含修复；尚未创建新 Release，上面的旧 Release 不含此修复。
 
 ```text
 赛题与附件
@@ -112,6 +120,8 @@ Flash 用少量固定脚本守住最低真实性底线：预检记录输入，�
 Flash PASS 不是数学正确性证明，也不是正式竞赛验收。没有严格引用审计、原生 OMML 公式、PDF 渲染门禁、独立双路径复算和多角色审稿时，应在提交前转入 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard) 或 [Pro](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
 
 ## 开发验证
+
+本轮本地验证及未覆盖范围见[证据加固验收记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
 
 ```bash
 python scripts/sync_platform_packages.py --check
