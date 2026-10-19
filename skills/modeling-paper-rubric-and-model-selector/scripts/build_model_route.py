@@ -272,6 +272,13 @@ def main() -> int:
         print("请先运行 problem-doc-model-selector/scripts/analyze_problem.py")
         return 1
 
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'problem-doc-model-selector/scripts'))
+    from review_problem import review_errors
+    errors = review_errors(BASE_DIR, analysis)
+    if errors:
+        print('[BLOCKED] ' + '\n'.join(errors))
+        return 1
+
     PLAN_DIR.mkdir(parents=True, exist_ok=True)
     model_route = build_model_route(analysis)
     rubric_alignment = build_rubric_alignment(model_route)

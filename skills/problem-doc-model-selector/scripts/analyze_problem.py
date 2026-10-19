@@ -1,8 +1,11 @@
 import json
+import hashlib
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
+import zipfile
+import xml.etree.ElementTree as ET
 from typing import Any
 
 
@@ -91,7 +94,7 @@ MODEL_RULES = [
 def safe_read_text(path: Path) -> str:
     for encoding in ("utf-8", "utf-8-sig", "gbk", "gb18030"):
         try:
-            return path.read_text(encoding=encoding, errors="ignore")
+            return path.read_text(encoding=encoding)
         except Exception:
             continue
     return ""
@@ -119,8 +122,8 @@ def read_pdf(path: Path) -> str:
     try:
         import fitz  # type: ignore
 
-        doc = fitz.open(path)
-        return "\n".join(page.get_text() for page in doc)
+        with fitz.open(path) as doc:
+            return "\n".join(page.get_text() for page in doc)
     except Exception:
         pass
     try:
@@ -137,6 +140,32 @@ def read_pdf(path: Path) -> str:
             return "\n".join(page.extract_text() or "" for page in pdf.pages)
     except Exception:
         return ""
+
+
+def extraction_risks(path: Path, content: str) -> list[str]:
+    risks = []
+    if not content.strip():
+        risks.append('No extractable text; inspect the original')
+    if path.suffix.lower() == '.docx':
+        try:
+            with zipfile.ZipFile(path) as archive:
+                root = ET.fromstring(archive.read('word/document.xml'))
+            tags = {node.tag.rsplit('}', 1)[-1] for node in root.iter()}
+            if tags & {'oMath', 'oMathPara', 'object', 'OLEObject', 'sym'}:
+                risks.append('Formula/symbol/OLE content may be missing from extracted text; visually verify signs and units')
+            if tags & {'drawing', 'pict'}:
+                risks.append('Diagram/image content requires source review')
+        except (OSError, KeyError, zipfile.BadZipFile, ET.ParseError):
+            risks.append('Cannot inspect document structure')
+    elif path.suffix.lower() == '.pdf':
+        try:
+            import fitz
+            with fitz.open(path) as doc:
+                if any(page.get_images() for page in doc):
+                    risks.append('PDF images may contain data or formulas; visually verify')
+        except Exception:
+            risks.append('PDF image completeness could not be checked')
+    return risks
 
 
 def collect_problem_files() -> list[Path]:
@@ -169,6 +198,9 @@ def extract_text(files: list[Path]) -> tuple[str, list[dict[str, Any]], list[dic
 
         if content.strip():
             text_parts.append(f"\n\n# 文件：{rel}\n{content.strip()}")
+        if suffix in {'.txt', '.md', '.docx', '.pdf'}:
+            documents[-1]['sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+            documents[-1]['extraction_risks'] = extraction_risks(path, content)
 
     return "\n".join(text_parts).strip(), documents, data_files
 
@@ -243,6 +275,7 @@ def split_questions(text: str) -> list[dict[str, str]]:
                 "title": f"问题{QUESTION_NUMERALS.get(num, num)}",
                 "summary": first_line[:160],
                 "raw_text": chunk[:2000],
+                "extraction_method": "explicit_question_heading",
             }
         )
 
@@ -258,6 +291,7 @@ def split_questions(text: str) -> list[dict[str, str]]:
             "title": "问题一",
             "summary": "根据赛题文本和附件数据完成核心建模任务。",
             "raw_text": text[:2000],
+            "extraction_method": "fallback_unconfirmed",
         }
     ]
 
@@ -341,6 +375,9 @@ def build_analysis(text: str, documents: list[dict[str, Any]], data_files: list[
         )
 
     data_requirements = detect_external_data_need(text)
+    review_requirements = [f"{doc['path']}: {risk}" for doc in documents for risk in doc.get('extraction_risks', [])]
+    if any(q.get('extraction_method') == 'fallback_unconfirmed' for q in raw_questions):
+        review_requirements.append('No reliable question headings; confirm each requested objective instead of assuming one question')
     return {
         "schema_version": "1.0",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -351,6 +388,8 @@ def build_analysis(text: str, documents: list[dict[str, Any]], data_files: list[
         "problem_text_excerpt": text[:3000],
         "global_constraints": constraints,
         "questions": questions,
+        "review_requirements": review_requirements,
+        "extraction_status": "NEEDS_REVIEW" if review_requirements else "EXTRACTED",
         "data_requirements": data_requirements,
         "next_outputs": {
             "model_route": "paper_output/plan/model_route.json",
@@ -447,6 +486,10 @@ def main() -> int:
     print(f"✅ 已生成结构化赛题分析：{ANALYSIS_FILE}")
     print(f"   子问题数量：{len(analysis.get('questions', []))}")
     print(f"   文档数量：{len(documents)}，数据附件数量：{len(data_files)}")
+    for requirement in analysis['review_requirements']:
+        print(f"[REVIEW REQUIRED] {requirement}")
+    if analysis['review_requirements']:
+        print('Extraction saved, not approved. Review source and correct questions, then run review_problem.py.')
     return 0
 
 

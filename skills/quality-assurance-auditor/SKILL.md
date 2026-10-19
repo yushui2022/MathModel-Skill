@@ -80,8 +80,12 @@ Resolve <SKILL_ROOT> to the parent directory of this loaded skill folder, using 
 6. 证据与运行新鲜度
    - `execution_provenance`、`run_manifest.json`、建模脚本、输入文件和输出产物必须相互匹配，记录的 SHA-256 必须等于当前文件。
    - 新 1.1 账本还须核对当前 `run_id` 与四份共享结果契约快照；`RUNNING`、超时、旧结果复用和运行后手改契约均不能通过。旧 1.0 仅兼容并警告，升级规则见建模技能的 `references/execution-records.md`。
-   - 计算指标必须非空且为有限值；`None`、空字符串、`NaN`、`Inf` 或缺少 `result_summary` 均直接 FAIL。
+   - 计算指标必须是有限 JSON 数值；字符串数字、布尔值、`None`、`NaN`、`Inf` 或缺少 `result_summary` 均直接 FAIL。
    - 图表或表格只要缺失、空文件、生成失败、标记为 placeholder，或包含失败/占位说明，均不得作为正式证据。
+   - 结果、指标、结论及正式图表只接受 `computed/verified/validated/PASS`（不区分大小写）；同时存在 `status` 和 `evidence_status` 时两者都必须有效。未知状态、缺状态、`FAIL` 不能放行。
+   - 正式图表必须属于对应问题成功运行的 `output_artifacts`，哈希一致且可解码。图片必须可读取；表格使用有表头和数据行的 UTF-8 CSV/TSV 或 XLSX。
+   - S3 探索草图和数据画像不是模型实验，保留 `needs_review`。正式索引只纳入真实重算的证据，不能仅改状态或手签哈希；失败实验记录保留在实验日志，不冒充正式结论。
+   - 当前门禁策略为 `policy_version=2`；旧 PASS 必须重新执行 S6。代码、运行输入输出及图表都纳入下游新鲜度检查；这不是自动认证数学正确性，仍须对照原题人工审稿。
 7. 图表-正文链检测
    - 正文是否出现“见图 3”而图 3 真实存在且编号正确
    - 图表标题与正文描述是否语义一致
@@ -106,12 +110,12 @@ Resolve <SKILL_ROOT> to the parent directory of this loaded skill folder, using 
 ## 防偷懒机制
 - 本 skill **绝不生成任何新内容**，只做「Review & Reject」
 - 所有判定规则公开透明，用户可自定义阈值或开关维度
-- FAIL 时**强制阻塞**，无法通过 prompt 绕过，必须实质修改
+- FAIL 时阻塞正式流程，必须实质修改；本地文件可被编辑，因此门禁不是防恶意伪造的安全边界。
 
 ## 备注
 - 审计规则默认对齐 CUMCM 国赛评分标准，可通过 `rubric=` 参数覆盖
 - 支持中英文赛题与输出，关键词库可扩展
-- 审计本身不依赖外部大模型，全部基于规则与关键词库，确保速度与不偏性
+- 脚本检查不依赖外部模型；公式含义、单位和实验设计仍需 Agent 对照原题审核，规则通过不保证论文正确。
 
 ---
 

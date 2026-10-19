@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "product": "MathModel-Skill",
   "edition": "standard",
-  "version": "2.4.0-dev.2",
+  "version": "2.4.0-dev.3",
   "entry_skill": "paper-workflow-orchestrator",
   "required_files": [
     "authoritative-data-harvester/scripts/run.py",
@@ -65,8 +65,10 @@
     "paper-workflow-orchestrator/scripts/workflow_guard.py",
     "paper-workflow-orchestrator/SKILL.md",
     "problem-doc-model-selector/scripts/analyze_problem.py",
+    "problem-doc-model-selector/scripts/review_problem.py",
     "problem-doc-model-selector/SKILL.md",
     "quality-assurance-auditor/scripts/evidence_gate.py",
+    "quality-assurance-auditor/scripts/evidence_policy.py",
     "quality-assurance-auditor/scripts/pipeline.py",
     "quality-assurance-auditor/SKILL.md"
   ]

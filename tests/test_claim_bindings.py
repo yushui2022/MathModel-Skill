@@ -49,7 +49,7 @@ class ClaimBindingTests(unittest.TestCase):
                                          *(extra_artifacts or [])]}
         write_json(self.out / "results/run_manifest.json", {"status": "PASS", "runs": [self.run]})
         write_json(self.out / "results/metrics.json", {"items": [self.metric, *(extra_metrics or [])]})
-        self.gate = {"status": "PASS", "input_hashes": {
+        self.gate = {"status": "PASS", "policy_version": 2, "input_hashes": {
             f"paper_output/results/{name}.json": sha256_file(self.out / f"results/{name}.json")
             for name in ("metrics", "run_manifest")}}
         write_json(self.out / "qa/evidence_gate_report.json", self.gate)

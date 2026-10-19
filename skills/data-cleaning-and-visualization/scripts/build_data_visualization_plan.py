@@ -327,7 +327,7 @@ def chart_type(task_type: str, title: str, x_column: str, y_columns: list[str]) 
         return "weight_bar"
     if "得分" in title_text or "排序" in title_text or "排名" in title_text:
         return "score_ranking"
-    if "热力" in title_text or "矩阵" in title_text:
+    if "热力" in title_text or "热图" in title_text or "矩阵" in title_text:
         return "heatmap"
     if "真实值" in title_text or "预测值" in title_text or "预测" in title_text or "预报" in title_text:
         return "prediction_comparison"
@@ -450,6 +450,8 @@ def build_visualization_plan(
             figures.append(
                 {
                     "figure_id": figure_id,
+                    "status": "needs_review",
+                    "evidence_role": "exploratory",
                     "question_id": qid,
                     "title": title,
                     "chart_type": chart_type_value,
@@ -489,6 +491,8 @@ def build_figure_index(visualization_plan: dict[str, Any]) -> dict[str, Any]:
                 "title": item.get("title"),
                 "question_id": item.get("question_id"),
                 "planned": True,
+                "status": "needs_review",
+                "evidence_role": "exploratory",
                 "exists": bool(path and (BASE_DIR / path).exists()),
                 "used_in": item.get("paper_usage"),
             }

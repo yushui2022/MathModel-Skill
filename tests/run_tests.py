@@ -89,6 +89,7 @@ def write_fresh_gate_report(output: Path) -> None:
         output / "qa" / "evidence_gate_report.json",
         {
             "status": "PASS",
+            "policy_version": 2,
             "failures": [],
             "input_hashes": {marker.resolve().relative_to(output.parent.resolve()).as_posix(): sha256_file(marker)},
         },

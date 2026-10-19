@@ -55,7 +55,7 @@ class InstallationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         return inst.load(self.project / inst.RECORD)
 
-    def modified_source(self, version="2.4.0-dev.3"):
+    def modified_source(self, version="2.4.0-dev.4"):
         target = self.root / "upgrade bundle"
         shutil.copytree(self.source, target, ignore=shutil.ignore_patterns("__pycache__"))
         (target / "VERSION").write_text(version + "\n", encoding="utf-8")
@@ -189,7 +189,7 @@ class InstallationTests(unittest.TestCase):
 
     def test_downgrade_same_version_and_major_upgrade_block(self):
         self.install()
-        for version in ("2.3.9", "2.4.0-dev.2", "3.0.0"):
+        for version in ("2.3.9", (self.source / "VERSION").read_text().strip(), "3.0.0"):
             with self.subTest(version=version):
                 source = self.modified_source(version)
                 self.assertNotEqual(self.cli("--platform", "codex", "--upgrade", source=source).returncode, 0)

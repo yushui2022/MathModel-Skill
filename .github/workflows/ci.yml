@@ -55,6 +55,9 @@ jobs:
       - name: Check execution receipt integrity and timeouts
         run: python tests/test_runner_integrity.py
 
+      - name: Check fail-closed evidence and problem extraction
+        run: python tests/test_evidence_integrity.py
+
       - name: Check numerical claim semantics and authoring freshness
         run: python tests/test_claim_bindings.py
 

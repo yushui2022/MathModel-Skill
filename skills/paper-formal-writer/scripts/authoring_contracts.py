@@ -4,9 +4,13 @@ import hashlib
 import json
 import math
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'quality-assurance-auditor/scripts'))
+from evidence_policy import policy_errors
 
 
 SCHEMA_VERSION = "2.2"
@@ -216,6 +220,7 @@ def fresh_evidence_gate(project_root: Path) -> tuple[dict[str, Any], list[str]]:
     except ValueError as exc:
         return {}, [str(exc)]
     errors = [] if str(gate.get("status") or "").upper() == "PASS" else ["evidence gate status is not PASS"]
+    errors.extend(policy_errors(gate))
     errors.extend(validate_hashes(project_root, gate.get("input_hashes"), "evidence gate"))
     return gate, errors
 

@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from paper_figure_templates import plot_figure_spec
+from paper_figure_templates import infer_template, plot_figure_spec
 
 
 BASE_DIR = Path.cwd().resolve()
@@ -75,7 +75,8 @@ def index_item(
         "exists": exists,
         "ok": ok,
         "placeholder": placeholder,
-        "status": "computed" if ok and exists and not placeholder else "placeholder",
+        "status": "needs_review" if ok and exists and not placeholder else "placeholder",
+        "evidence_role": "exploratory",
         "used_in": spec.get("paper_usage"),
         "chart_type": spec.get("chart_type"),
         "template": template,
@@ -97,7 +98,12 @@ def generate_one(spec: dict[str, Any]) -> dict[str, Any]:
     if df is None or df.empty:
         return index_item(spec, False, f"data source is not readable: {spec.get('data_source')}")
 
-    result = plot_figure_spec(df, spec, output_path)
+    # Inferred fields are not experiment outputs, even when a PNG can be drawn.
+    if infer_template(spec) == 'sensitivity_curve':
+        return index_item(spec, False, 'Sensitivity requires actual parameter-perturbation experiments', placeholder=True)
+    preview = {**spec, 'title': f"探索草图（非正式结果）：{spec.get('title', '')}",
+               'purpose': '字段与单位须复核；不代表模型结果或实验结论'}
+    result = plot_figure_spec(df, preview, output_path)
     return index_item(
         spec,
         bool(Path(result.get("path", "")).exists()),

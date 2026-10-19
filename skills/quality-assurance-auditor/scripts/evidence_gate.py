@@ -1,4 +1,5 @@
 import argparse
+import csv
 import hashlib
 import json
 import math
@@ -7,6 +8,9 @@ import sys
 from datetime import datetime
 from pathlib import Path, PureWindowsPath
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from evidence_policy import POLICY_VERSION, accepted_status, project_artifact
 
 
 BASE_DIR = Path.cwd()
@@ -21,17 +25,6 @@ CONCLUSIONS_FILE = OUTPUT_DIR / "results" / "conclusions.json"
 TABLE_INDEX_FILE = OUTPUT_DIR / "tables" / "table_index.json"
 REPORT_JSON = QA_DIR / "evidence_gate_report.json"
 REPORT_MD = QA_DIR / "evidence_gate_report.md"
-
-BAD_STATUSES = {
-    "missing",
-    "needs_real_modeling",
-    "draft_contract",
-    "to_be_filled",
-    "template",
-    "draft",
-    "scaffold_result_needs_review",
-}
-
 
 def configure_utf8_stdio() -> None:
     for stream in (sys.stdout, sys.stderr):
@@ -307,11 +300,7 @@ def current_receipt_failures(item: dict[str, Any], manifest: dict[str, Any]) -> 
 
 
 def has_bad_status(items: list[dict[str, Any]]) -> bool:
-    for item in items:
-        status = status_of(item)
-        if status in BAD_STATUSES:
-            return True
-    return False
+    return any(not accepted_status(item) for item in items)
 
 
 def conclusion_text_exists(items: list[dict[str, Any]]) -> bool:
@@ -325,8 +314,8 @@ def metric_value_failures(items: list[dict[str, Any]]) -> list[str]:
         value = item.get("value")
         if value is None or value == "":
             failures.append(f"指标 {name} 缺少有效 value")
-        elif isinstance(value, float) and not math.isfinite(value):
-            failures.append(f"指标 {name} 不是有限数值：{value}")
+        elif type(value) not in (int, float) or (isinstance(value, float) and not math.isfinite(value)):
+            failures.append(f"指标 {name} 不是有限数值（不接受文本或布尔值）：{value}")
     return failures
 
 
@@ -334,8 +323,10 @@ def indexed_artifact_failures(item: dict[str, Any], kind: str) -> list[str]:
     artifact_id = str(item.get("figure_id") or item.get("table_id") or "<unknown>")
     status = status_of(item)
     failures: list[str] = []
-    if status in BAD_STATUSES:
+    if not accepted_status(item):
         failures.append(f"{kind} {artifact_id} 状态不可作为正式证据：{status}")
+    if item.get('evidence_role') == 'exploratory':
+        failures.append(f"{kind} {artifact_id} 仍为探索草图，不是正式实验")
     if item.get("placeholder") is True:
         failures.append(f"{kind} {artifact_id} 是占位产物")
     if item.get("ok") is False:
@@ -349,12 +340,75 @@ def indexed_artifact_failures(item: dict[str, Any], kind: str) -> list[str]:
     if not str(path_text or "").strip():
         failures.append(f"{kind} {artifact_id} 缺少 path")
     else:
-        path = resolve_artifact(path_text)
+        try:
+            path = project_artifact(BASE_DIR, path_text)
+        except ValueError as exc:
+            return failures + [str(exc)]
         if not path.exists() or not path.is_file():
             failures.append(f"{kind} {artifact_id} 文件不存在：{normalized_artifact(path_text)}")
         elif path.stat().st_size <= 0:
             failures.append(f"{kind} {artifact_id} 文件为空：{normalized_artifact(path_text)}")
+        else:
+            try:
+                if item.get('figure_id'):
+                    from PIL import Image
+                    with Image.open(path) as picture:
+                        picture.verify()
+                    with Image.open(path) as picture:
+                        picture.load()
+                elif path.suffix.lower() in ('.csv', '.tsv'):
+                    with path.open(encoding='utf-8-sig', newline='') as handle:
+                        rows = csv.reader(handle, delimiter='\t' if path.suffix.lower() == '.tsv' else ',', strict=True)
+                        header = next(rows, [])
+                        count = 0
+                        if not header or any(not name.strip() for name in header) or len(set(header)) != len(header):
+                            raise ValueError('Invalid or duplicate table headers')
+                        for row in rows:
+                            if len(row) != len(header):
+                                raise ValueError('Malformed table row')
+                            count += 1
+                        if not count:
+                            raise ValueError('Table has no data rows')
+                elif path.suffix.lower() == '.xlsx':
+                    from openpyxl import load_workbook
+                    workbook = load_workbook(path, read_only=True, data_only=True)
+                    try:
+                        if not any(sum(any(v is not None for v in row) for row in sheet.values) >= 2 for sheet in workbook):
+                            raise ValueError('Workbook has no header and data rows')
+                    finally:
+                        workbook.close()
+                else:
+                    raise ValueError('Formal tables require CSV, TSV or XLSX')
+            except Exception as exc:
+                failures.append(f"{kind} {artifact_id} 无法读取：{type(exc).__name__}: {exc}")
     return failures
+
+
+def artifact_run_failures(item: dict[str, Any], manifest: Any) -> list[str]:
+    """Every indexed artifact must be an output of a successful recorded run."""
+    try:
+        path = project_artifact(BASE_DIR, item.get('path') or item.get('expected_path'))
+    except ValueError as exc:
+        return [str(exc)]
+    qid = item.get('question_id')
+    runs = manifest.get('runs', []) if isinstance(manifest, dict) else []
+    if not isinstance(runs, list):
+        return ['Invalid run_manifest runs list']
+    for run in runs:
+        if not isinstance(run, dict) or run.get('returncode') != 0 or run.get('status', 'PASS') != 'PASS':
+            continue
+        if qid != 'ALL' and qid not in (run.get('question_ids') or []):
+            continue
+        for entry in run.get('output_artifacts', []) or []:
+            if not isinstance(entry, dict):
+                continue
+            try:
+                matches = project_artifact(BASE_DIR, entry.get('path')) == path
+            except ValueError:
+                continue
+            if matches:
+                return recorded_file_failures(entry, '图表运行产物')
+    return [f"图表未绑定当前问题的实际运行产物：{item.get('path')}"]
 
 
 def task_items(data: Any) -> dict[str, list[dict[str, Any]]]:
@@ -384,6 +438,19 @@ def evaluate() -> dict[str, Any]:
     if isinstance(run_manifest, dict) and str(run_manifest.get('schema_version') or '1.0') == '1.0':
         warnings.append("Legacy run_manifest 1.0: no current-invocation ID or result-contract snapshot; regenerate the runner and rerun for 1.1 checks.")
     cleaning_paths = []
+    analysis_path = OUTPUT_DIR / 'step1/problem_analysis.json'
+    if analysis_path.exists():
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'problem-doc-model-selector/scripts'))
+        from review_problem import review_errors
+        analysis = load_json(analysis_path)
+        failures.extend(review_errors(BASE_DIR, analysis))
+        cleaning_paths.append(analysis_path)
+        if isinstance(analysis, dict):
+            for doc in analysis.get('documents', []):
+                try:
+                    cleaning_paths.append(project_artifact(BASE_DIR, doc.get('path')))
+                except (ValueError, AttributeError) as exc:
+                    failures.append(f'Invalid problem source: {exc}')
     cleaning_path = OUTPUT_DIR / "data_cleaned/cleaning_report.json"
     if cleaning_path.exists():
         cleaning_paths.append(cleaning_path)
@@ -414,6 +481,21 @@ def evaluate() -> dict[str, Any]:
     if not qids:
         failures.append("model_route.json 中没有可追溯的 question_id，无法执行正式证据门禁。")
 
+    for label, data, key, allow_all in (
+        ('results', model_results, 'questions', False),
+        ('metrics', metrics, 'items', False),
+        ('conclusions', conclusions, 'items', False),
+        ('figures', figure_index, 'figures', True),
+        ('tables', table_index, 'tables', True),
+    ):
+        items = data.get(key) if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            failures.append(f'{label}: expected {key} list')
+            continue
+        for item in items:
+            if not isinstance(item, dict) or item.get('question_id') not in [*qids, *(['ALL'] if allow_all else [])]:
+                failures.append(f'{label}: missing or unknown question_id')
+
     result_map = result_items(model_results)
     metric_map = grouped_items(metrics, "items")
     conclusion_map = grouped_items(conclusions, "items")
@@ -427,12 +509,12 @@ def evaluate() -> dict[str, Any]:
         result = result_map.get(qid)
         q_metrics = metric_map.get(qid, [])
         q_conclusions = conclusion_map.get(qid, [])
-        q_figures = figure_map.get(qid, [])
+        q_figures = figure_map.get(qid, []) + figure_map.get("ALL", [])
         q_tables = table_map.get(qid, []) + table_map.get("ALL", [])
 
         if not result:
             q_failures.append("缺少 model_results.json 中的模型结果")
-        elif status_of(result) in BAD_STATUSES:
+        elif not accepted_status(result):
             q_failures.append(f"模型结果状态仍不可作为正式证据：{status_of(result)}")
         else:
             if not str(result.get("result_summary") or "").strip():
@@ -458,10 +540,12 @@ def evaluate() -> dict[str, Any]:
             q_failures.append("缺少图表或表格证据")
         for figure in q_figures:
             q_failures.extend(indexed_artifact_failures(figure, "图片"))
+            q_failures.extend(artifact_run_failures(figure, run_manifest))
         if q_tables and has_bad_status(q_tables):
             q_failures.append("表格证据仍包含草稿、模板或待补状态")
         for table in q_tables:
             q_failures.extend(indexed_artifact_failures(table, "表格"))
+            q_failures.extend(artifact_run_failures(table, run_manifest))
 
         for message in q_failures:
             failures.append(f"{qid}: {message}")
@@ -482,8 +566,29 @@ def evaluate() -> dict[str, Any]:
             }
         )
 
+    # Preserve freshness of the actual computation, not just the JSON receipt.
+    if isinstance(run_manifest, dict) and isinstance(run_manifest.get('runs'), list):
+        for run in run_manifest['runs']:
+            if not isinstance(run, dict):
+                continue
+            entries = [{'path': run.get('script')}]
+            for key in ('input_files', 'output_artifacts'):
+                values = run.get(key)
+                if not isinstance(values, list):
+                    failures.append(f'Invalid run_manifest {key} list')
+                else:
+                    entries.extend(values)
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                try:
+                    cleaning_paths.append(project_artifact(BASE_DIR, entry.get('path')))
+                except ValueError as exc:
+                    failures.append(str(exc))
+
     return {
         "schema_version": "1.0",
+        "policy_version": POLICY_VERSION,
         "generated_by": "quality-assurance-auditor/scripts/evidence_gate.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "status": "PASS" if not failures else "FAIL",
@@ -501,10 +606,20 @@ def evaluate() -> dict[str, Any]:
                 CONCLUSIONS_FILE,
                 TABLE_INDEX_FILE,
                 *cleaning_paths,
+                *[project_artifact(BASE_DIR, item.get('path') or item.get('expected_path'))
+                  for group in (figure_map, table_map) for items in group.values() for item in items
+                  if artifact_path_is_safe(item)],
             )
             if path.exists()
         },
     }
+
+
+def artifact_path_is_safe(item):
+    try:
+        return project_artifact(BASE_DIR, item.get('path') or item.get('expected_path')).is_file()
+    except (ValueError, OSError):
+        return False
 
 
 def write_reports(report: dict[str, Any], mode: str) -> None:

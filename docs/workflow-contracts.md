@@ -17,7 +17,7 @@ Contracts are machine-readable handoff records, not substitutes for reasoning. C
 | `results/model_results.json` | model runner | computed question results |
 | `results/metrics.json` | model runner | finite values plus metric IDs, units, sample/split context and source CSV row selectors |
 | `results/conclusions.json` | model runner | evidence-backed conclusions |
-| `qa/evidence_gate_report.json` | QA | S6 status and input hashes |
+| `qa/evidence_gate_report.json` | QA | S6 status, policy_version=2 and input hashes |
 
 New `run_manifest.json` records use schema `1.1`: each result's provenance must
 match its current invocation `run_id`. The runner atomically writes `RUNNING`

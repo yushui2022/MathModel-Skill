@@ -9,6 +9,9 @@ Resolve <SKILL_ROOT> to the parent directory of this loaded skill folder, using 
 
 ## 全局流程协作约束（长对话防漂移）
 
+- S3 自动图表都是 `needs_review` 的探索草图，不是实验结论。不得根据原始字段直接宣称预测效果、敏感性或模型优劣；敏感性图必须先运行参数扰动实验。
+- 核对字段、单位和图形类型后，由赛题建模脚本基于真实结果重画正式图表，并登记到对应运行的 `output_artifacts`。正式索引只收录这些证据；保留探索文件和失败日志，不要改状态冒充正式结果。
+
 - 本 skill 不得作为孤立入口。用户要求完整论文、生成 Word、继续流程或不确定阶段时，先回到 `paper-workflow-orchestrator` 判断当前 S0-S8 阶段。
 - 启动或继续本 skill 的正式任务前，必须运行：
   ```bash

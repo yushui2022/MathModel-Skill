@@ -9,22 +9,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'quality-assurance-auditor/scripts'))
+from evidence_policy import accepted_status, policy_errors
+
 
 BASE_DIR = Path.cwd().resolve()
 OUTPUT_DIR = BASE_DIR / "paper_output"
 REPORT_JSON = OUTPUT_DIR / "qa" / "workflow_guard_report.json"
 REPORT_MD = OUTPUT_DIR / "qa" / "workflow_guard_report.md"
-
-BAD_RESULT_STATUSES = {
-    "",
-    "missing",
-    "needs_real_modeling",
-    "draft_contract",
-    "to_be_filled",
-    "template",
-    "draft",
-    "scaffold_result_needs_review",
-}
 
 STEP_ORDER = ["S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"]
 
@@ -277,7 +269,11 @@ def check_s0() -> dict[str, Any]:
 
 def check_s1() -> dict[str, Any]:
     failures: list[str] = []
-    check_json_file(OUTPUT_DIR / "step1" / "problem_analysis.json", failures)
+    analysis = check_json_file(OUTPUT_DIR / "step1" / "problem_analysis.json", failures)
+    if isinstance(analysis, dict) and not analysis.get('__error__'):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'problem-doc-model-selector/scripts'))
+        from review_problem import review_errors
+        failures.extend(review_errors(BASE_DIR, analysis))
     return {"step": "S1", "name": "审题分析", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 
@@ -372,7 +368,7 @@ def check_s5() -> dict[str, Any]:
     for item in _items(model_results, "questions"):
         qid = str(item.get("question_id") or "UNKNOWN")
         state = status_of(item)
-        if state in BAD_RESULT_STATUSES:
+        if not accepted_status(item):
             failures.append(f"{qid}: model_results 状态仍不是正式结果：{state or 'missing'}")
         provenance = item.get("execution_provenance")
         if not isinstance(provenance, dict):
@@ -391,7 +387,7 @@ def check_s5() -> dict[str, Any]:
             failures.append(f"{label} 中没有可追踪条目。")
         for item in _items(data, key):
             state = status_of(item)
-            if state in BAD_RESULT_STATUSES:
+            if not accepted_status(item):
                 failures.append(f"{label}: 条目仍是草稿/待补状态：{state or 'missing'}")
     return {"step": "S5", "name": "结果证据", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
@@ -402,6 +398,7 @@ def check_s6() -> dict[str, Any]:
     if isinstance(gate, dict) and str(gate.get("status") or "").upper() != "PASS":
         failures.append("evidence_gate_report.json status 不是 PASS。")
     if isinstance(gate, dict):
+        failures.extend(policy_errors(gate))
         input_hashes = gate.get("input_hashes")
         if not isinstance(input_hashes, dict) or not input_hashes:
             failures.append("evidence_gate_report.json 缺少 input_hashes，无法判断报告是否过期。")

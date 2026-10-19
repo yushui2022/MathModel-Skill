@@ -75,6 +75,15 @@ python "<SKILL_ROOT>/problem-doc-model-selector/scripts/analyze_problem.py"
 
 该脚本会扫描 `problem_files/`，读取 TXT/Markdown/DOCX/PDF 赛题文本，并对 CSV/XLSX/XLS 附件做轻量字段画像。成功后会写入 `paper_output/step1/problem_analysis.json`，后续模型路线、证据门禁和正式 outline 均以它为上游契约。
 
+### 题面提取复核
+- 脚本只生成候选分析，不保证公式、单位和每个子问题已完整读取。无可靠问题标题时不能把兜底 Q1 当作完整分问。
+- `extraction_status=NEEDS_REVIEW` 时，Agent 必须查看原始 PDF 页面或 Word 渲染，核对 `review_requirements`，修正 `questions`、约束、符号和单位，并同步 A/B/C/D。尤其检查 OLE 公式中的正负号、上下标和图片表格。
+- 实际完成核对后记录复核（不是新增用户确认点）：
+  ```bash
+  python "<SKILL_ROOT>/problem-doc-model-selector/scripts/review_problem.py" --project-root "<赛题目录>" --reviewer agent --note "填写实际核对与修正内容" --confirm
+  ```
+- 未复核或源文件变化时 S1、路线生成与 S6 阻塞。复核记录绑定原文哈希和当前分析，改题意后需要重新核对；无法读取原件就报告阻塞，不得空签复核。
+
 ## 前后衔接
 - 后续通常先做：`data-cleaning-and-visualization`（数据清洗与可视化）。
 - 若要继续到论文草稿：回到 `paper-workflow-orchestrator`。

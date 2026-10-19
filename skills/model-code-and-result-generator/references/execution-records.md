@@ -31,6 +31,8 @@ python paper_output/code/modeling/run_modeling.py --timeout-seconds 600
 
 ## 旧项目
 
+门禁策略 2 要求所有正式图片/表格都由对应问题的实际运行生成并列入 `execution_provenance.output_artifacts`。数据画像表和 S3 自动草图保持 `needs_review`，不是可直接使用的正式实验；不用于论证的探索条目应从正式索引移出，原文件和失败日志保留。需要在论文使用的图表应在赛题代码中重新生成并登记，不能仅修改状态或重新签署旧哈希。`run_manifest.status=PASS` 只表示执行完成，不表示模型约束已经成立；约束检查失败应保留失败状态并阻止正式写作。
+
 1. 备份赛题代码和计算结果；不要覆盖已有人工代码。
 2. 生成器只更新仍带 managed marker 的文件。已手改 runner/helper 需对照新模板人工迁移，或在独立新项目重新生成。
 3. 同时更新 runner 与 `result_contract_io.py`，使结果来源带当前运行 ID；使用自定义写入器时同步迁移。

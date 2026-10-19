@@ -226,7 +226,7 @@ def build_data_profile_tables(cleaned_files: list[Path]) -> tuple[list[dict[str,
                 "purpose": "说明清洗后数据字段、缺失情况和数值范围，供数据说明与建模输入选择使用。",
                 "path": rel(output),
                 "source": rel(path),
-                "status": "generated_from_cleaned_data",
+                "status": "needs_review",
             }
         )
         summary["profiled_files"].append({"path": rel(path), "sample_rows": sample_count, "field_count": len(rows)})

@@ -68,8 +68,7 @@ class ValidationIntegrationTests(unittest.TestCase):
         # A buggy producer, not a post-run edit: S7 must still catch semantic errors
         # even when execution hashes correctly attest to those exact wrong outputs.
         original = (FIXTURES / 'benchmark_question.py').read_text(encoding='utf-8')
-        mutation = ('    from result_contract_io import write_json\n'
-                    '    data = load_json(RESULTS_DIR / "metrics.json", {})\n'
+        mutation = ('    data = load_json(RESULTS_DIR / "metrics.json", {})\n'
                     f'    metric = next(m for m in data["items"] if m.get("metric_id") == {metric_id!r})\n'
                     f'    metric[{field!r}] = {value!r}\n'
                     '    write_json(RESULTS_DIR / "metrics.json", data)\n')

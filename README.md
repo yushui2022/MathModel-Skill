@@ -5,7 +5,7 @@
 
 ### 从赛题分析、真实计算到可复现的数学建模论文
 
-[![Version](https://img.shields.io/badge/version-2.4.0--dev.2-0f766e)](./VERSION)
+[![Version](https://img.shields.io/badge/version-2.4.0--dev.3-0f766e)](./VERSION)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
@@ -13,7 +13,7 @@
 
 MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛题与附件放入项目后，Agent 按工作流分析问题、选择模型、编写并运行代码、整理图表和证据，再撰写与检查论文；它不只是让模型直接生成一篇文章的提示词。
 
-当前开发内容面向默认 `standard` 分支的 **Standard 2.4.0-dev.2 开发版，定位标准档**，建议搭配 GPT-6.1 Sol、Claude Opus 5.5 等具备稳定推理、长上下文和工具调用能力的模型，GPT-5.5、GPT-5.6 Sol 仍可使用。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
+当前开发内容面向默认 `standard` 分支的 **Standard 2.4.0-dev.3 开发版，定位标准档**，建议搭配 GPT-6.1 Sol、Claude Opus 5.5 等具备稳定推理、长上下文和工具调用能力的模型，GPT-5.5、GPT-5.6 Sol 仍可使用。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
 
 **版本分工：低负担 → 速度优先 → 标准交付 → 旗舰验证**
 
@@ -61,7 +61,9 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 ### 1. 下载一个通用包
 
-下载本开发分支的 [MathModel-Skill-Standard.zip](./dist/MathModel-Skill-Standard.zip)，可用 [SHA256SUMS.txt](./dist/SHA256SUMS.txt) 核对完整性。**2.4.0-dev.2 尚未发布正式 Release**；历史 Release 保持原有平台包，不代表本开发版。
+下载本开发分支的 [MathModel-Skill-Standard.zip](./dist/MathModel-Skill-Standard.zip)，可用 [SHA256SUMS.txt](./dist/SHA256SUMS.txt) 核对完整性。**2.4.0-dev.3 尚未发布正式 Release**；历史 Release 保持原有平台包，不代表本开发版。
+
+本版收紧正式证据检查：失败或未知状态不放行，探索草图不冒充模型实验，图表必须可读取且绑定实际运行。题面分问、公式或图片提取不完整时，需 Agent 对照原件复核。升级后旧 S6 PASS 不再沿用，请重新预检、补齐运行证据并执行审计；不会自动改写旧赛题产物。
 
 Codex、Claude Code、Trae 使用完全相同的 Skill 内容，只需选择不同安装位置。不要把 Standard、Lite、Flash、Pro 或 LaTeX 混装。
 

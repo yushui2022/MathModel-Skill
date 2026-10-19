@@ -685,6 +685,10 @@ def check_evidence_gate() -> tuple[bool, str]:
     except Exception as exc:
         return False, f"证据门禁报告无法解析：{type(exc).__name__}: {exc}"
     status = str(data.get("status") or "").strip().upper()
+    from authoring_contracts import fresh_evidence_gate
+    _, errors = fresh_evidence_gate(BASE_DIR)
+    if errors:
+        return False, '; '.join(errors)
     if status != "PASS":
         return False, f"证据门禁状态为 `{status or 'UNKNOWN'}`，正式 Word 不得生成。请先补齐证据并重跑 evidence_gate.py。"
     input_hashes = data.get("input_hashes")
