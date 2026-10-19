@@ -27,7 +27,7 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 | 高强度旗舰 | [**Pro**](https://github.com/yushui2022/MathModel-Skill/tree/pro) | GPT-6 Astra、[Claude Fable 5.1](https://platform.claude.com/docs/en/models/fable-5-1/overview)、Opus 5.5、GPT-6.1 Sol 等前沿模型 | 多路线比较、独立复算、稳健性实验、五角色审稿和 Word/PDF 检查；预发布 |
 | TeX 实验 | [**LaTeX**](https://github.com/yushui2022/MathModel-Skill/tree/Latex) | 需要旧版 TeX/PDF 流程的用户 | 独立实验性分支，不等同于 Standard 或 Pro 的当前能力 |
 
-各版本 README 都保留这张版本表，便于从任意分支回到其他版本。**一个项目只安装一个版本、一个平台包，不要混装。**
+各版本 README 都保留这张版本表，便于从任意分支回到其他版本。**一个项目只安装一个版本、一个安装位置，不要混装。**
 
 模型推荐更新于 **2026-10-07**：已核对 Opus 5.5、Fable 5.1、GPT-6.1 Sol 的官方配置资料，尚未完成这些模型的完整赛题长文实测。**档位区分的是工作流，不是模型使用权限**：同一个模型可选 Standard 控制投入，也可选 Pro 加深验证；GPT-5.5、GPT-5.6 Sol 等旧款强模型仍可使用 Standard。
 
@@ -58,32 +58,45 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 
 ## 快速导入使用
 
-### 1. 下载 Flash 包
+### 1. 下载一个通用包
 
-从 [Flash 2.0.0-flash.1 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.0.0-flash.1) 下载对应平台包，也可以查看 [Flash 分支](https://github.com/yushui2022/MathModel-Skill/tree/flash) 的 `dist/`。不要把仓库源码 ZIP 当作平台安装包。
+当前分支版本为 **2.0.0-flash.4**。下载 [MathModel-Skill-Flash.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/flash/dist/MathModel-Skill-Flash.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
 
-| 平台 | 直接下载 | 解压后的目录 |
-|---|---|---|
-| Codex | [Flash Codex 包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/MathModel-Skill-Flash-Codex.zip) | `.agents/skills/` |
-| Claude Code | [Flash Claude Code 包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/MathModel-Skill-Flash-Claude-Code.zip) | `.claude/skills/` |
-| Trae | [Flash Trae 包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/MathModel-Skill-Flash-Trae.zip) | `.trae/skills/` |
+**同一份内容适用于不同宿主，不再分别下载 Claude、Codex、Trae 包。** ZIP 内有完整 `skills/`、安全安装器、依赖与启动说明。
 
-保留用户已有的 `AGENTS.md` / `CLAUDE.md`，不要把不同版本的入口复制到同一项目。Python 建议使用 3.11 或 3.12，安装本包内 `requirements.txt` 后执行 `python -m pip check`。
+### 2. 选择一个项目安装位置
 
-可用 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.0.0-flash.1/SHA256SUMS.txt) 核对下载文件。
+先解压到独立下载目录，再执行（赛题目录必须已经存在）：
 
-### 2. 放入题目并启动
-
-在项目根目录创建 `problem_files/`，放入赛题和附件，然后对 Agent 说：
-
-```text
-请使用 $mathmodel-flash 完成这道数学建模题，赛题和附件在 problem_files/。
-按 Flash 六步流程完成：预检、计划、真实实验、运行记录、约 20 页目标的完整基础论文、Word 检查。
-所有产物只写入 paper_output_flash/，不要读取其他版本的旧结果，不要用重复段落凑页数。
-只有 flash_report.json 为 PASS 后，才交付 paper.docx，并明确说明这是一份需要进一步复核的快速基础稿。
+```bash
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex --check
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex
 ```
 
-也可以直接读取 [Flash 启动提示词](docs/flash-starter-prompt.md)。
+| 宿主 | 安装参数 | 项目内目标目录 |
+|---|---|---|
+| Codex | `--platform codex` | `.agents/skills/` |
+| Claude Code | `--platform claude` | `.claude/skills/` |
+| Trae | `--platform trae` | `.trae/skills/` |
+
+一个项目只选一个位置。安装器仅使用 Python 3.11+ 标准库，不联网、不自动安装依赖，不覆盖 `AGENTS.md`、`CLAUDE.md`、其他 Skill、附件或已有论文。手动安装可完整复制 `skills/` 内全部目录到一个目标位置，不要只复制 `SKILL.md`。
+
+无记录旧包、混装、用户修改和不完整安装会阻塞，不会自动清理。已托管且未改动的同主版本安装，先停止建模任务，再用 `--check --upgrade` 检查，确认后用 `--upgrade`；中断时用 `--recover` 回滚。安装器不重新批准任何旧证据。
+
+### 3. 准备环境并启动
+
+在选定的 Python 环境中手动安装依赖：
+
+```bash
+python -m pip install -r "<解压目录>/requirements.txt"
+python -m pip check
+```
+
+把题面和原始附件放到赛题目录的 `problem_files/`，用宿主打开该赛题目录并刷新 Skill 列表。让 Agent 读取实际安装位置中的 **mathmodel-flash/SKILL.md**，按[启动提示词](docs/flash-starter-prompt.md)开始。
+
+`<SKILL_ROOT>` 指实际加载的所有 Skill 的父目录，须替换为真实绝对路径；脚本从赛题根目录运行，不在安装目录生成结果。Pro 的平台参数仅记录宿主能力，不改变 payload。详细见[安装与恢复说明](docs/agent-install-guide.md)。
+
+Flash 保持速度优先的基础长文流程。真实实验和基础 Word 导出检查保留，不承诺严格终稿质量。
 
 ## 原理介绍
 
@@ -95,7 +108,7 @@ Flash 不承诺 Standard 的完整证据链、原生 Word 公式和 PDF 排版�
 - 这仍是 Flash 的基础交付检查，不增加多代理、用户检查点或 PDF 验收。升级后重新运行最终检查，不沿用旧 PASS 报告。
 
 
-当前为 2.0.0-flash.3 开发版，新增实验输出隔离。本分支 [dist/](./dist/) 包含修复；尚未创建新 Release，上面的旧 Release 不含此修复。
+当前为 2.0.0-flash.4 开发版，新增实验输出隔离。本分支 [dist/](./dist/) 包含修复；尚未创建新 Release，上面的旧 Release 不含此修复。
 
 ```text
 赛题与附件
@@ -121,13 +134,15 @@ Flash PASS 不是数学正确性证明，也不是正式竞赛验收。没有严
 
 ## 开发验证
 
-本轮本地验证及未覆盖范围见[证据加固验收记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
+本轮通用包验证见[安装迁移验收记录](docs/universal-package-validation.md)，之前的门禁修复见[证据加固记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
 
 ```bash
-python scripts/sync_platform_packages.py --check
+python scripts/check_skills.py
+python -S tests/test_installation.py
+python tests/test_installed_workflow.py
 python tests/run_flash_tests.py
 python tests/test_fresh_outputs.py
 python scripts/build_release_packages.py --verify
 ```
 
-Flash 当前只维护 `mathmodel-flash` 一个入口，三端包都由 Claude canonical payload 同步生成；分支内不包含 Standard、Lite 或 Pro 的工作流。
+Flash 当前只维护 `mathmodel-flash` 一个入口，全部宿主共用根目录 skills/ 的唯一源码；分支内不包含 Standard、Lite 或 Pro 的工作流。

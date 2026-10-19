@@ -12,13 +12,7 @@ INPUT_DIR = ROOT / "problem_files"
 OUTPUT_DIR = ROOT / "paper_output_flash"
 MANIFEST_FILE = OUTPUT_DIR / "input_manifest.json"
 EXPECTED_EDITION = "flash"
-SKILL_ROOTS = ("skills", ".agents/skills", ".codex/skills", ".claude/skills", ".trae/skills")
-LEGACY_ENTRY_EDITIONS = {
-    "paper-workflow-orchestrator": "standard",
-    "mathmodel-lite": "lite",
-    "pro-workflow-orchestrator": "pro",
-    "mathmodel-flash": "flash",
-}
+from installation import InstallError, installation_errors, scan_installations
 
 
 def sha256_file(path: Path) -> str:
@@ -33,38 +27,8 @@ def rel(path: Path) -> str:
     return path.resolve().relative_to(ROOT.resolve()).as_posix()
 
 
-def detect_mathmodel_installations() -> list[dict[str, str | None]]:
-    installations: list[dict[str, str | None]] = []
-    for root_text in SKILL_ROOTS:
-        skills_root = ROOT / Path(root_text)
-        if not skills_root.is_dir():
-            continue
-        for skill_dir in sorted(path for path in skills_root.iterdir() if path.is_dir()):
-            marker_path = skill_dir / "MATHMODEL_EDITION.json"
-            marker: dict[str, object] = {}
-            marker_error: str | None = None
-            if marker_path.is_file():
-                try:
-                    value = json.loads(marker_path.read_text(encoding="utf-8"))
-                    marker = value if isinstance(value, dict) else {}
-                    if marker.get("product") not in (None, "", "MathModel-Skill"):
-                        continue
-                except Exception as exc:
-                    marker_error = f"{type(exc).__name__}: {exc}"
-            legacy_edition = LEGACY_ENTRY_EDITIONS.get(skill_dir.name)
-            edition = str(marker.get("edition") or legacy_edition or "").strip().lower()
-            if edition not in {"standard", "lite", "pro", "flash"}:
-                continue
-            installations.append({
-                "edition": edition,
-                "version": str(marker.get("version") or "legacy-unmarked"),
-                "entry_skill": str(marker.get("entry_skill") or skill_dir.name),
-                "skill_root": root_text,
-                "path": rel(skill_dir),
-                "marker": rel(marker_path) if marker_path.is_file() else None,
-                "marker_error": marker_error,
-            })
-    return installations
+def detect_mathmodel_installations() -> list[dict]:
+    return scan_installations(ROOT)
 
 
 def main() -> int:
@@ -84,7 +48,13 @@ def main() -> int:
     files = sorted(path for path in INPUT_DIR.rglob("*") if path.is_file()) if INPUT_DIR.exists() else []
     failures: list[str] = []
     warnings: list[str] = []
-    installations = detect_mathmodel_installations()
+    version = json.loads((Path(__file__).resolve().parents[1] / "MATHMODEL_EDITION.json").read_text(encoding="utf-8"))["version"]
+    failures.extend(installation_errors(ROOT, version))
+    try:
+        installations = detect_mathmodel_installations()
+    except (InstallError, OSError) as exc:
+        failures.append(str(exc))
+        installations = []
     editions = sorted({str(item["edition"]) for item in installations})
     if len(editions) > 1:
         failures.append(f"检测到 MathModel Skill 混装：{', '.join(editions)}。一个项目只能安装一个版本。")

@@ -13,9 +13,9 @@ Flash 是速度优先的独立版本，适合 DeepSeek、Gemini、GLM 等 Flash 
 ## 三个命令
 
 ```bash
-python .claude/skills/mathmodel-flash/scripts/flash_preflight.py
-python .claude/skills/mathmodel-flash/scripts/flash_run.py
-python .claude/skills/mathmodel-flash/scripts/flash_finalize.py
+python "<SKILL_ROOT>/mathmodel-flash/scripts/flash_preflight.py"
+python "<SKILL_ROOT>/mathmodel-flash/scripts/flash_run.py"
+python "<SKILL_ROOT>/mathmodel-flash/scripts/flash_finalize.py"
 ```
 
 预检会记录附件清单和哈希，并阻止与 Standard、Lite、Pro 或其他 Flash 安装混装。运行器先将旧结果、图表、运行记录和 Word 归档到 `runs/<run_id>/previous/`，再执行 `code/model.py`，记录本轮脚本、计划、输入、结果、表格和图片的哈希。终检要求证据绑定本轮输入或输出，并核对问题覆盖、有限指标、正文数值、占位文本、重复段落和 DOCX 重开内容；旧版运行记录需重跑。

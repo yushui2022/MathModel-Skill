@@ -3,7 +3,7 @@
 将下列提示词发送给已经安装 Flash 包的 Agent：
 
 ```text
-请使用 $mathmodel-flash 完成这道数学建模题。赛题和附件在 problem_files/。
+请使用 mathmodel-flash 完成这道数学建模题。赛题和附件在 problem_files/。
 
 这是速度优先的基础长文版本：
 1. 先运行 flash_preflight.py，确认没有混装并记录全部输入哈希；

@@ -11,7 +11,7 @@ from docx import Document
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SANDBOX = REPO_ROOT / "tests" / "flash_sandbox"
-SKILL_ROOT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "mathmodel-flash"
+SKILL_ROOT = REPO_ROOT / "skills" / "mathmodel-flash"
 PREFLIGHT = SKILL_ROOT / "scripts" / "flash_preflight.py"
 RUNNER = SKILL_ROOT / "scripts" / "flash_run.py"
 FINALIZER = SKILL_ROOT / "scripts" / "flash_finalize.py"
@@ -143,8 +143,8 @@ def test_packages_are_deterministic_and_flash_only() -> None:
                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
         assert_true(completed.returncode == 0, completed.stdout)
     names = sorted(path.name for path in first.glob("*.zip"))
-    expected = ["MathModel-Skill-Flash-Claude-Code.zip", "MathModel-Skill-Flash-Codex.zip", "MathModel-Skill-Flash-Trae.zip"]
-    assert_true(names == expected, "Flash should build exactly three platform archives")
+    expected = ["MathModel-Skill-Flash.zip"]
+    assert_true(names == expected, "Flash should build exactly one universal archive")
     assert_true((first / "SHA256SUMS.txt").read_bytes() == (second / "SHA256SUMS.txt").read_bytes(), "checksum files should match")
     for name in names:
         assert_true((first / name).read_bytes() == (second / name).read_bytes(), f"nondeterministic archive: {name}")

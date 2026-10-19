@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "product": "MathModel-Skill",
+  "edition": "flash",
+  "version": "2.0.0-flash.4",
+  "entry_skill": "mathmodel-flash",
+  "required_files": [
+    "mathmodel-flash/SKILL.md",
+    "mathmodel-flash/agents/openai.yaml",
+    "mathmodel-flash/scripts/artifact_checks.py",
+    "mathmodel-flash/scripts/flash_common.py",
+    "mathmodel-flash/scripts/flash_finalize.py",
+    "mathmodel-flash/scripts/flash_preflight.py",
+    "mathmodel-flash/scripts/flash_run.py",
+    "mathmodel-flash/scripts/installation.py"
+  ]
+}

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
-import shutil
+import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,9 @@ VERSION_FILE = REPO_ROOT / "VERSION"
 BUILD_MANIFEST = "MATHMODEL_BUILD.json"
 CHECKSUM_FILE = "SHA256SUMS.txt"
 ZIP_TIMESTAMP = (2020, 1, 1, 0, 0, 0)
+sys.path.insert(0, str(REPO_ROOT / "skills/mathmodel-flash/scripts"))
+from installation import ENTRY, SKILLS, no_links
+TEXT_SUFFIXES = {".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml", ".svg", ".csv", ".tsv"}
 
 EXCLUDED_DIRS = {
     "__pycache__",
@@ -23,8 +27,6 @@ EXCLUDED_DIRS = {
     "problem_files",
     "crawled_data",
     "paper_output",
-    "paper_output_lite",
-    "paper_output_flash",
 }
 EXCLUDED_FILES = {
     "data_requirements.json",
@@ -46,38 +48,23 @@ class PackageSpec:
 
 
 COMMON_DOCS = (
+    (REPO_ROOT / "docs/agent-install-guide.md", Path("docs/agent-install-guide.md")),
+    (REPO_ROOT / "install.py", Path("install.py")),
     (REPO_ROOT / "LICENSE", Path("LICENSE")),
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
-    (REPO_ROOT / "docs" / "flash-workflow.md", Path("docs/flash-workflow.md")),
-    (REPO_ROOT / "docs" / "flash-starter-prompt.md", Path("docs/flash-starter-prompt.md")),
+    (REPO_ROOT / "docs/evidence-hardening-validation.md", Path("docs/evidence-hardening-validation.md")),
+    (REPO_ROOT / "docs/flash-starter-prompt.md", Path("docs/flash-starter-prompt.md")),
+    (REPO_ROOT / "docs/flash-workflow.md", Path("docs/flash-workflow.md")),
 )
 
 
 PACKAGE_SPECS = (
     PackageSpec(
-        name="Flash Trae",
-        archive_name="MathModel-Skill-Flash-Trae.zip",
-        roots=((REPO_ROOT / "packages" / "trae" / ".trae", Path(".trae")),),
+        name="Flash",
+        archive_name="MathModel-Skill-Flash.zip",
+        roots=((REPO_ROOT / "skills", Path("skills")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "trae" / "README.md", Path("README-MathModel-Skill-Flash.md")),
-            *COMMON_DOCS,
-        ),
-    ),
-    PackageSpec(
-        name="Flash Claude Code",
-        archive_name="MathModel-Skill-Flash-Claude-Code.zip",
-        roots=((REPO_ROOT / "packages" / "claude" / ".claude", Path(".claude")),),
-        extra_files=(
-            (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill-Flash.md")),
-            *COMMON_DOCS,
-        ),
-    ),
-    PackageSpec(
-        name="Flash Codex",
-        archive_name="MathModel-Skill-Flash-Codex.zip",
-        roots=((REPO_ROOT / "packages" / "codex" / "skills", Path(".agents/skills")),),
-        extra_files=(
-            (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill-Flash.md")),
+            (REPO_ROOT / "GETTING_STARTED.md", Path("README-MathModel-Skill.md")),
             *COMMON_DOCS,
         ),
     ),
@@ -95,6 +82,7 @@ def should_skip(path: Path) -> bool:
 def iter_files(root: Path) -> list[Path]:
     files: list[Path] = []
     for path in root.rglob("*"):
+        no_links(path)
         if not path.is_file():
             continue
         relative = path.relative_to(root)
@@ -115,10 +103,9 @@ def package_version() -> str:
 
 def normalized_source_bytes(path: Path) -> bytes:
     data = path.read_bytes()
-    try:
-        text = data.decode("utf-8-sig")
-    except UnicodeDecodeError:
+    if path.suffix.lower() not in TEXT_SUFFIXES and path.name not in {"VERSION", "LICENSE"}:
         return data
+    text = data.decode("utf-8-sig")
     return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
 
 
@@ -151,9 +138,11 @@ def build_manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
         digest.update(file_hash.encode("ascii"))
         digest.update(b"\n")
     payload = {
-        "schema_version": "1.0",
-        "edition": "flash",
+        "schema_version": "2.0",
         "package": spec.name,
+        "edition": "flash",
+        "entry_skill": ENTRY,
+        "skills": list(SKILLS),
         "version": package_version(),
         "file_count": len(entries),
         "payload_sha256": digest.hexdigest(),
@@ -164,23 +153,28 @@ def build_manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
 
 def write_zip_entry(archive: zipfile.ZipFile, path: str, data: bytes) -> None:
     info = zipfile.ZipInfo(path, ZIP_TIMESTAMP)
-    info.compress_type = zipfile.ZIP_DEFLATED
+    info.create_system = 3
+    info.compress_type = zipfile.ZIP_STORED
     info.external_attr = 0o100644 << 16
     info.flag_bits |= 0x800
-    archive.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+    archive.writestr(info, data, compress_type=zipfile.ZIP_STORED)
+
+
+def package_bytes(spec: PackageSpec) -> bytes:
+    entries = source_entries(spec)
+    entries[BUILD_MANIFEST] = build_manifest(spec, entries)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for archive_path, data in sorted(entries.items()):
+            write_zip_entry(archive, archive_path, data)
+    return buffer.getvalue()
 
 
 def build_package(spec: PackageSpec, output_dir: Path) -> tuple[Path, int]:
     output_dir.mkdir(parents=True, exist_ok=True)
     output = output_dir / spec.archive_name
-    entries = source_entries(spec)
-    entries[BUILD_MANIFEST] = build_manifest(spec, entries)
-
-    with zipfile.ZipFile(output, "w") as archive:
-        for archive_path, data in entries.items():
-            write_zip_entry(archive, archive_path, data)
-
-    return output, len(entries)
+    output.write_bytes(package_bytes(spec))
+    return output, len(source_entries(spec)) + 1
 
 
 def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
@@ -191,6 +185,8 @@ def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
     expected = source_entries(spec)
     expected[BUILD_MANIFEST] = build_manifest(spec, expected)
     failures: list[str] = []
+    if output.read_bytes() != package_bytes(spec):
+        failures.append(f"{spec.name}: archive bytes or metadata differ from deterministic build")
     with zipfile.ZipFile(output) as archive:
         actual_names = sorted(item.filename for item in archive.infolist() if not item.is_dir())
         expected_names = sorted(expected)
@@ -213,15 +209,10 @@ def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
 
 def clean_dist(output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    for target in output_dir.glob("MathModel-Skill-*.zip"):
-        if target.is_file():
+    for spec in PACKAGE_SPECS:
+        target = output_dir / spec.archive_name
+        if target.exists():
             target.unlink()
-    staging = output_dir / "_staging"
-    if staging.exists():
-        resolved = staging.resolve()
-        if output_dir.resolve() == DIST_DIR.resolve() and not resolved.is_relative_to(REPO_ROOT.resolve()):
-            raise RuntimeError(f"Refusing to delete outside repo: {resolved}")
-        shutil.rmtree(staging)
     checksum_path = output_dir / CHECKSUM_FILE
     if checksum_path.exists():
         checksum_path.unlink()
@@ -267,9 +258,8 @@ def main() -> int:
         output, file_count = build_package(spec, output_dir)
         size_kb = output.stat().st_size / 1024
         print(f"[+] {spec.name}: {output} ({file_count} files, {size_kb:.1f} KB)")
-    checksum_path = output_dir / CHECKSUM_FILE
-    checksum_path.write_text(checksum_payload(output_dir), encoding="utf-8", newline="\n")
-    print(f"[+] Checksums: {checksum_path}")
+    (output_dir / CHECKSUM_FILE).write_text(checksum_payload(output_dir), encoding="utf-8", newline="\n")
+    print(f"[+] Checksums: {output_dir / CHECKSUM_FILE}")
     return 0
 
 

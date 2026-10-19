@@ -1,42 +1,37 @@
-name: Release MathModel Flash
-
+name: Release Flash
 on:
   push:
-    tags:
-      - "v2.0.0-flash.1"
-
+    tags: ["v*-flash.*"]
 permissions:
   contents: write
-
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Verify version and tracked archives
+      - name: Validate tag, branch, edition and tracked archive
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          test "$(cat VERSION)" = "2.0.0-flash.1"
-          python scripts/build_release_packages.py --verify
-
-      - name: Publish GitHub Release
+          python -c "import os; from pathlib import Path; v=Path('VERSION').read_text().strip(); assert os.environ['RELEASE_TAG']=='v'+v and '-flash.' in v"
+          git merge-base --is-ancestor HEAD origin/flash
+          python -S scripts/check_skills.py
+          python -S scripts/build_release_packages.py --verify
+          python -S tests/test_installation.py
+      - name: Publish universal asset
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "${GITHUB_REF_NAME}"
-          dist/MathModel-Skill-Flash-Trae.zip
-          dist/MathModel-Skill-Flash-Claude-Code.zip
-          dist/MathModel-Skill-Flash-Codex.zip
+          dist/MathModel-Skill-Flash.zip
           dist/SHA256SUMS.txt
           --verify-tag
-          --prerelease
-          --title "MathModel Skill Flash 2.0.0-flash.1"
+          --title "MathModel Skill Flash ${GITHUB_REF_NAME}"
           --generate-notes
+          --prerelease
