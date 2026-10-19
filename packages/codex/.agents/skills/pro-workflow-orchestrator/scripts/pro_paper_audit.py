@@ -84,6 +84,10 @@ def check_paper(root: Path) -> list[str]:
     images = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text)
     expected_images = objects(plan.get("figures", []), "paper figures", empty=True)
     planned_paths = {item.get("path") for item in expected_images}
+    from pro_validation import receipts, check_artifacts
+    runs, execution_errors = receipts(root, read_json(root / "experiment_manifest.json"))
+    errors.extend(execution_errors)
+    errors.extend(check_artifacts(root, runs, required_paths=planned_paths))
     if set(images) != planned_paths or len(images) != len(planned_paths):
         errors.append("manuscript figures do not match the plan")
     freeze = read_json(root / "evidence_freeze.json")

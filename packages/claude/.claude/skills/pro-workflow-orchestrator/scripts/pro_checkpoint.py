@@ -176,10 +176,11 @@ def validate_checkpoint_artifacts(project_root: Path, root: Path, number: str) -
         errors.extend(check_sources(root, read_json(root / "source_ledger.json")))
         errors.extend(check_tournament(read_json(root / "candidate_routes.json"), read_json(root / "tournament_report.json"), read_json(root / "problem_consensus.json")))
     elif number == "3":
-        from pro_validation import check_ablation, receipts, check_replication, check_robustness, check_claims
+        from pro_validation import check_ablation, receipts, check_replication, check_robustness, check_claims, check_artifacts
 
         runs, execution_errors = receipts(root, read_json(root / "experiment_manifest.json"))
         errors.extend(execution_errors)
+        errors.extend(check_artifacts(root, runs))
         errors.extend(check_replication(root, read_json(root / "replication_report.json"), runs, read_json(root / "tournament_report.json")))
         errors.extend(check_robustness(root, read_json(root / "robustness_report.json"), runs))
         errors.extend(check_ablation(root, read_json(root / "ablation_report.json"), runs))

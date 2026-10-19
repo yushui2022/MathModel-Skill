@@ -459,7 +459,7 @@ def infer_template(spec: dict[str, Any]) -> str:
         ("model_comparison", ("模型对比", "方案对比", "基线", "对照", "comparison")),
         ("weight_bar", ("权重", "指标权重", "weight")),
         ("score_ranking", ("得分", "排序", "排名", "score", "ranking")),
-        ("heatmap", ("热力", "相关", "矩阵", "heatmap", "correlation")),
+        ("heatmap", ("热力", "热图", "相关", "矩阵", "heatmap", "correlation")),
         ("scatter", ("聚类", "分群", "散点", "cluster", "scatter")),
     ]
     for template, keywords in rules:

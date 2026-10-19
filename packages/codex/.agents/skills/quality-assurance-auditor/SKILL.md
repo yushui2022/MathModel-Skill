@@ -5,6 +5,10 @@ description: "MathModel Pro 证据审计与冻结。检查运行溯源、复算�
 
 # Pro Evidence Auditor
 
+图表需在第三检查点之前通过内容和成功实验来源检查，读取冻结时再次验证。
+索引状态冲突、探索草图、损坏或空白位图、畸形表格都不能接受；详见
+`../pro-workflow-orchestrator/references/artifact-evidence.md`。
+
 本 Skill 不生成模型结果，只审计现有证据。先运行 `pro_checkpoint.py validate`。
 检查点 2 不新鲜时禁止接受计算；检查点 3 不新鲜时禁止冻结。
 

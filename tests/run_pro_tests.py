@@ -670,7 +670,11 @@ class PipelineTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    from test_evidence_artifacts import ArtifactTests
+    from test_preview_evidence import PreviewTests
     suite = unittest.TestSuite([
+        unittest.defaultTestLoader.loadTestsFromTestCase(PreviewTests),
+        unittest.defaultTestLoader.loadTestsFromTestCase(ArtifactTests),
         unittest.defaultTestLoader.loadTestsFromTestCase(CoreTests),
         unittest.defaultTestLoader.loadTestsFromTestCase(AuthoringPolicyTests),
         unittest.defaultTestLoader.loadTestsFromTestCase(PipelineTests),

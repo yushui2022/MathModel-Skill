@@ -12,7 +12,7 @@
 
 </div>
 
-MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.2 定位旗舰档**，推荐 GPT-6.1 Sol、Claude Opus 5.5、Claude Fable 5.1、GPT-6 Astra 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
+MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.3 定位旗舰档**，推荐 GPT-6.1 Sol、Claude Opus 5.5、Claude Fable 5.1、GPT-6 Astra 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
 
 Pro 输出正式 Markdown、原生公式 Word、渲染 PDF，以及代码、图表、证据与评审记录。正常流程有 **三个用户确认点**，其余已授权工作自动推进。当前为 **Preview 预发布**：工程测试通过，但真实多问赛题约 20 页长文的前向质量验收尚未完成，不承诺论文优秀或竞赛获奖。
 
@@ -64,7 +64,7 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 Pro 适合能稳定执行长任务、复杂工具调用和隔离评审的模型。若希望控制复杂度，选择 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)；普通或较旧模型优先选择 [Lite](https://github.com/yushui2022/MathModel-Skill/tree/lite)。
 
-**一个项目只安装一个版本、一个平台包。** Pro 只支持 Codex 与 Claude Code，不提供 Trae 包。以下为 `pro` 分支内 **3.3.0-pro.2** 安装包，包含本次模型适配；本次尚未创建新 Release：
+**一个项目只安装一个版本、一个平台包。** Pro 只支持 Codex 与 Claude Code，不提供 Trae 包。以下为 `pro` 分支内 **3.3.0-pro.3** 安装包，包含本次模型适配；本次尚未创建新 Release：
 
 | 平台 | 直接下载 | 解压后的 Skill 目录 |
 |---|---|---|
@@ -127,6 +127,17 @@ Claude Code 使用 `.claude/skills/`，输入目录同样为 `problem_files/`。
 | 最终检查报告 | `paper_output_pro/pro_gate_report.json` |
 
 ## 原理介绍
+
+本轮本地验证及未覆盖范围见[证据加固验收记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
+
+### 本轮证据加固
+
+Pro 3.3.0-pro.3 将图表检查前移到第三检查点，并在读取冻结证据时再次验证：损坏位图、空白图、畸形表格、探索草图以及未绑定成功实验的图表不能冻结。通用绘图预览不再自动标记为正式结果，也不从原始列直接推导敏感性图。
+
+正式图表优先引用 `experiments/<run_id>/` 中的原始输出；复制到 `figures/` 或 `tables/` 时，需要在索引中提供 `run_id` 与 `output_path`，内容必须与运行回执哈希相同。详细格式见[图表证据契约](packages/claude/.claude/skills/pro-workflow-orchestrator/references/artifact-evidence.md)。
+
+这是证据检查升级，不更改三个用户确认点，也不是新模型能力或论文获奖质量认证。旧项目需重新验证检查点与冻结，不能修改历史报告伪造通过。
+
 
 ### P0-P9 与三个确认点
 

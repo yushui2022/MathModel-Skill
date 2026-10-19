@@ -161,7 +161,10 @@ def receipts(root: Path, manifest: dict) -> tuple[dict, list[str]]:
             if metric_file not in run.get("output_hashes", {}):
                 errors.append(f"{run_id}: metrics are not a recorded output")
             else:
-                metrics = read_json(safe_path(root, metric_file)).get("metrics")
+                from artifact_checks import status_errors
+                payload = read_json(safe_path(root, metric_file))
+                errors.extend(status_errors(payload, f"{run_id}/metrics"))
+                metrics = payload.get("metrics")
                 if not isinstance(metrics, dict) or not metrics:
                     errors.append(f"{run_id}: empty metrics")
                 elif any(not (finite(v) or (isinstance(v, list) and v and all(finite(x) for x in v))) for v in metrics.values()):
@@ -348,6 +351,97 @@ def check_claims(root: Path, data: dict, runs: dict, replication: dict, sources:
     return errors
 
 
+def generated_asset_errors(path: Path, *, kind: str | None = None) -> list[str]:
+    from artifact_checks import artifact_errors, IMAGE_SUFFIXES
+    errors = artifact_errors(path, kind=kind)
+    if path.suffix.casefold() in IMAGE_SUFFIXES and not errors:
+        from PIL import Image, ImageStat
+        with Image.open(path) as image:
+            image.load()
+            if min(image.size) < 100 or max(ImageStat.Stat(image.convert("RGB")).stddev) < 2:
+                errors.append(f"placeholder or blank figure: {path.name}")
+    return errors
+
+
+def check_artifacts(root: Path, runs: dict, *, required_paths=()) -> list[str]:
+    """Inspect generated assets before approval, including files not cited yet."""
+    from artifact_checks import status_errors, IMAGE_SUFFIXES, TABLE_SUFFIXES
+
+    errors = []
+    successful = {
+        (run_id, name): digest
+        for run_id, receipt in runs.items()
+        if receipt.get("status") == "PASS" and receipt.get("exit_code") == 0
+        for name, digest in receipt.get("output_hashes", {}).items()
+    }
+    indexed_paths = set()
+    paths = set()
+    for index_name, key, kind in (
+        ("figure_index.json", "figures", "figure"),
+        ("table_index.json", "tables", "table"),
+        ("tables/table_index.json", "tables", "table"),
+    ):
+        if not (root / index_name).is_file():
+            continue
+        data = read_json(root / index_name)
+        for item in objects(data.get(key), index_name, empty=True):
+            name = item.get("path", "")
+            path = safe_path(root, name)
+            paths.add(path)
+            name = path.relative_to(root).as_posix()
+            if name in indexed_paths:
+                errors.append(f"duplicate indexed asset: {name}")
+            indexed_paths.add(name)
+            errors.extend(status_errors(item, name, required=True))
+            if item.get("placeholder") is True:
+                errors.append(f"placeholder asset: {name}")
+            errors.extend(generated_asset_errors(path, kind=kind))
+            if not path.is_file():
+                continue
+            digest = sha256_file(path)
+            if "sha256" in item and item["sha256"] != digest:
+                errors.append(f"stale asset digest: {name}")
+            # Copies require an explicit receipt reference; identical content alone
+            # must not allow unrelated files to inherit an experiment's provenance.
+            origin = item.get("output_path", name)
+            run_id = item.get("run_id")
+            if run_id is not None:
+                linked = successful.get((run_id, origin)) == digest
+            else:
+                linked = origin == name and any(
+                    output == name and value == digest for (_, output), value in successful.items()
+                )
+            if not linked:
+                errors.append(f"asset is not bound to a successful experiment: {name}")
+
+    for (_, name), digest in successful.items():
+        path = safe_path(root, name)
+        if path.suffix.casefold() in IMAGE_SUFFIXES | TABLE_SUFFIXES:
+            paths.add(path)
+    for folder in ("figures", "tables"):
+        for path in (root / folder).rglob("*"):
+            if path.is_file() and path.suffix.casefold() in IMAGE_SUFFIXES | TABLE_SUFFIXES:
+                name = path.relative_to(root).as_posix()
+                path = safe_path(root, name)
+                paths.add(path)
+                if name not in indexed_paths and not any(
+                    output == name and digest == sha256_file(path)
+                    for (_, output), digest in successful.items()
+                ):
+                    errors.append(f"unregistered asset outside an experiment: {name}")
+    for path in sorted(paths):
+        errors.extend(generated_asset_errors(path))
+    for name in required_paths:
+        path = safe_path(root, name)
+        name = path.relative_to(root).as_posix()
+        if name not in indexed_paths and (not path.is_file() or not any(
+            output == name and digest == sha256_file(path)
+            for (_, output), digest in successful.items()
+        )):
+            errors.append(f"paper artifact is not bound to a successful experiment: {name}")
+    return errors
+
+
 def evidence_files(root: Path) -> dict[str, str]:
     names = [
         "pro_config.json", "input_manifest.json", "instruction_manifest.json", "instruction_audit.json",
@@ -363,6 +457,9 @@ def evidence_files(root: Path) -> dict[str, str]:
 
 def check_freeze(root: Path, data: dict) -> list[str]:
     errors = check_hashes(root, data.get("file_hashes"))
+    runs, run_errors = receipts(root, read_json(root / "experiment_manifest.json"))
+    errors.extend(run_errors)
+    errors.extend(check_artifacts(root, runs))
     if data.get("file_hashes") != evidence_files(root):
         errors.append("frozen inventory changed: an evidence file was added, removed or modified")
     claims = read_json(root / "claim_evidence_map.json").get("claims")

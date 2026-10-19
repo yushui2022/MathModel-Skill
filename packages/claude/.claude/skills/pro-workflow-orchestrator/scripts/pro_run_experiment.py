@@ -87,12 +87,25 @@ def execute(project: Path, spec_path: Path) -> tuple[Path, bool]:
     if not failure:
         try:
             from pro_validation import finite
-            metrics = read_json(metrics_path).get("metrics", {})
+            from artifact_checks import status_errors
+            payload = read_json(metrics_path)
+            if issues := status_errors(payload, "metrics.json"):
+                raise ValueError("; ".join(issues))
+            metrics = payload.get("metrics", {})
             if not metrics or any(not (finite(v) or isinstance(v, list) and v and all(finite(x) for x in v)) for v in metrics.values()):
                 failure = "missing, empty or nonnumeric metrics"
         except (OSError, ValueError, TypeError, AttributeError) as exc:
             failure = str(exc)
     paths = [p for p in directory.rglob("*") if p.is_file()]
+    if not failure:
+        from pro_validation import generated_asset_errors
+        from artifact_checks import IMAGE_SUFFIXES, TABLE_SUFFIXES
+        issues = [
+            issue for path in paths if path.suffix.casefold() in IMAGE_SUFFIXES | TABLE_SUFFIXES
+            for issue in generated_asset_errors(path)
+        ]
+        if issues:
+            failure = "; ".join(issues)
     outputs = hash_paths(paths, root)
     receipt = contract(
         producer_role="pro-experiment-runner", status="FAILED" if failure else "PASS",
