@@ -12,6 +12,7 @@ from typing import Any
 from docx import Document
 from docx.shared import Pt, Inches
 from lite_common import safe_path, paper_checks
+from artifact_checks import artifact_errors, status_errors
 
 
 ROOT = Path.cwd()
@@ -155,10 +156,14 @@ def evaluate() -> dict[str, Any]:
     else:
         if run.get("output_policy") != "fresh-directories-v1" or not run.get("run_id"):
             failures.append("legacy run receipt lacks output isolation; rerun lite_run.py")
+        if type(run.get("returncode")) is not int or run["returncode"] != 0:
+            failures.append("successful run receipt must have integer returncode 0")
         if not MODEL_FILE.exists() or sha256_file(MODEL_FILE) != run.get("script_sha256"):
             failures.append("model.py 在运行后已变化；请重新运行 lite_run.py。")
         failures.extend(validate_records(run.get("inputs"), "运行输入"))
         failures.extend(validate_records(run.get("outputs"), "运行输出"))
+        for record in run.get("outputs", []):
+            failures.extend(artifact_errors(resolve(record.get("path"))))
         expected = {rel(p): sha256_file(p) for p in (MODEL_FILE, PLAN_FILE, MANIFEST_FILE) if p.is_file()}
         if run.get("initial_hashes") != expected or len(expected) != 3:
             failures.append("plan, script or input manifest changed since the run; rerun lite_run.py")
@@ -166,6 +171,8 @@ def evaluate() -> dict[str, Any]:
             failures.append("run manifest does not bind results.json")
 
     result_questions = results.get("questions") if isinstance(results, dict) else None
+    if isinstance(results, dict):
+        failures.extend(status_errors(results, "results", required=True))
     if not isinstance(results, dict) or results.get("status") != "computed":
         failures.append("results.json status 必须为 computed。")
     if not isinstance(result_questions, list) or not result_questions:
@@ -192,6 +199,7 @@ def evaluate() -> dict[str, Any]:
         if not str(item.get("answer") or "").strip():
             failures.append(f"{qid} 缺少非空 answer。")
         failures.extend(validate_metrics(item.get("metrics"), qid))
+        failures.extend(status_errors(item, qid))
         evidence = item.get("evidence", [])
         if evidence is not None and not isinstance(evidence, list):
             failures.append(f"{qid} evidence 必须是列表。")
@@ -224,8 +232,10 @@ def evaluate() -> dict[str, Any]:
             failures.append(f"paper image is not a recorded model output: {path_text}")
 
     status = "PASS" if not failures else "FAIL"
+    evidence_paths = {resolve(name) for name in recorded_evidence}
     return {
         "schema_version": "1.0",
+        "evidence_policy_version": 2,
         "generated_by": "mathmodel-lite/scripts/lite_finalize.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "status": status,
@@ -235,7 +245,7 @@ def evaluate() -> dict[str, Any]:
         "acceptance_scope": "NOT_ACCEPTED" if failures else ("LITE_BASIC_REPORT_ONLY" if ((plan or {}).get("delivery") or {}).get("mode", "basic-report") == "basic-report" else "LITE_SHORT_OR_TEST_ONLY"),
         "input_hashes": {
             rel(path): sha256_file(path)
-            for path in (MANIFEST_FILE, PLAN_FILE, MODEL_FILE, RUN_FILE, RESULTS_FILE, PAPER_FILE)
+            for path in sorted({MANIFEST_FILE, PLAN_FILE, MODEL_FILE, RUN_FILE, RESULTS_FILE, PAPER_FILE, *evidence_paths})
             if path.exists() and path.is_file()
         },
     }

@@ -5,6 +5,14 @@ description: "低上下文、单入口数学建模工作流。Use when 用户明
 
 # MathModel Lite
 
+## 证据检查补充
+
+- 审题必须核对原题中的显式问题、表格、图片及公式；提取文本不完整时先查原件，不自行补出题意。
+- 子问题可省略独立状态并继承顶层 `computed`；若声明 `status` 或 `evidence_status`，所有字段都必须为 computed/verified/validated/pass（不区分大小写）。失败、未知、冲突状态或 exploratory 不能交付。
+- 运行产生的位图须可解码，CSV/TSV 使用 UTF-8、唯一非空表头及等宽数据行；XLSX 不保留空的占位工作表。原始输入不受输出编码要求限制。
+- 完成后重新运行最终检查；报告 `evidence_policy_version=2` 并绑定实际证据哈希。不能只把旧报告改成 PASS。
+
+
 使用单个 skill 和三个确定性脚本完成数学建模基础流程。减少路由、长文档和中间契约，但不允许伪造运行结果或把占位内容称为最终稿。
 
 ## 适用边界

@@ -23,6 +23,64 @@ class FreshOutputTests(unittest.TestCase):
         self.root = fixtures.prepare("project")
         self.output = self.root / "paper_output_lite"
 
+    def change_producer(self, extra):
+        model = self.output / "code/model.py"
+        with model.open("a", encoding="utf-8") as handle:
+            handle.write("\n" + extra + "\n")
+
+    def test_child_failure_and_conflicting_statuses_are_rejected(self):
+        for fields in ({"status": "FAIL"}, {"status": "unknown"}, {"status": ""},
+                       {"status": "computed", "evidence_status": "FAILED"},
+                       {"evidence_role": "exploratory"}):
+            with self.subTest(fields=fields):
+                self.root = fixtures.prepare("case-" + str(len(list(Path(self.temp.name).iterdir()))))
+                self.output = self.root / "paper_output_lite"
+                self.change_producer(
+                    "p = Path('paper_output_lite/results.json')\n"
+                    "data = json.loads(p.read_text(encoding='utf-8'))\n"
+                    f"data['questions'][0].update({fields!r})\n"
+                    "p.write_text(json.dumps(data), encoding='utf-8')"
+                )
+                self.run_model()
+                result = fixtures.run(fixtures.FINALIZER, self.root)
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertRegex(result.stdout, "unacceptable|exploratory")
+
+    def test_top_level_conflicting_status_is_rejected(self):
+        self.change_producer(
+            "p = Path('paper_output_lite/results.json')\n"
+            "data = json.loads(p.read_text(encoding='utf-8'))\n"
+            "data['evidence_status'] = 'FAIL'\n"
+            "p.write_text(json.dumps(data), encoding='utf-8')"
+        )
+        self.run_model()
+        result = fixtures.run(fixtures.FINALIZER, self.root)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("unacceptable", result.stdout)
+
+    def test_fresh_corrupt_image_is_rejected_even_if_unused(self):
+        self.change_producer("Path('paper_output_lite/figures/broken.png').write_bytes(b'not an image')")
+        self.run_model()
+        result = fixtures.run(fixtures.FINALIZER, self.root)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("invalid artifact broken.png", result.stdout)
+
+    def test_fresh_malformed_table_is_rejected(self):
+        self.change_producer("Path('paper_output_lite/tables/q1.csv').write_text('a,b\\n1,2,3\\n', encoding='utf-8')")
+        self.run_model()
+        result = fixtures.run(fixtures.FINALIZER, self.root)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("row width", result.stdout)
+
+    def test_report_binds_actual_evidence_not_only_receipt(self):
+        receipt = self.run_model()
+        result = fixtures.run(fixtures.FINALIZER, self.root)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        report = json.loads((self.output / "lite_report.json").read_text(encoding="utf-8"))
+        self.assertEqual(report["evidence_policy_version"], 2)
+        for record in receipt["inputs"] + receipt["outputs"]:
+            self.assertEqual(report["input_hashes"][record["path"]], record["sha256"])
+
     def run_model(self):
         result = fixtures.run(fixtures.RUNNER, self.root)
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -104,6 +162,14 @@ class FreshOutputTests(unittest.TestCase):
         result = fixtures.run(fixtures.FINALIZER, self.root)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("legacy run receipt", result.stdout)
+
+    def test_pass_receipt_cannot_hide_nonzero_exit(self):
+        report = self.run_model()
+        report["returncode"] = 1
+        (self.output / "run_manifest.json").write_text(json.dumps(report), encoding="utf-8")
+        result = fixtures.run(fixtures.FINALIZER, self.root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("returncode 0", result.stdout)
 
     def test_failed_run_does_not_retain_previous_success(self):
         self.run_model()
