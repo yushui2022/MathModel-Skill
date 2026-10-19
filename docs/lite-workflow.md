@@ -48,12 +48,11 @@ Lite 的依赖文件不包含 Standard 使用的 PDF、LaTeX 公式和严格格�
 三个脚本按顺序运行：
 
 ```bash
-python .agents/skills/mathmodel-lite/scripts/lite_preflight.py
-python .agents/skills/mathmodel-lite/scripts/lite_run.py --timeout 300
-python .agents/skills/mathmodel-lite/scripts/lite_finalize.py
+python "<SKILL_ROOT>/mathmodel-lite/scripts/lite_preflight.py"
+python "<SKILL_ROOT>/mathmodel-lite/scripts/lite_run.py" --timeout 300
+python "<SKILL_ROOT>/mathmodel-lite/scripts/lite_finalize.py"
 ```
 
-Claude Code 将 `.agents/skills/` 替换为 `.claude/skills/`，Trae 替换为 `.trae/skills/`。
 
 ## 基础稿范围
 

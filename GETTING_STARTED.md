@@ -1,10 +1,6 @@
-# Getting Started with MathModel Lite
+# Lite 快速开始
 
-1. 下载与你平台对应的 `MathModel-Skill-Lite-*.zip`。
-2. 解压到一个未安装 MathModel Standard 的项目根目录。
-3. 创建 `problem_files/`，放入赛题和附件。
-4. 运行 `pip install -r requirements.txt`。
-5. 让 Agent 读取 `mathmodel-lite/SKILL.md` 并严格执行固定六步。
-6. 只有 `paper_output_lite/lite_report.json` 为 `PASS` 时才使用 `paper.docx`。
+请按[通用安装说明](docs/agent-install-guide.md)安装，再使用[启动提示词](docs/lite-starter-prompt.md)。
 
-完整说明见 [README](README.md) 和 [Lite Workflow](docs/lite-workflow.md)。
+同一个 ZIP 可安装到一个选定宿主目录；不覆盖项目根配置，不混装多个 edition。
+Lite 保持一个入口、六步流程和基础 Word 报告，不加入 Pro 的多代理和检查点。

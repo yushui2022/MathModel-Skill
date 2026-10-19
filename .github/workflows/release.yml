@@ -1,41 +1,36 @@
 name: Release Lite
-
 on:
   push:
-    tags:
-      - "v2.2.1-lite.2"
-
+    tags: ["v*-lite.*"]
 permissions:
   contents: write
-
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Verify version and tracked archives
+      - name: Validate tag, branch, edition and tracked archive
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          test "$(cat VERSION)" = "2.2.1-lite.2"
-          python scripts/build_release_packages.py --verify
-
-      - name: Publish GitHub Release
+          python -c "import os; from pathlib import Path; v=Path('VERSION').read_text().strip(); assert os.environ['RELEASE_TAG']=='v'+v and '-lite.' in v"
+          git merge-base --is-ancestor HEAD origin/lite
+          python -S scripts/check_skills.py
+          python -S scripts/build_release_packages.py --verify
+          python -S tests/test_installation.py
+      - name: Publish universal asset
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "${GITHUB_REF_NAME}"
-          dist/MathModel-Skill-Lite-Trae.zip
-          dist/MathModel-Skill-Lite-Claude-Code.zip
-          dist/MathModel-Skill-Lite-Codex.zip
+          dist/MathModel-Skill-Lite.zip
           dist/SHA256SUMS.txt
           --verify-tag
-          --title "MathModel Skill Lite 2.2.1-lite.2"
+          --title "MathModel Skill Lite ${GITHUB_REF_NAME}"
           --generate-notes

@@ -2,7 +2,7 @@
 
 Date: 2026-10-19
 Edition: lite
-Version: 2.2.1-lite.5
+Version: 2.2.1-lite.6
 Local environment: Windows, Python 3.11.1.
 
 ## Scope
@@ -32,7 +32,7 @@ Backport evidence-status and artifact-integrity safeguards without merging editi
 ```text
 python tests/run_lite_tests.py
 python tests/test_fresh_outputs.py
-python scripts/sync_platform_packages.py --check
+python scripts/check_skills.py
 python scripts/build_release_packages.py --verify
 ```
 

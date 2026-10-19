@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "product": "MathModel-Skill",
+  "edition": "lite",
+  "version": "2.2.1-lite.6",
+  "entry_skill": "mathmodel-lite",
+  "required_files": [
+    "mathmodel-lite/SKILL.md",
+    "mathmodel-lite/scripts/artifact_checks.py",
+    "mathmodel-lite/scripts/installation.py",
+    "mathmodel-lite/scripts/lite_common.py",
+    "mathmodel-lite/scripts/lite_finalize.py",
+    "mathmodel-lite/scripts/lite_preflight.py",
+    "mathmodel-lite/scripts/lite_run.py"
+  ]
+}

@@ -5,13 +5,13 @@
 
 ### 一个入口、六步流程，完成基础数学建模报告
 
-[![Version](https://img.shields.io/badge/version-2.2.1--lite.4-0f766e)](./VERSION)
+[![Version](https://img.shields.io/badge/version-2.2.1--lite.6-0f766e)](./VERSION)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
 </div>
 
-MathModel Skill 帮助编程 Agent 从赛题和附件出发，分析问题、运行建模代码、整理真实结果并生成论文或报告。**Lite 2.2.1-lite.5 开发版定位入门档**，建议 DeepSeek 等模型或需要低负担运行的用户从此版本开始。它只提供一个 `mathmodel-lite` 入口，减少流程选择和中间文件负担，也适合较旧或短上下文模型。
+MathModel Skill 帮助编程 Agent 从赛题和附件出发，分析问题、运行建模代码、整理真实结果并生成论文或报告。**Lite 2.2.1-lite.6 开发版定位入门档**，建议 DeepSeek 等模型或需要低负担运行的用户从此版本开始。它只提供一个 `mathmodel-lite` 入口，减少流程选择和中间文件负担，也适合较旧或短上下文模型。
 
 Lite 会产出建模代码、计算结果、图表、Markdown 与基础 Word 报告，并检查输入和运行结果是否发生变化。它不提供原生 Word 公式、严格引文审计或 PDF 渲染验收，不能把基础报告检查通过当作约 20 页正式竞赛论文验收。
 
@@ -32,7 +32,7 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是另一个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
 
-**一个项目只安装一个版本、一个平台包，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
+**一个项目只安装一个版本、一个安装位置，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
 
 ## 小红书
 
@@ -59,60 +59,45 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 ## 快速导入使用
 
-### 1. 下载一个 Lite 安装包
+### 1. 下载一个通用包
 
-**一个项目只安装一个版本、一个平台包。** 普通模型、基础报告选择当前 Lite；正式竞赛写作可选 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)，需要高计算投入和独立复算可选 [Pro 预发布版](https://github.com/yushui2022/MathModel-Skill/tree/pro)。
+当前分支版本为 **2.2.1-lite.6**。下载 [MathModel-Skill-Lite.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/lite/dist/MathModel-Skill-Lite.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
 
-从 [Lite 2.2.1-lite.3 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v2.2.1-lite.3) 下载：
+**同一份内容适用于不同宿主，不再分别下载 Claude、Codex、Trae 包。** ZIP 内有完整 `skills/`、安全安装器、依赖与启动说明。
 
-| 平台 | 直接下载 | 解压后的 Skill 目录 |
-|---|---|---|
-| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Codex.zip) | `.agents/skills/` |
-| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Claude-Code.zip) | `.claude/skills/` |
-| Trae | [Trae 安装包](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/MathModel-Skill-Lite-Trae.zip) | `.trae/skills/` |
+### 2. 选择一个项目安装位置
 
-使用这些平台安装包，不要把 GitHub 的仓库源码 ZIP 当作安装包。可用 [SHA256SUMS.txt](https://github.com/yushui2022/MathModel-Skill/releases/download/v2.2.1-lite.3/SHA256SUMS.txt) 核对下载文件。
-
-### 2. 解压并准备环境
-
-在独立的建模项目目录中解压，保留完整 Skill 文件夹，不覆盖用户已有 `AGENTS.md` / `CLAUDE.md`。确认隐藏的 Skill 目录已解压，再用对应 Agent 打开项目。
-
-使用 Python **3.11 或 3.12**，在项目根目录运行：
+先解压到独立下载目录，再执行（赛题目录必须已经存在）：
 
 ```bash
-python -m pip install -r requirements.txt
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex --check
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex
+```
+
+| 宿主 | 安装参数 | 项目内目标目录 |
+|---|---|---|
+| Codex | `--platform codex` | `.agents/skills/` |
+| Claude Code | `--platform claude` | `.claude/skills/` |
+| Trae | `--platform trae` | `.trae/skills/` |
+
+一个项目只选一个位置。安装器仅使用 Python 3.11+ 标准库，不联网、不自动安装依赖，不覆盖 `AGENTS.md`、`CLAUDE.md`、其他 Skill、附件或已有论文。手动安装可完整复制 `skills/` 内全部目录到一个目标位置，不要只复制 `SKILL.md`。
+
+无记录旧包、混装、用户修改和不完整安装会阻塞，不会自动清理。已托管且未改动的同主版本安装，先停止建模任务，再用 `--check --upgrade` 检查，确认后用 `--upgrade`；中断时用 `--recover` 回滚。安装器不重新批准任何旧证据。
+
+### 3. 准备环境并启动
+
+在选定的 Python 环境中手动安装依赖：
+
+```bash
+python -m pip install -r "<解压目录>/requirements.txt"
 python -m pip check
 ```
 
-Lite 只使用精简 Python 依赖，**不需要 LibreOffice 或 TeX**。
+把题面和原始附件放到赛题目录的 `problem_files/`，用宿主打开该赛题目录并刷新 Skill 列表。让 Agent 读取实际安装位置中的 **mathmodel-lite/SKILL.md**，按[启动提示词](docs/lite-starter-prompt.md)开始。
 
-### 3. 放入题目，启动 Agent
+`<SKILL_ROOT>` 指实际加载的所有 Skill 的父目录，须替换为真实绝对路径；脚本从赛题根目录运行，不在安装目录生成结果。Pro 的平台参数仅记录宿主能力，不改变 payload。详细见[安装与恢复说明](docs/agent-install-guide.md)。
 
-创建 `problem_files/`，放入赛题和附件。例如 Codex 项目：
-
-```text
-your-project/
-├── .agents/skills/mathmodel-lite/
-├── requirements.txt
-└── problem_files/
-    ├── 赛题.pdf
-    └── 附件.xlsx
-```
-
-题面由 Agent 读取；遇到无法读取的扫描件或附件时，先补充可读文本或文件，不猜测内容。然后对 Agent 说：
-
-```text
-请使用 $mathmodel-lite，赛题和附件已经放在 problem_files/。
-按固定六步完成：预检、计划、建模脚本、真实运行、写报告、检查并生成 Word。
-所有产物写入 paper_output_lite/，不要读取其他版本的旧结果。
-每个问题分别说明方法、关键数值、检验和局限，允许分多轮写完整基础稿。
-除非我明确要求，不改成短报告或安装测试模式。
-只有 lite_report.json 为 PASS 后，才交付对应范围的 paper.docx。
-```
-
-若 Agent 没有识别入口，让它先读取所安装目录中的 `mathmodel-lite/SKILL.md`。正常使用不需要逐条运行脚本；更多说明见 [Lite 启动提示词](docs/lite-starter-prompt.md)。
-
-完成后查看 `paper_output_lite/paper.docx`、`paper.md` 和 `lite_report.json`；代码、结果和图表也保留在同一输出目录。
+Lite 保持一个入口、六步流程和基础 Word 报告，不加入 Pro 的多代理和检查点。
 
 ## 原理介绍
 
@@ -154,16 +139,18 @@ your-project/
 
 ## 验证状态与详细文档
 
-本轮本地验证及未覆盖范围见[证据加固验收记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
+本轮通用包验证见[安装迁移验收记录](docs/universal-package-validation.md)，之前的门禁修复见[证据加固记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
 
-- 发布提交通过 15 项本地自动测试；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940773858) 覆盖 Windows/Ubuntu、Python 3.11/3.12 与确定性安装包检查。
+- 历史发布提交通过 15 项本地自动测试；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940773858) 覆盖 Windows/Ubuntu、Python 3.11/3.12 与确定性安装包检查。
 - [安装指南](docs/agent-install-guide.md) · [固定流程与范围说明](docs/lite-workflow.md) · [启动提示词](docs/lite-starter-prompt.md)
 - 当前分支只维护 Lite，不包含 Standard 或 Pro 的工作流。分支 `dist/` 随提交更新，Release 保留固定发布快照。
 
 开发者可在仓库中执行：
 
 ```bash
-python scripts/sync_platform_packages.py --check
+python scripts/check_skills.py
+python -S tests/test_installation.py
+python tests/test_installed_workflow.py
 python tests/run_lite_tests.py
 python tests/test_fresh_outputs.py
 python scripts/build_release_packages.py --verify

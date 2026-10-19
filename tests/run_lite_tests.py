@@ -13,7 +13,7 @@ from docx import Document
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SANDBOX = REPO_ROOT / "tests" / "lite_sandbox"
-SKILL_ROOT = REPO_ROOT / "packages" / "claude" / ".claude" / "skills" / "mathmodel-lite"
+SKILL_ROOT = REPO_ROOT / "skills" / "mathmodel-lite"
 PREFLIGHT = SKILL_ROOT / "scripts" / "lite_preflight.py"
 RUNNER = SKILL_ROOT / "scripts" / "lite_run.py"
 FINALIZER = SKILL_ROOT / "scripts" / "lite_finalize.py"
@@ -192,10 +192,8 @@ def test_lite_release_packages_are_deterministic_and_marked() -> None:
         assert_true(completed.returncode == 0, completed.stdout)
     names = sorted(path.name for path in first.glob("*.zip"))
     assert_true(names == [
-        "MathModel-Skill-Lite-Claude-Code.zip",
-        "MathModel-Skill-Lite-Codex.zip",
-        "MathModel-Skill-Lite-Trae.zip",
-    ], "Lite should build exactly three platform archives")
+        "MathModel-Skill-Lite.zip",
+    ], "Lite should build exactly one universal archive")
     assert_true((first / "SHA256SUMS.txt").read_bytes() == (second / "SHA256SUMS.txt").read_bytes(), "checksum files should match")
     for name in names:
         assert_true((first / name).read_bytes() == (second / name).read_bytes(), f"nondeterministic archive: {name}")
@@ -206,8 +204,7 @@ def test_lite_release_packages_are_deterministic_and_marked() -> None:
             assert_true(marker_data["edition"] == "lite", "Lite marker edition should be present")
             assert_true(marker_data["version"] == (REPO_ROOT / "VERSION").read_text().strip(), "Lite marker version should match")
             assert_true("AGENTS.md" not in entries and "CLAUDE.md" not in entries, "archives must not overwrite user instructions")
-            if "Codex" in name:
-                assert_true(marker.startswith(".agents/skills/"), "Codex must install in the modern skill root")
+            assert_true(marker.startswith("skills/"), "Universal archive must use one neutral skill root")
             assert_true("LICENSE" in entries, "Lite archive should include MIT license")
 
 

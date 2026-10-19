@@ -5,6 +5,10 @@ description: "低上下文、单入口数学建模工作流。Use when 用户明
 
 # MathModel Lite
 
+## 通用安装与路径
+
+所有宿主共用这一份 Skill。`<SKILL_ROOT>` 是本 Skill 目录的父目录，运行前替换为实际绝对路径并加引号；从赛题项目根执行命令，结果不得写进安装目录。先运行预检；安装中断、文件损坏或混装时停止，先解决安装问题，不绕过原有论文门禁。
+
 ## 证据检查补充
 
 - 审题必须核对原题中的显式问题、表格、图片及公式；提取文本不完整时先查原件，不自行补出题意。
@@ -57,7 +61,7 @@ paper_output_lite/
 在项目根目录运行：
 
 ```bash
-python .trae/skills/mathmodel-lite/scripts/lite_preflight.py
+python "<SKILL_ROOT>/mathmodel-lite/scripts/lite_preflight.py"
 ```
 
 退出码非 0 时停止。读取 `paper_output_lite/input_manifest.json`，只使用其中列出的当前附件。
@@ -109,7 +113,7 @@ python .trae/skills/mathmodel-lite/scripts/lite_preflight.py
 ### 4. 通过统一入口运行
 
 ```bash
-python .trae/skills/mathmodel-lite/scripts/lite_run.py
+python "<SKILL_ROOT>/mathmodel-lite/scripts/lite_run.py"
 ```
 
 该脚本运行 `model.py`，记录计划、脚本、输入和输出的 SHA-256。每次先将旧结果、图表、运行记录及 Word 归档到 `runs/<run_id>/previous/`，再创建空图表目录；旧文件不能算本轮输出。默认超时 300 秒，可显式使用 `--timeout 900`；这不是代码安全沙箱。运行失败时修复后重跑，不要手改状态。
@@ -140,7 +144,7 @@ python .trae/skills/mathmodel-lite/scripts/lite_run.py
 ### 6. 最终检查与 Word
 
 ```bash
-python .trae/skills/mathmodel-lite/scripts/lite_finalize.py
+python "<SKILL_ROOT>/mathmodel-lite/scripts/lite_finalize.py"
 ```
 
 只有退出码为 0 且 `lite_report.json.status` 为 `PASS`，`paper.docx` 才能称为对应范围的 Lite 最终稿；不是 20 页正式竞赛论文验收。失败时按 `failures` 修复，不要绕过门禁。
