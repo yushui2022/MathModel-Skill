@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import io
 import json
+import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,172 +14,254 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DIST_DIR = REPO_ROOT / "dist"
 VERSION_FILE = REPO_ROOT / "VERSION"
 BUILD_MANIFEST = "MATHMODEL_BUILD.json"
+CHECKSUM_FILE = "SHA256SUMS.txt"
 ZIP_TIMESTAMP = (2020, 1, 1, 0, 0, 0)
-EXCLUDED_DIRS = {"__pycache__", ".pytest_cache", ".mypy_cache", "problem_files", "crawled_data", "paper_output", "paper_output_pro"}
-EXCLUDED_FILES = {".DS_Store", "Thumbs.db"}
-EXCLUDED_SUFFIXES = {".pyc", ".pyo"}
+sys.path.insert(0, str(REPO_ROOT / "skills/pro-workflow-orchestrator/scripts"))
+from installation import ENTRY, SKILLS, no_links
+TEXT_SUFFIXES = {".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml", ".svg", ".csv", ".tsv"}
+
+EXCLUDED_DIRS = {
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    "problem_files",
+    "crawled_data",
+    "paper_output",
+}
+EXCLUDED_FILES = {
+    "data_requirements.json",
+    ".DS_Store",
+    "Thumbs.db",
+}
+EXCLUDED_SUFFIXES = {
+    ".pyc",
+    ".pyo",
+}
 
 
 @dataclass(frozen=True)
 class PackageSpec:
     name: str
     archive_name: str
-    source_root: Path
-    archive_root: Path
+    roots: tuple[tuple[Path, Path], ...]
+    extra_files: tuple[tuple[Path, Path], ...]
 
 
-SPECS = (
-    PackageSpec("Pro Claude Code", "MathModel-Skill-Pro-Claude-Code.zip", REPO_ROOT / "packages" / "claude" / ".claude", Path(".claude")),
-    PackageSpec("Pro Codex", "MathModel-Skill-Pro-Codex.zip", REPO_ROOT / "packages" / "codex" / ".agents", Path(".agents")),
-)
-COMMON_FILES = (
+COMMON_DOCS = (
+    (REPO_ROOT / "docs/agent-install-guide.md", Path("docs/agent-install-guide.md")),
+    (REPO_ROOT / "install.py", Path("install.py")),
     (REPO_ROOT / "LICENSE", Path("LICENSE")),
-    (REPO_ROOT / "README.md", Path("README-MathModel-Skill-Pro.md")),
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
-    (REPO_ROOT / "docs" / "pro-start-prompt.md", Path("START_HERE.md")),
-    (REPO_ROOT / "docs" / "pro-contracts.md", Path("docs/pro-contracts.md")),
-    (REPO_ROOT / "docs" / "pro-start-prompt.md", Path("docs/pro-start-prompt.md")),
-    (REPO_ROOT / "docs" / "forward-evaluation.md", Path("docs/forward-evaluation.md")),
-    (REPO_ROOT / "docs" / "pro-3.2-validation.md", Path("docs/pro-3.2-validation.md")),
-    (REPO_ROOT / "assets" / "mathmodel-banner.png", Path("assets/mathmodel-banner.png")),
-    (REPO_ROOT / "assets" / "orlando-liu-social.jpg", Path("assets/orlando-liu-social.jpg")),
-    (REPO_ROOT / "assets" / "tokensfactory-logo.png", Path("assets/tokensfactory-logo.png")),
+    (REPO_ROOT / "docs/evidence-hardening-validation.md", Path("docs/evidence-hardening-validation.md")),
+    (REPO_ROOT / "docs/forward-evaluation.md", Path("docs/forward-evaluation.md")),
+    (REPO_ROOT / "docs/pro-3.2-validation.md", Path("docs/pro-3.2-validation.md")),
+    (REPO_ROOT / "docs/pro-contracts.md", Path("docs/pro-contracts.md")),
+    (REPO_ROOT / "docs/pro-start-prompt.md", Path("docs/pro-start-prompt.md")),
 )
 
 
-def version() -> str:
-    value = VERSION_FILE.read_text(encoding="utf-8").strip()
-    if not value:
-        raise RuntimeError("VERSION is empty")
-    return value
+PACKAGE_SPECS = (
+    PackageSpec(
+        name="Pro",
+        archive_name="MathModel-Skill-Pro.zip",
+        roots=((REPO_ROOT / "skills", Path("skills")),),
+        extra_files=(
+            (REPO_ROOT / "GETTING_STARTED.md", Path("README-MathModel-Skill.md")),
+            *COMMON_DOCS,
+        ),
+    ),
+)
 
 
 def should_skip(path: Path) -> bool:
-    return path.name in EXCLUDED_FILES or path.suffix.lower() in EXCLUDED_SUFFIXES or any(part in EXCLUDED_DIRS for part in path.parts)
+    if path.name in EXCLUDED_FILES:
+        return True
+    if path.suffix.lower() in EXCLUDED_SUFFIXES:
+        return True
+    return any(part in EXCLUDED_DIRS for part in path.parts)
+
+
+def iter_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for path in root.rglob("*"):
+        no_links(path)
+        if not path.is_file():
+            continue
+        relative = path.relative_to(root)
+        if should_skip(relative):
+            continue
+        files.append(path)
+    return sorted(files, key=lambda item: item.as_posix().lower())
+
+
+def package_version() -> str:
+    if not VERSION_FILE.exists():
+        raise FileNotFoundError(f"Missing version file: {VERSION_FILE}")
+    version = VERSION_FILE.read_text(encoding="utf-8").strip()
+    if not version:
+        raise RuntimeError("VERSION is empty")
+    return version
 
 
 def normalized_source_bytes(path: Path) -> bytes:
     data = path.read_bytes()
-    try:
-        text = data.decode("utf-8-sig")
-    except UnicodeDecodeError:
+    if path.suffix.lower() not in TEXT_SUFFIXES and path.name not in {"VERSION", "LICENSE"}:
         return data
+    text = data.decode("utf-8-sig")
     return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
 
 
 def source_entries(spec: PackageSpec) -> dict[str, bytes]:
-    if not spec.source_root.is_dir():
-        raise FileNotFoundError(f"Missing package root: {spec.source_root}")
     entries: dict[str, bytes] = {}
-    for path in sorted((item for item in spec.source_root.rglob("*") if item.is_file()), key=lambda item: item.as_posix().casefold()):
-        relative = path.relative_to(spec.source_root)
-        if not should_skip(relative):
-            entries[(spec.archive_root / relative).as_posix()] = normalized_source_bytes(path)
-    for source, target in COMMON_FILES:
-        if not source.is_file():
-            raise FileNotFoundError(f"Missing package document: {source}")
-        entries[target.as_posix()] = normalized_source_bytes(source)
-    entries["VERSION"] = (version() + "\n").encode("utf-8")
+    for source_root, archive_root in spec.roots:
+        if not source_root.exists():
+            raise FileNotFoundError(f"Missing package root: {source_root}")
+        for path in iter_files(source_root):
+            archive_path = (archive_root / path.relative_to(source_root)).as_posix()
+            entries[archive_path] = normalized_source_bytes(path)
+    for source_file, archive_path in spec.extra_files:
+        if not source_file.exists():
+            raise FileNotFoundError(f"Missing extra file: {source_file}")
+        entries[archive_path.as_posix()] = normalized_source_bytes(source_file)
+    entries["VERSION"] = (package_version() + "\n").encode("utf-8")
     return dict(sorted(entries.items()))
 
 
-def sha256(data: bytes) -> str:
+def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
-    hashes = {name: sha256(data) for name, data in entries.items()}
+def build_manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
+    file_hashes = {path: sha256_bytes(data) for path, data in entries.items()}
     digest = hashlib.sha256()
-    for name, file_hash in hashes.items():
-        digest.update(name.encode("utf-8") + b"\0" + file_hash.encode("ascii") + b"\n")
+    for path, file_hash in file_hashes.items():
+        digest.update(path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(file_hash.encode("ascii"))
+        digest.update(b"\n")
     payload = {
-        "schema_version": "3.3",
-        "edition": "pro",
+        "schema_version": "2.0",
         "package": spec.name,
-        "version": version(),
+        "edition": "pro",
+        "entry_skill": ENTRY,
+        "skills": list(SKILLS),
+        "version": package_version(),
         "file_count": len(entries),
         "payload_sha256": digest.hexdigest(),
-        "files": hashes,
+        "files": file_hashes,
     }
     return (json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
-def write_entry(archive: zipfile.ZipFile, name: str, data: bytes) -> None:
-    info = zipfile.ZipInfo(name, ZIP_TIMESTAMP)
-    # Stored entries avoid zlib-version differences across the CI operating systems.
-    info.compress_type = zipfile.ZIP_STORED
+def write_zip_entry(archive: zipfile.ZipFile, path: str, data: bytes) -> None:
+    info = zipfile.ZipInfo(path, ZIP_TIMESTAMP)
     info.create_system = 3
+    info.compress_type = zipfile.ZIP_STORED
     info.external_attr = 0o100644 << 16
     info.flag_bits |= 0x800
     archive.writestr(info, data, compress_type=zipfile.ZIP_STORED)
 
 
-def expected(spec: PackageSpec) -> dict[str, bytes]:
+def package_bytes(spec: PackageSpec) -> bytes:
     entries = source_entries(spec)
-    entries[BUILD_MANIFEST] = manifest(spec, entries)
-    return dict(sorted(entries.items()))
+    entries[BUILD_MANIFEST] = build_manifest(spec, entries)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for archive_path, data in sorted(entries.items()):
+            write_zip_entry(archive, archive_path, data)
+    return buffer.getvalue()
 
 
-def build(spec: PackageSpec, output_dir: Path) -> Path:
+def build_package(spec: PackageSpec, output_dir: Path) -> tuple[Path, int]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    target = output_dir / spec.archive_name
-    with zipfile.ZipFile(target, "w") as archive:
-        for name, data in expected(spec).items():
-            write_entry(archive, name, data)
-    return target
+    output = output_dir / spec.archive_name
+    output.write_bytes(package_bytes(spec))
+    return output, len(source_entries(spec)) + 1
 
 
-def verify(spec: PackageSpec, output_dir: Path) -> list[str]:
-    target = output_dir / spec.archive_name
-    if not target.is_file():
-        return [f"missing archive: {target}"]
-    wanted = expected(spec)
-    errors: list[str] = []
-    canonical = io.BytesIO()
-    with zipfile.ZipFile(canonical, "w") as archive:
-        for name, data in wanted.items():
-            write_entry(archive, name, data)
-    if target.read_bytes() != canonical.getvalue():
-        errors.append(f"{spec.name}: archive bytes or metadata are not canonical")
-    with zipfile.ZipFile(target) as archive:
-        names = sorted(item.filename for item in archive.infolist() if not item.is_dir())
-        if names != sorted(wanted):
-            errors.append(f"{spec.name}: archive entry set differs")
-        for name, data in wanted.items():
+def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
+    output = output_dir / spec.archive_name
+    if not output.exists():
+        return [f"Missing archive: {output}"]
+
+    expected = source_entries(spec)
+    expected[BUILD_MANIFEST] = build_manifest(spec, expected)
+    failures: list[str] = []
+    if output.read_bytes() != package_bytes(spec):
+        failures.append(f"{spec.name}: archive bytes or metadata differ from deterministic build")
+    with zipfile.ZipFile(output) as archive:
+        actual_names = sorted(item.filename for item in archive.infolist() if not item.is_dir())
+        expected_names = sorted(expected)
+        if actual_names != expected_names:
+            missing = sorted(set(expected_names) - set(actual_names))
+            extra = sorted(set(actual_names) - set(expected_names))
+            if missing:
+                failures.append(f"{spec.name}: archive missing entries: {missing}")
+            if extra:
+                failures.append(f"{spec.name}: archive has unexpected entries: {extra}")
+        for path, expected_bytes in expected.items():
             try:
-                if archive.read(name) != data:
-                    errors.append(f"{spec.name}: stale entry {name}")
+                actual_bytes = archive.read(path)
             except KeyError:
-                errors.append(f"{spec.name}: missing entry {name}")
-        forbidden = [name for name in names if name.startswith((".trae/", "skills/")) or name in {"AGENTS.md", "CLAUDE.md"} or "mathmodel-lite" in name or "paper-workflow-orchestrator" in name]
-        if forbidden:
-            errors.append(f"{spec.name}: forbidden edition/root files {forbidden}")
-    return errors
+                continue
+            if actual_bytes != expected_bytes:
+                failures.append(f"{spec.name}: stale archive entry: {path}")
+    return failures
+
+
+def clean_dist(output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for spec in PACKAGE_SPECS:
+        target = output_dir / spec.archive_name
+        if target.exists():
+            target.unlink()
+    checksum_path = output_dir / CHECKSUM_FILE
+    if checksum_path.exists():
+        checksum_path.unlink()
+
+
+def checksum_payload(output_dir: Path) -> str:
+    lines = []
+    for spec in sorted(PACKAGE_SPECS, key=lambda item: item.archive_name):
+        path = output_dir / spec.archive_name
+        if not path.is_file():
+            raise FileNotFoundError(f"Missing archive for checksum: {path}")
+        lines.append(f"{sha256_bytes(path.read_bytes())}  {path.name}")
+    return "\n".join(lines) + "\n"
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build deterministic MathModel Skill Pro packages.")
-    parser.add_argument("--clean", action="store_true")
-    parser.add_argument("--verify", action="store_true")
-    parser.add_argument("--output-dir", type=Path, default=DIST_DIR)
+    parser = argparse.ArgumentParser(description="Build deterministic MathModel Skill native release packages.")
+    parser.add_argument("--clean", action="store_true", help="Remove previously generated release zips before building.")
+    parser.add_argument("--verify", action="store_true", help="Verify existing archives against the current source tree.")
+    parser.add_argument("--output-dir", type=Path, default=DIST_DIR, help="Directory for generated archives.")
     args = parser.parse_args()
     output_dir = args.output_dir.resolve()
+
     if args.verify:
-        errors = [error for spec in SPECS for error in verify(spec, output_dir)]
-        for error in errors:
-            print(f"[FAIL] {error}")
-        if errors:
+        failures = [failure for spec in PACKAGE_SPECS for failure in verify_package(spec, output_dir)]
+        checksum_path = output_dir / CHECKSUM_FILE
+        if not checksum_path.is_file():
+            failures.append(f"Missing checksum file: {checksum_path}")
+        elif checksum_path.read_text(encoding="utf-8").replace("\r\n", "\n") != checksum_payload(output_dir):
+            failures.append(f"Stale checksum file: {checksum_path}")
+        if failures:
+            for failure in failures:
+                print(f"[FAIL] {failure}")
             return 1
-        print(f"[PASS] Pro archives match source version {version()}.")
+        print(f"[PASS] Release archives match source version {package_version()}.")
         return 0
+
     if args.clean:
-        for spec in SPECS:
-            target = output_dir / spec.archive_name
-            if target.is_file():
-                target.unlink()
-    for spec in SPECS:
-        target = build(spec, output_dir)
-        print(f"[+] {spec.name}: {target} ({target.stat().st_size / 1024:.1f} KB)")
+        clean_dist(output_dir)
+
+    print(f"Building release packages into {output_dir}")
+    for spec in PACKAGE_SPECS:
+        output, file_count = build_package(spec, output_dir)
+        size_kb = output.stat().st_size / 1024
+        print(f"[+] {spec.name}: {output} ({file_count} files, {size_kb:.1f} KB)")
+    (output_dir / CHECKSUM_FILE).write_text(checksum_payload(output_dir), encoding="utf-8", newline="\n")
+    print(f"[+] Checksums: {output_dir / CHECKSUM_FILE}")
     return 0
 
 

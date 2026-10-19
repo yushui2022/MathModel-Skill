@@ -1,7 +1,7 @@
 # MathModel Skill Pro start prompt
 
 ```text
-请使用 $pro-workflow-orchestrator，从 P0 开始执行 MathModel Skill Pro。
+请使用 pro-workflow-orchestrator，从 P0 开始执行 MathModel Skill Pro。
 用户声明模型为 <模型名>，推理档位为 <档位>。
 所有代码、证据和论文只写入 paper_output_pro/，禁止读取 paper_output/ 或其他版本门禁。
 先记录平台、模型、推理档位、Python、LibreOffice、多代理、并行/异步工具和联网能力，并对赛题附件逐文件分类和计算 SHA-256。

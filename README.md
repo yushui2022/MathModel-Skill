@@ -5,14 +5,14 @@
 
 ### 高计算投入、独立复算与多角色审稿的数学建模工作流
 
-[![Version](https://img.shields.io/badge/version-3.3.0--pro.2-0f766e)](https://github.com/yushui2022/MathModel-Skill/tree/pro)
+[![Version](https://img.shields.io/badge/version-3.3.0--pro.4-0f766e)](https://github.com/yushui2022/MathModel-Skill/tree/pro)
 [![Status](https://img.shields.io/badge/status-Preview-d97706)](https://github.com/yushui2022/MathModel-Skill/tree/pro)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
 </div>
 
-MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.3 定位旗舰档**，推荐 GPT-6.1 Sol、Claude Opus 5.5、Claude Fable 5.1、GPT-6 Astra 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
+MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.4 定位旗舰档**，推荐 GPT-6.1 Sol、Claude Opus 5.5、Claude Fable 5.1、GPT-6 Astra 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
 
 Pro 输出正式 Markdown、原生公式 Word、渲染 PDF，以及代码、图表、证据与评审记录。正常流程有 **三个用户确认点**，其余已授权工作自动推进。当前为 **Preview 预发布**：工程测试通过，但真实多问赛题约 20 页长文的前向质量验收尚未完成，不承诺论文优秀或竞赛获奖。
 
@@ -33,7 +33,7 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是另一个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
 
-**一个项目只安装一个版本、一个平台包，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
+**一个项目只安装一个版本、一个安装位置，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
 
 ## 小红书
 
@@ -60,81 +60,55 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 ## 快速导入使用
 
-### 1. 确认使用范围并下载
+### 1. 下载一个通用包
 
-Pro 适合能稳定执行长任务、复杂工具调用和隔离评审的模型。若希望控制复杂度，选择 [Standard](https://github.com/yushui2022/MathModel-Skill/tree/standard)；普通或较旧模型优先选择 [Lite](https://github.com/yushui2022/MathModel-Skill/tree/lite)。
+当前分支版本为 **3.3.0-pro.4**。下载 [MathModel-Skill-Pro.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
 
-**一个项目只安装一个版本、一个平台包。** Pro 只支持 Codex 与 Claude Code，不提供 Trae 包。以下为 `pro` 分支内 **3.3.0-pro.3** 安装包，包含本次模型适配；本次尚未创建新 Release：
+**同一份内容适用于不同宿主，不再分别下载 Claude、Codex、Trae 包。** ZIP 内有完整 `skills/`、安全安装器、依赖与启动说明。
 
-| 平台 | 直接下载 | 解压后的 Skill 目录 |
-|---|---|---|
-| Codex | [Codex 安装包](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro-Codex.zip) | `.agents/skills/` |
-| Claude Code | [Claude Code 安装包](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro-Claude-Code.zip) | `.claude/skills/` |
+### 2. 选择一个项目安装位置
 
-使用平台安装包，不要把 GitHub 仓库源码 ZIP 当作安装包。ZIP 内含 `VERSION` 和逐文件哈希清单 `MATHMODEL_BUILD.json`；分支包随提交更新。[旧版 3.3.0-pro.1 Release](https://github.com/yushui2022/MathModel-Skill/releases/tag/v3.3.0-pro.1) 保持固定快照，不包含此次更新。
-
-### 2. 导入项目并准备环境
-
-把安装包解压到独立建模项目，保留完整 Skill 目录，不覆盖用户已有的 `AGENTS.md` 或 `CLAUDE.md`，再用对应 Agent 打开项目。
-
-使用 Python **3.11 或 3.12**，在项目根目录运行：
+先解压到独立下载目录，再执行（赛题目录必须已经存在）：
 
 ```bash
-python -m pip install -r requirements.txt
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex --check
+python "<解压目录>/install.py" --project-root "<赛题目录>" --platform codex
+```
+
+| 宿主 | 安装参数 | 项目内目标目录 |
+|---|---|---|
+| Codex | `--platform codex` | `.agents/skills/` |
+| Claude Code | `--platform claude` | `.claude/skills/` |
+| Trae | `--platform trae` | `.trae/skills/` |
+
+一个项目只选一个位置。安装器仅使用 Python 3.11+ 标准库，不联网、不自动安装依赖，不覆盖 `AGENTS.md`、`CLAUDE.md`、其他 Skill、附件或已有论文。手动安装可完整复制 `skills/` 内全部目录到一个目标位置，不要只复制 `SKILL.md`。
+
+无记录旧包、混装、用户修改和不完整安装会阻塞，不会自动清理。已托管且未改动的同主版本安装，先停止建模任务，再用 `--check --upgrade` 检查，确认后用 `--upgrade`；中断时用 `--recover` 回滚。安装器不重新批准任何旧证据。
+
+### 3. 准备环境并启动
+
+在选定的 Python 环境中手动安装依赖：
+
+```bash
+python -m pip install -r "<解压目录>/requirements.txt"
 python -m pip check
 ```
 
-还需要 **LibreOffice** 执行 DOCX → PDF 渲染。使 `soffice` 或 `libreoffice` 可用；Windows 也会检测默认安装位置。模型推理、代码运行和独立角色可能消耗较多时间与额度，请在开始前确认可用环境。
+把题面和原始附件放到赛题目录的 `problem_files/`，用宿主打开该赛题目录并刷新 Skill 列表。让 Agent 读取实际安装位置中的 **pro-workflow-orchestrator/SKILL.md**，按[启动提示词](docs/pro-start-prompt.md)开始。
 
-### 3. 放入赛题与附件
+`<SKILL_ROOT>` 指实际加载的所有 Skill 的父目录，须替换为真实绝对路径；脚本从赛题根目录运行，不在安装目录生成结果。Pro 的平台参数仅记录宿主能力，不改变 payload。详细见[安装与恢复说明](docs/agent-install-guide.md)。
 
-例如 Codex 项目：
-
-```text
-your-project/
-├── .agents/skills/
-├── requirements.txt
-└── problem_files/
-    ├── 赛题.pdf
-    └── 附件.xlsx
-```
-
-Claude Code 使用 `.claude/skills/`，输入目录同样为 `problem_files/`。不要复制 Standard/Lite 的旧结果与批准记录。
-
-### 4. 启动并在三个检查点确认
-
-把提示词中的模型名和档位换成当前实际配置：
-
-```text
-请使用 $pro-workflow-orchestrator，从 P0 开始执行 MathModel Skill Pro。
-赛题和附件已放在 problem_files/，当前模型为 <模型名>，推理档位为 <档位>。
-全部赛题产物只写入 paper_output_pro/，不读取其他版本的旧结果。
-默认完整竞赛论文，按当年规则规划篇幅，允许分多轮成稿，不自行降为简报。
-在题意与论文范围、模型路线、数值结果与不确定性三个检查点等待我确认。
-检查点之间持续完成已授权工作；只自动使用公开来源，其他资源先征得授权。
-必须真实计算、独立复算和隔离审稿，Word/PDF 检查未通过不要称为正式交付。
-```
-
-收到三个检查点的结果后，分别确认题意与范围、模型路线、数值与不确定性，Agent 才会继续相应阶段。若入口未识别，让 Agent 先读取安装目录中的 `pro-workflow-orchestrator/SKILL.md`。完整提示词见 [START_HERE](docs/pro-start-prompt.md)。
-
-完成后查看：
-
-| 产物 | 位置 |
-|---|---|
-| Word、PDF 与正式源稿 | `paper_output_pro/final_paper.docx`、`final_paper.pdf`、`final_paper_source.md` |
-| 冻结证据 | `paper_output_pro/evidence_freeze.json` |
-| 五角色审稿报告 | `paper_output_pro/review_board_report.json` |
-| 最终检查报告 | `paper_output_pro/pro_gate_report.json` |
+Pro 的三次用户确认、独立复算和 Word/PDF 双门禁保持不变。安装到 Trae 或其他宿主不代表其多代理、联网或工具权限已验收；P0 必须记录实际能力，不具备隔离能力时不得伪造独立审稿。
 
 ## 原理介绍
 
-本轮本地验证及未覆盖范围见[证据加固验收记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
+本轮通用包验证见[安装迁移验收记录](docs/universal-package-validation.md)，之前的门禁修复见[证据加固记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
 
 ### 本轮证据加固
 
-Pro 3.3.0-pro.3 将图表检查前移到第三检查点，并在读取冻结证据时再次验证：损坏位图、空白图、畸形表格、探索草图以及未绑定成功实验的图表不能冻结。通用绘图预览不再自动标记为正式结果，也不从原始列直接推导敏感性图。
+Pro 3.3.0-pro.4 将图表检查前移到第三检查点，并在读取冻结证据时再次验证：损坏位图、空白图、畸形表格、探索草图以及未绑定成功实验的图表不能冻结。通用绘图预览不再自动标记为正式结果，也不从原始列直接推导敏感性图。
 
-正式图表优先引用 `experiments/<run_id>/` 中的原始输出；复制到 `figures/` 或 `tables/` 时，需要在索引中提供 `run_id` 与 `output_path`，内容必须与运行回执哈希相同。详细格式见[图表证据契约](packages/claude/.claude/skills/pro-workflow-orchestrator/references/artifact-evidence.md)。
+正式图表优先引用 `experiments/<run_id>/` 中的原始输出；复制到 `figures/` 或 `tables/` 时，需要在索引中提供 `run_id` 与 `output_path`，内容必须与运行回执哈希相同。详细格式见[图表证据契约](skills/pro-workflow-orchestrator/references/artifact-evidence.md)。
 
 这是证据检查升级，不更改三个用户确认点，也不是新模型能力或论文获奖质量认证。旧项目需重新验证检查点与冻结，不能修改历史报告伪造通过。
 
@@ -164,7 +138,7 @@ P0 记录用户声明的模型、档位、平台、运行环境、联网和多�
 | Claude Opus 5.5 | `claude-opus-5-5` | API 默认 `medium`；自适应思考常开，不能沿用关闭思考或强制工具的旧配置。 |
 | Claude Fable 5.1 | `claude-fable-5-1` | API 默认 `high`；思考块绑定模型和会话，不能随意跨模型复制历史。 |
 
-Pro 建议复杂建模与审稿从 `max`、正文写作从 `high` 开始实测，**不是已验证的最优档位**。P0 接受 `opus5.5`、`fable5.1`、`gptsol6.1` 等声明，但不会修改宿主配置、验证中转站底层模型或自动授予工具权限。旧模型档案保留；未知版本不再猜测为旧版本。依据与执行细节见[模型指南](https://github.com/yushui2022/MathModel-Skill/blob/pro/packages/claude/.claude/skills/pro-workflow-orchestrator/references/frontier-model-guidance.md)。
+Pro 建议复杂建模与审稿从 `max`、正文写作从 `high` 开始实测，**不是已验证的最优档位**。P0 接受 `opus5.5`、`fable5.1`、`gptsol6.1` 等声明，但不会修改宿主配置、验证中转站底层模型或自动授予工具权限。旧模型档案保留；未知版本不再猜测为旧版本。依据与执行细节见[模型指南](https://github.com/yushui2022/MathModel-Skill/blob/pro/skills/pro-workflow-orchestrator/references/frontier-model-guidance.md)。
 
 多代理不可用时可以顺序运行真正独立的上下文；不能提供隔离环境时应报告能力缺口，不得用五个角色名称冒充五次独立审稿。数学正确性、代码复现、来源、表达和对抗质疑五个角色须审查同一版论文，无未解决 Critical/Major 问题后才能交付。
 
@@ -184,8 +158,10 @@ Pro 不设任务总 Token、候选总量或运行时间预算；正常检查点�
 
 ## 验证状态与详细文档
 
+本轮通用包的安全安装、99 项回归及三种目录实际渲染验证见[迁移验收记录](docs/universal-package-validation.md)。下方版本数据为历史记录，不代表远端 CI 已验证本次迁移。
+
 - 3.3.0-pro.2 分支更新新增模型识别、档位、独立核验日期和 Flash 混装回归覆盖；本地 90 项测试通过，含 LibreOffice 渲染。这是脚本与流程测试，不是三个新模型的在线实战测试。
-- 发布提交通过 81 项本地自动测试，包含真实 LibreOffice 渲染；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940773875) 覆盖 Windows/Ubuntu/macOS、Python 3.11/3.12。
+- 历史发布提交通过 81 项本地自动测试，包含真实 LibreOffice 渲染；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940773875) 覆盖 Windows/Ubuntu/macOS、Python 3.11/3.12。
 - 现有五页构造算例和合成分页测试验证工程机制，不是完整竞赛长文的质量证据。真实多问赛题长文前向验收仍未完成，因此当前 Release 标记为 Preview。
 - 升级到 3.3 须重新预检、计算与审批，不能复用旧版结果和批准。
 - [完整启动提示词](docs/pro-start-prompt.md) · [机器契约](docs/pro-contracts.md) · [前向验收要求](docs/forward-evaluation.md) · [3.2 历史验收与样例](docs/pro-3.2-validation.md)
@@ -194,7 +170,9 @@ Pro 不设任务总 Token、候选总量或运行时间预算；正常检查点�
 开发者可在仓库中执行：
 
 ```bash
-python scripts/sync_platform_packages.py --check
+python scripts/check_skills.py
+python -S tests/test_installation.py
+python tests/test_installed_workflow.py
 python tests/run_pro_tests.py
 python scripts/build_release_packages.py --verify
 ```

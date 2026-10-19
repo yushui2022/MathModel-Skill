@@ -353,28 +353,29 @@ class CoreTests(unittest.TestCase):
             run(script, "--project-root", self.project, "--phase", "P3", "--next-action", "continue", "--failure", "solver failed")
         self.assertTrue(read_json(self.root / "context/workflow_memory.json")["blocked"])
 
-    def test_platform_sync_and_deterministic_two_package_build(self):
-        run(REPO / "scripts/sync_platform_packages.py", "--check")
+    def test_universal_package_is_deterministic_and_installs_for_all_hosts(self):
+        run(REPO / "scripts/check_skills.py")
         first, second = self.project / "first", self.project / "second"
         for path in (first, second):
             run(REPO / "scripts/build_release_packages.py", "--output-dir", path)
-        for path in first.glob("*.zip"):
-            self.assertEqual(sha256_file(path), sha256_file(second / path.name))
-            with zipfile.ZipFile(path) as archive:
-                names = archive.namelist()
-                self.assertNotIn("AGENTS.md", names)
-                self.assertNotIn("CLAUDE.md", names)
-                self.assertFalse(any(n.startswith(".trae/") for n in names))
-                self.assertTrue(any("pro_run_experiment.py" in n for n in names))
-                self.assertIn("assets/orlando-liu-social.jpg", names)
-                self.assertTrue(all(i.create_system == 3 and i.compress_type == zipfile.ZIP_STORED for i in archive.infolist()))
-                installed = self.project / "installed" / path.stem
-                archive.extractall(installed)
+        self.assertEqual([p.name for p in first.glob("*.zip")], ["MathModel-Skill-Pro.zip"])
+        archive_path = first / "MathModel-Skill-Pro.zip"
+        self.assertEqual(archive_path.read_bytes(), (second / archive_path.name).read_bytes())
+        bundle = self.project / "download"
+        with zipfile.ZipFile(archive_path) as archive:
+            names = archive.namelist()
+            self.assertNotIn("AGENTS.md", names)
+            self.assertNotIn("CLAUDE.md", names)
+            self.assertFalse(any(n.startswith((".trae/", ".agents/", ".claude/", "packages/")) for n in names))
+            self.assertTrue(all(i.create_system == 3 and i.compress_type == zipfile.ZIP_STORED for i in archive.infolist()))
+            archive.extractall(bundle)
+        for host, target, platform in (("codex", ".agents", "codex"), ("claude", ".claude", "claude-code"), ("trae", ".trae", "trae")):
+            installed = self.project / ("installed " + host)
+            installed.mkdir()
+            run(bundle / "install.py", "--project-root", installed, "--platform", host)
             shutil.copytree(self.project / "problem_files", installed / "problem_files")
-            platform = "codex" if "Codex" in path.name else "claude-code"
-            skill_root = ".agents" if platform == "codex" else ".claude"
-            entry = installed / skill_root / "skills/pro-workflow-orchestrator/scripts/pro_preflight.py"
-            self.assertEqual(entry.read_text(encoding="utf-8"), (SCRIPTS / "pro_preflight.py").read_text(encoding="utf-8"))
+            entry = installed / target / "skills/pro-workflow-orchestrator/scripts/pro_preflight.py"
+            self.assertEqual(entry.read_bytes(), (bundle / "skills/pro-workflow-orchestrator/scripts/pro_preflight.py").read_bytes())
             run(entry, "--project-root", installed, "--platform", platform, "--model", "gpt-6-astra")
             config = read_json(installed / "paper_output_pro/pro_config.json")
             self.assertEqual(len(config["mathmodel_installation"]["installations"]), 1)

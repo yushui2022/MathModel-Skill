@@ -2,7 +2,7 @@
 
 Date: 2026-10-19
 Edition: pro
-Version: 3.3.0-pro.3
+Version: 3.3.0-pro.4
 Local environment: Windows, Python 3.11.1.
 
 ## Scope
@@ -30,7 +30,7 @@ Backport evidence-status and artifact-integrity safeguards without merging editi
 
 ```text
 python tests/run_pro_tests.py
-python scripts/sync_platform_packages.py --check
+python scripts/check_skills.py
 python scripts/build_release_packages.py --verify
 ```
 

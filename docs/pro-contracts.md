@@ -53,11 +53,11 @@ include config and consensus. `pro_gate_report.json.acceptance_scope` is
 `COMPETITION_REPORT_CHECKED`, `SHORT_REPORT_ONLY`, `ENGINEERING_SMOKE_ONLY` or
 `NOT_ACCEPTED`. None means prize quality or cross-model qualification.
 
-See `.claude/skills/pro-workflow-orchestrator/references/pro-contracts.md` for the
-payload requirements and `.claude/skills/pro-model-tournament/references/` plus
-`.claude/skills/pro-review-board/references/` for their rubrics.
+See `<SKILL_ROOT>/pro-workflow-orchestrator/references/pro-contracts.md` for the
+payload requirements and `<SKILL_ROOT>/pro-model-tournament/references/` plus
+`<SKILL_ROOT>/pro-review-board/references/` for their rubrics.
 
 The bundled frontier model catalog lives at
-`.claude/skills/pro-workflow-orchestrator/references/model-profiles.json`. It records
+`<SKILL_ROOT>/pro-workflow-orchestrator/references/model-profiles.json`. It records
 canonical IDs, support tiers, effort aliases, phase effort and official vendor sources.
 Unknown models remain runnable with a warning and must not receive reduced gates.

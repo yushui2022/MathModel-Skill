@@ -54,10 +54,10 @@ jobs:
         run: brew install --cask libreoffice
 
       - name: Compile Python payload
-        run: python -m compileall -q packages scripts tests
+        run: python -m compileall -q skills scripts tests
 
-      - name: Check canonical payload synchronization
-        run: python scripts/sync_platform_packages.py --check
+      - name: Check portable payload
+        run: python scripts/check_skills.py
 
       - name: Run Pro contract and packaging tests
         run: python tests/run_pro_tests.py
@@ -72,3 +72,31 @@ jobs:
 
       - name: Verify deterministic Pro packages
         run: python scripts/build_release_packages.py --verify --output-dir tests/ci-release
+      - name: Verify installed offline workflow in all three locations
+        run: python tests/test_installed_workflow.py
+
+  universal-package:
+    name: Universal install / ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Verify tracked ZIP before rebuilding
+        run: python -S scripts/build_release_packages.py --verify
+      - name: Standard-library installer regressions
+        run: python -S tests/test_installation.py
+      - name: Build twice and compare with tracked bytes
+        run: |
+          python -S scripts/build_release_packages.py --output-dir build-a
+          python -S scripts/build_release_packages.py --output-dir build-b
+          python -S scripts/build_release_packages.py --verify --output-dir build-a
+          python -S scripts/build_release_packages.py --verify --output-dir build-b
+          python -c "from pathlib import Path; files=list(Path('dist').glob('*.zip'))+[Path('dist/SHA256SUMS.txt')]; assert len(files)==2; assert all(p.read_bytes()==(Path('build-a')/p.name).read_bytes()==(Path('build-b')/p.name).read_bytes() for p in files)"

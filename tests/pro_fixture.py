@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-SKILLS = REPO / "packages/claude/.claude/skills"
+SKILLS = Path(os.environ.get("MATHMODEL_TEST_SKILLS", str(REPO / "skills")))
 SCRIPTS = SKILLS / "pro-workflow-orchestrator/scripts"
 sys.path.insert(0, str(SCRIPTS))
 from pro_contracts import contract, read_json, sha256_file, write_json
@@ -35,7 +35,7 @@ def prepare(project: Path, model="gpt-6-astra", paper_mode="competition") -> Pat
     extra = ["--paper-mode", paper_mode]
     if paper_mode != "competition":
         extra += ["--scope-reason", "Explicit synthetic engineering fixture; not competition-paper acceptance"]
-    run(SCRIPTS / "pro_preflight.py", "--project-root", project, "--platform", "codex", "--model", model, "--reasoning", "ultra", *extra)
+    run(SCRIPTS / "pro_preflight.py", "--project-root", project, "--platform", os.environ.get("MATHMODEL_TEST_PLATFORM", "codex"), "--model", model, "--reasoning", "ultra", *extra)
     root = project / "paper_output_pro"
     complete_consensus(root)
     return root

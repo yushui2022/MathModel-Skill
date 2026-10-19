@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-DIRECTORY = Path(__file__).resolve().parents[1] / "packages/claude/.claude/skills/data-cleaning-and-visualization/scripts"
+DIRECTORY = Path(__file__).resolve().parents[1] / "skills/data-cleaning-and-visualization/scripts"
 sys.path.insert(0, str(DIRECTORY))
 import generate_paper_figures_from_plan as generator
 from paper_figure_templates import infer_template
