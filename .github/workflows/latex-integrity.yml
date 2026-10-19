@@ -16,6 +16,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install "pypdf>=5,<7"
+      - run: python -m pip install -r requirements.txt
       - run: python scripts/sync_latex_hotfix.py --check
       - run: python tests/test_latex_integrity.py
+      - run: python tests/test_evidence_gate.py
+      - run: python tests/test_preview_evidence.py
+      - run: python tests/run_tests.py

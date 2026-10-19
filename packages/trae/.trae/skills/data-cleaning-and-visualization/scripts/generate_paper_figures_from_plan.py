@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from paper_figure_templates import plot_figure_spec
+from paper_figure_templates import plot_figure_spec, infer_template
 
 
 BASE_DIR = Path.cwd().resolve()
@@ -65,6 +65,8 @@ def index_item(spec: dict[str, Any], exists: bool, message: str = "", template: 
         "question_id": spec.get("question_id"),
         "planned": True,
         "exists": exists,
+        "status": "needs_review",
+        "evidence_role": "exploratory",
         "used_in": spec.get("paper_usage"),
         "chart_type": spec.get("chart_type"),
         "template": template,
@@ -74,6 +76,9 @@ def index_item(spec: dict[str, Any], exists: bool, message: str = "", template: 
 
 
 def generate_one(spec: dict[str, Any]) -> dict[str, Any]:
+    if infer_template(spec) == "sensitivity_curve":
+        return index_item(spec, False, "Sensitivity requires measured parameter interventions, not a raw-column preview.")
+    spec = {**spec, "title": "探索草图（非正式结果）：" + str(spec.get("title") or "")}
     output_path = resolve_path(spec.get("output_path"))
     if output_path is None:
         return index_item(spec, False, "missing output_path")

@@ -123,10 +123,18 @@ def test_latex_gate_export_and_check() -> None:
     result = run([sys.executable, str(CHECK_LATEX), "--draft"], cwd)
     assert_true(result.returncode == 0, f"draft LaTeX check should pass\n{result.stdout}")
     draft_check_report = load_json(output_dir / "latex_check_report.json")
-    assert_true(draft_check_report["status"] == "PASS", "draft LaTeX check report should PASS")
+    assert_true(draft_check_report["status"] == "SOURCE_ONLY", "uncompiled draft is source-only, not accepted PDF")
 
     gate_dir.mkdir(parents=True, exist_ok=True)
     (gate_dir / "evidence_gate_report.json").write_text(json.dumps({"status": "PASS"}), encoding="utf-8")
+    result = run([sys.executable, str(FORMAT_LATEX)], cwd)
+    assert_true(result.returncode != 0, "legacy status-only gate must be rejected")
+    sys.path.insert(0, str(FORMAT_LATEX.parent))
+    from latex_integrity import POLICY_VERSION, evidence_snapshot
+    # Exporter unit fixture only; real evidence-gate tests live in test_evidence_gate.py.
+    (gate_dir / "evidence_gate_report.json").write_text(json.dumps({
+        "status": "PASS", "policy_version": POLICY_VERSION, "input_hashes": evidence_snapshot(cwd)
+    }), encoding="utf-8")
     result = run([sys.executable, str(FORMAT_LATEX)], cwd)
     assert_true(result.returncode == 0, f"formal LaTeX export should pass after gate\n{result.stdout}")
     assert_true((output_dir / "final_paper.tex").exists(), "formal final_paper.tex should be created after gate")
@@ -135,7 +143,7 @@ def test_latex_gate_export_and_check() -> None:
     result = run([sys.executable, str(CHECK_LATEX)], cwd)
     assert_true(result.returncode == 0, f"formal LaTeX check should pass\n{result.stdout}")
     formal_check_report = load_json(output_dir / "latex_check_report.json")
-    assert_true(formal_check_report["status"] == "PASS", "formal LaTeX check report should PASS")
+    assert_true(formal_check_report["status"] == "SOURCE_ONLY", "uncompiled formal source is not PDF acceptance")
 
 
 def main() -> int:

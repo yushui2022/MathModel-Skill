@@ -129,6 +129,18 @@ python .claude/skills/paper-formal-writer/scripts/check_latex_format.py --requir
 
 ## 原理介绍
 
+### 本轮证据加固
+
+本分支继续是实验性 LaTeX 导出分支，只回移证据安全修复，不升级成 Standard 或 Pro：
+
+- S6 改为正向状态白名单，拒绝 FAIL、未知状态、冲突状态及非有限数值。
+- 图表必须能实际读取，并登记在对应问题的运行输出中；拒绝探索草图、损坏图片、畸形表格、重复问题 ID 和路径逃逸。
+- 新报告包含 `policy_version=2`，旧 PASS 不再直接用于正式导出；升级后重新执行证据门禁。
+- 通用绘图预览只供探索，不自动生成敏感性结论；需读取原题核对图片、公式和问题边界。
+
+LaTeX 仍保留旧式 `execution_provenance`，不是 Pro 的独立运行回执与复算认证。文件可读和路径关联不能证明计算正确；真实 XeLaTeX 编译、公式排版与数学结论仍需单独验收。
+
+
 ### 同一源稿，多种输出
 
 ```text
@@ -152,6 +164,8 @@ XeLaTeX 使用超时保护并禁用 shell escape。最终检查核对编译记�
 明确要求短报告或安装测试时，可在 `paper_outline.json.delivery` 中声明相应模式与理由。旧版导出检查不等于当前 Standard 的全部写作、公式与渲染检查，更不等于 Pro 的独立复算和五角色评审。
 
 ## 验证状态与详细文档
+
+本轮本地验证及未覆盖范围见[证据加固验收记录](docs/evidence-hardening-validation.md)。历史 CI 链接不代表本轮提交已在远端通过。
 
 - 发布提交通过 16 项导出完整性、故障注入及确定性打包测试；[CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940774139) 覆盖 Windows/Ubuntu、Python 3.11/3.12。
 - **上述测试不等于真实 XeLaTeX 编译验收，也不是整套旧版工作流的全面认证。** 当前保持 Preview 状态。

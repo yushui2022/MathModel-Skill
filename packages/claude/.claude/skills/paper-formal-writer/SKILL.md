@@ -5,6 +5,11 @@ description: "国赛数学建模正式论文范式、outline、Word/LaTeX 排版
 
 # 正式论文范式写作器
 
+正式导出要求当前 `policy_version=2` 的新鲜证据报告。旧 PASS、未知或冲突状态、
+探索草图、损坏图片及畸形表格均不能作为正式证据；不得手改报告绕过检查。
+审题时核对原题中的公式、图表和问题边界，不能仅依赖自动提取文本。
+
+
 ## 执行契约
 - 上游输入：必须优先读取 `paper_output/plan/model_route.json`、`paper_output/results/`、`paper_output/tables/table_index.json`、`paper_output/figure_index.json` 和证据门禁报告。
 - 核心输出：`paper_output/plan/paper_outline.json`、`paper_output/final_paper_source.md`、`paper_output/final_paper.docx`、`paper_output/final_paper.tex`（LaTeX 分支可选）、`paper_output/format_check_report.md`。

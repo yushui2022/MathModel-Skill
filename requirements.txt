@@ -6,5 +6,6 @@ requests
 python-docx
 pypdf
 openpyxl
+Pillow>=10,<13
 xlrd
 lxml

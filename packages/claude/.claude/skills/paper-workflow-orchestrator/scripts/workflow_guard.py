@@ -7,6 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "paper-formal-writer" / "scripts"))
+from artifact_checks import status_errors
+from latex_integrity import POLICY_VERSION, evidence_snapshot
+
 
 BASE_DIR = Path.cwd().resolve()
 OUTPUT_DIR = BASE_DIR / "paper_output"
@@ -152,7 +156,7 @@ def check_s5() -> dict[str, Any]:
     for item in _items(model_results, "questions"):
         qid = str(item.get("question_id") or "UNKNOWN")
         state = status_of(item)
-        if state in BAD_RESULT_STATUSES:
+        if status_errors(item, qid, required=True):
             failures.append(f"{qid}: model_results 状态仍不是正式结果：{state or 'missing'}")
         provenance = item.get("execution_provenance")
         if not isinstance(provenance, dict):
@@ -169,7 +173,7 @@ def check_s5() -> dict[str, Any]:
             failures.append(f"{label} 中没有可追踪条目。")
         for item in _items(data, key):
             state = status_of(item)
-            if state in BAD_RESULT_STATUSES:
+            if status_errors(item, label, required=True):
                 failures.append(f"{label}: 条目仍是草稿/待补状态：{state or 'missing'}")
     return {"step": "S5", "name": "结果证据", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
@@ -179,6 +183,14 @@ def check_s6() -> dict[str, Any]:
     gate = check_json_file(OUTPUT_DIR / "qa" / "evidence_gate_report.json", failures)
     if isinstance(gate, dict) and str(gate.get("status") or "").upper() != "PASS":
         failures.append("evidence_gate_report.json status 不是 PASS。")
+    if isinstance(gate, dict):
+        if type(gate.get("policy_version")) is not int or gate["policy_version"] != POLICY_VERSION:
+            failures.append("Legacy evidence policy; rerun evidence_gate.py.")
+        try:
+            if not gate.get("input_hashes") or gate["input_hashes"] != evidence_snapshot(BASE_DIR):
+                failures.append("Evidence inventory changed; rerun evidence_gate.py.")
+        except (ValueError, OSError) as exc:
+            failures.append(str(exc))
     return {"step": "S6", "name": "证据门禁", "status": "PASS" if not failures else "FAIL", "failures": failures}
 
 

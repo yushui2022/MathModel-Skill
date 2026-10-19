@@ -14,7 +14,7 @@ SCRIPTS = ROOT / "packages/claude/.claude/skills/paper-formal-writer/scripts"
 sys.path.insert(0, str(SCRIPTS))
 import format_formal_latex as exporter
 import check_latex_format as checker
-from latex_integrity import evidence_snapshot, safe_path, sha256
+from latex_integrity import evidence_snapshot, safe_path, sha256, POLICY_VERSION
 
 
 class LatexIntegrityTests(unittest.TestCase):
@@ -46,7 +46,7 @@ class LatexIntegrityTests(unittest.TestCase):
             context.start()
             self.addCleanup(context.stop)
         self.gate = self.output / "qa/evidence_gate_report.json"
-        self.gate.write_text(json.dumps({"status": "PASS", "input_hashes": evidence_snapshot(self.root)}), encoding="utf-8")
+        self.gate.write_text(json.dumps({"status": "PASS", "policy_version": POLICY_VERSION, "input_hashes": evidence_snapshot(self.root)}), encoding="utf-8")
 
     def receipt(self):
         self.pdf.write_bytes(b"%PDF-1.7 synthetic bytes; reader is mocked in positive receipt tests")
@@ -124,6 +124,12 @@ class LatexIntegrityTests(unittest.TestCase):
     def test_modified_input_invalidates_evidence(self):
         self.assertTrue(exporter.check_evidence_gate()[0])
         (self.root / "problem_files/input.txt").write_text("changed", encoding="utf-8")
+        self.assertFalse(exporter.check_evidence_gate()[0])
+
+    def test_legacy_policy_cannot_reuse_fresh_hashes(self):
+        data = json.loads(self.gate.read_text())
+        data.pop("policy_version")
+        self.gate.write_text(json.dumps(data), encoding="utf-8")
         self.assertFalse(exporter.check_evidence_gate()[0])
 
     def test_added_input_invalidates_evidence(self):

@@ -10,7 +10,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from latex_integrity import sha256, safe_path, evidence_snapshot
+from latex_integrity import sha256, safe_path, evidence_snapshot, POLICY_VERSION
 
 
 BASE_DIR = Path.cwd().resolve()
@@ -76,6 +76,8 @@ def check_evidence_gate() -> tuple[bool, str]:
     status = str(data.get("status") or "").strip().upper()
     if status != "PASS":
         return False, f"证据门禁状态为 `{status or 'UNKNOWN'}`，正式 LaTeX 不得生成。"
+    if type(data.get("policy_version")) is not int or data["policy_version"] != POLICY_VERSION:
+        return False, "Legacy evidence policy; rerun the evidence gate."
     if not data.get("input_hashes") or data["input_hashes"] != evidence_snapshot(BASE_DIR):
         return False, "Evidence is missing or stale; rerun the evidence gate."
     return True, ""

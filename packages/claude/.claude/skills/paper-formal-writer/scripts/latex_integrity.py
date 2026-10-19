@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path, PureWindowsPath
 
+POLICY_VERSION = 2
+
 
 def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -20,7 +22,7 @@ def safe_path(root: Path, value: str):
 
 def evidence_snapshot(root):
     out = root / "paper_output"
-    paths = [out / p for p in ("plan/model_route.json", "figure_index.json", "tables/table_index.json")]
+    paths = [out / p for p in ("plan/model_route.json", "figure_index.json", "tables/table_index.json", "tasks.json")]
     for folder in (root / "problem_files", out / "code", out / "results", out / "tables", out / "figures"):
         paths.extend(p for p in folder.rglob("*") if p.is_file() and "__pycache__" not in p.parts)
     result = {}

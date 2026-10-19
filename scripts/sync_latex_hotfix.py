@@ -5,7 +5,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "packages/claude/.claude/skills"
 FILES = [
+    "paper-formal-writer/scripts/artifact_checks.py",
+    "paper-workflow-orchestrator/scripts/workflow_guard.py",
+    "data-cleaning-and-visualization/scripts/generate_paper_figures_from_plan.py",
+    "data-cleaning-and-visualization/scripts/build_data_visualization_plan.py",
+    "data-cleaning-and-visualization/scripts/paper_figure_templates.py",
     "paper-formal-writer/scripts/latex_integrity.py",
+    "paper-formal-writer/scripts/format_formal_docx.py",
     "paper-formal-writer/scripts/format_formal_latex.py",
     "paper-formal-writer/scripts/check_latex_format.py",
     "paper-formal-writer/SKILL.md",

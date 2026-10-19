@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import sys
 from datetime import datetime
@@ -7,7 +8,8 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "paper-formal-writer" / "scripts"))
-from latex_integrity import evidence_snapshot
+from latex_integrity import evidence_snapshot, safe_path, POLICY_VERSION
+from artifact_checks import artifact_errors, status_errors
 
 
 BASE_DIR = Path.cwd()
@@ -108,11 +110,7 @@ def status_of(item: dict[str, Any] | None) -> str:
 
 
 def resolve_artifact(path_text: object) -> Path:
-    text = str(path_text or "").strip().strip("<>")
-    path = Path(text)
-    if path.is_absolute():
-        return path
-    return BASE_DIR / path
+    return safe_path(BASE_DIR, str(path_text or ""))
 
 
 def provenance_failures(item: dict[str, Any]) -> list[str]:
@@ -124,26 +122,29 @@ def provenance_failures(item: dict[str, Any]) -> list[str]:
     source_code = resolve_artifact(provenance.get("source_code_path"))
     if not provenance.get("source_code_path"):
         failures.append("execution_provenance.source_code_path 为空")
-    elif not source_code.exists():
+    elif not source_code.is_file() or not source_code.is_relative_to((OUTPUT_DIR / "code").resolve()):
         failures.append(f"source_code_path 不存在：{source_code}")
 
-    if provenance.get("run_exit_code") not in (0, "0"):
+    if type(provenance.get("run_exit_code")) is not int or provenance.get("run_exit_code") != 0:
         failures.append(f"run_exit_code 不是 0：{provenance.get('run_exit_code')}")
 
     if not str(provenance.get("run_command") or "").strip():
         failures.append("execution_provenance.run_command 为空")
 
-    for artifact in provenance.get("output_artifacts", []) or []:
+    outputs = provenance.get("output_artifacts")
+    if not isinstance(outputs, list) or not outputs:
+        return failures + ["execution_provenance.output_artifacts must be a nonempty list"]
+    for artifact in outputs:
         artifact_path = resolve_artifact(artifact)
-        if not artifact_path.exists():
-            failures.append(f"输出产物不存在：{artifact}")
+        if not any(artifact_path.is_relative_to((OUTPUT_DIR / folder).resolve()) for folder in ("results", "figures", "tables")):
+            failures.append(f"output is outside the evidence inventory: {artifact}")
+        failures.extend(artifact_errors(artifact_path))
     return failures
 
 
 def has_bad_status(items: list[dict[str, Any]]) -> bool:
     for item in items:
-        status = status_of(item)
-        if status in BAD_STATUSES:
+        if status_errors(item, "evidence", required=True):
             return True
     return False
 
@@ -202,6 +203,21 @@ def evaluate() -> dict[str, Any]:
     table_map = table_items(table_index)
     task_map = task_items(tasks)
 
+    for data, key, allow_all in (
+        (model_results, "questions", False), (metrics, "items", False),
+        (conclusions, "items", False), (figure_index, "figures", False),
+        (table_index, "tables", True),
+    ):
+        entries = data.get(key, []) if isinstance(data, dict) else None
+        if not isinstance(entries, list) or any(not isinstance(item, dict) for item in entries):
+            failures.append(f"{key}: expected an array of objects")
+            continue
+        ids = [item.get("question_id") for item in entries]
+        if any(qid not in qids and not (allow_all and qid == "ALL") for qid in ids):
+            failures.append(f"{key}: missing or unknown question_id")
+        if key == "questions" and len(ids) != len(set(ids)):
+            failures.append("model_results: duplicate question_id")
+
     question_reports = []
     for qid in qids:
         q_failures: list[str] = []
@@ -215,7 +231,7 @@ def evaluate() -> dict[str, Any]:
 
         if not result:
             q_failures.append("缺少 model_results.json 中的模型结果")
-        elif status_of(result) in BAD_STATUSES:
+        elif status_errors(result, qid, required=True):
             q_failures.append(f"模型结果状态仍不可作为正式证据：{status_of(result)}")
         else:
             for failure in provenance_failures(result):
@@ -225,6 +241,10 @@ def evaluate() -> dict[str, Any]:
             q_failures.append("缺少 metrics.json 中的评价指标")
         elif has_bad_status(q_metrics):
             q_failures.append("评价指标仍包含草稿、模板或待补状态")
+        for item in q_metrics:
+            value = item.get("value")
+            if type(value) not in (int, float) or not math.isfinite(value):
+                q_failures.append("metric value must be a finite number, not a string or boolean")
 
         if not q_conclusions or not conclusion_text_exists(q_conclusions):
             q_failures.append("缺少 conclusions.json 中可回扣原题的结论文本")
@@ -235,6 +255,16 @@ def evaluate() -> dict[str, Any]:
             q_failures.append("缺少图表或表格证据")
         if q_tables and has_bad_status(q_tables):
             q_failures.append("表格证据仍包含草稿、模板或待补状态")
+        outputs = (result or {}).get("execution_provenance", {}).get("output_artifacts", [])
+        for kind, items in (("figure", q_figures), ("table", q_tables)):
+            for item in items:
+                q_failures.extend(status_errors(item, f"{qid}/{kind}", required=True))
+                if item.get("placeholder") is True:
+                    q_failures.append(f"{qid}/{kind}: placeholder evidence")
+                path = resolve_artifact(item.get("path"))
+                q_failures.extend(artifact_errors(path, kind=kind))
+                if not isinstance(outputs, list) or path not in [resolve_artifact(name) for name in outputs]:
+                    q_failures.append(f"{qid}/{kind}: not in this question's execution outputs")
 
         if not q_tasks:
             q_warnings.append("tasks.json 中没有对应问题任务，正式写作时需补齐任务追踪")
@@ -260,6 +290,7 @@ def evaluate() -> dict[str, Any]:
 
     return {
         "schema_version": "1.0",
+        "policy_version": POLICY_VERSION,
         "generated_by": "quality-assurance-auditor/scripts/evidence_gate.py",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "status": "PASS" if not failures else "FAIL",
@@ -311,7 +342,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    report = evaluate()
+    try:
+        report = evaluate()
+    except (ValueError, TypeError, OSError, AttributeError, OverflowError) as exc:
+        report = {"status": "FAIL", "policy_version": POLICY_VERSION, "generated_at": datetime.now().isoformat(),
+                  "input_hashes": {}, "failures": [f"invalid evidence: {exc}"], "warnings": [], "questions": []}
     write_reports(report, args.mode)
 
     print(f"证据门禁报告：{REPORT_MD}")
