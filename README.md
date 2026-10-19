@@ -82,6 +82,8 @@ python "<解压目录>/install.py" --project-root "<赛题目录>" --platform co
 
 安装器仅复制 Skills 并记录文件哈希，不联网，不覆盖项目根配置、依赖文件、赛题或旧结果。旧安装会列出冲突，需要先自行备份、整理；没有强制覆盖选项。安装完成后刷新 Agent 的 Skill 发现，或重新打开项目。
 
+**宿主兼容性：** 本机 Codex 桌面内置引擎与 Claude Code 已通过全部十个 Skill 的本地发现验收，Trae 的 GUI 发现暂未验收。旧 Codex CLI `0.88.0` 实测不会发现 `.agents/skills/`，需使用支持此目录的宿主；不要再复制一份到 `.codex/skills/` 造成混装。版本、测试方式与边界见 [宿主发现验收](docs/host-discovery-validation.md)。
+
 **不使用安装器也可以：** 将包内 `skills/` 下的十个完整目录复制到上表中的一个位置，不能只复制 `SKILL.md`。手动安装不自动纳入托管升级。
 
 在你为赛题准备的 Python 环境中单独安装依赖：
@@ -182,7 +184,7 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 ## 验证状态与详细文档
 
 - 新增[两个原创离线验收案例](benchmarks/validation/README.md)，覆盖真实 runner、S6 和 S7 数值声明连接，并用解析关系/穷举核算结果。这些是软件验收案例，不是竞赛论文质量评测。
-- 历史发布的 [CI 记录](https://github.com/yushui2022/MathModel-Skill/actions/runs/33940797268) 不代表本次迁移已通过远端 CI。通用包的本地验证、跨系统矩阵及未验证边界见 [迁移验收记录](docs/universal-package-validation.md)。
+- 通用包迁移提交 `8dd9c95` 的 [远端 CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/39225754825) 已通过全部 11 个任务，包括跨系统安装、确定性构建和强制渲染；后续提交仍以 [PR 最新 Checks](https://github.com/yushui2022/MathModel-Skill/pull/4/checks) 为准。测试边界见 [迁移验收记录](docs/universal-package-validation.md) 与 [宿主发现验收](docs/host-discovery-validation.md)。
 - 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
 - [安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md)
 - 分支 `dist/` 是随提交维护的构建包；历史 Release 是固定版本快照，不会随 README 更新而被覆盖。本次通用包迁移不创建正式 Release。
