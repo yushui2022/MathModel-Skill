@@ -121,10 +121,9 @@ class PaperScopeTests(unittest.TestCase):
                 safe_relative_path(Path.cwd(), value)
 
     def test_platform_preflight_keeps_foreign_roots(self):
-        for script in (workflow.CODEX_PREFLIGHT, workflow.TRAE_PREFLIGHT):
-            text = script.read_text(encoding="utf-8")
-            for root in (".claude/skills", ".agents/skills", ".codex/skills", ".trae/skills"):
-                self.assertIn(root, text)
+        text = (workflow.SKILLS / "paper-workflow-orchestrator/scripts/installation.py").read_text(encoding="utf-8")
+        for root in ("skills", ".claude/skills", ".agents/skills", ".codex/skills", ".trae/skills"):
+            self.assertIn(root, text)
 
 
 if __name__ == "__main__":

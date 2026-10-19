@@ -13,7 +13,7 @@ import tempfile
 import unittest
 
 REPO = Path(__file__).resolve().parents[1]
-SKILLS = REPO / 'packages/claude/.claude/skills'
+SKILLS = REPO / 'skills'
 FIXTURES = REPO / 'benchmarks/validation'
 sys.path.insert(0, str(SKILLS / 'paper-formal-writer/scripts'))
 from authoring_contracts import sha256_file, write_json
@@ -26,16 +26,20 @@ class ValidationIntegrationTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='mathmodel-validation-')
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        self.skill_root = SKILLS
+        if getattr(self, 'install_platform', None):
+            from install_fixture import install_bundle
+            self.skill_root = install_bundle(self.root, self.install_platform)
         self.output = self.root / 'paper_output'
         source = self.root / 'problem_files/series.csv'
         source.parent.mkdir()
         shutil.copyfile(FIXTURES / 'series.csv', source)
         write_json(self.output / 'input_manifest.json', {'entries': [
             {'path': 'problem_files/series.csv', 'role': 'raw_data', 'usable_for_modeling': True, 'sha256': sha256_file(source)}]})
-        self.invoke(SKILLS / 'data-cleaning-and-visualization/scripts/clean_data.py')
+        self.invoke(self.skill_root / 'data-cleaning-and-visualization/scripts/clean_data.py')
         self.route = json.loads((FIXTURES / 'cases.json').read_text(encoding='utf-8'))
         write_json(self.output / 'plan/model_route.json', self.route)
-        self.invoke(SKILLS / 'model-code-and-result-generator/scripts/build_result_contracts.py')
+        self.invoke(self.skill_root / 'model-code-and-result-generator/scripts/build_result_contracts.py')
         for q in self.route['questions']:
             shutil.copyfile(FIXTURES / 'benchmark_question.py', self.output / f'code/modeling/{q["question_id"].lower()}_model.py')
         write_json(self.output / 'figure_index.json', {'figures': []})
@@ -53,7 +57,7 @@ class ValidationIntegrationTests(unittest.TestCase):
         return json.loads((self.output / path).read_text(encoding='utf-8'))
 
     def gate(self):
-        self.invoke(SKILLS / 'quality-assurance-auditor/scripts/evidence_gate.py')
+        self.invoke(self.skill_root / 'quality-assurance-auditor/scripts/evidence_gate.py')
         return self.load('qa/evidence_gate_report.json')
 
     def section(self, metric):
@@ -107,9 +111,9 @@ class ValidationIntegrationTests(unittest.TestCase):
         # Rebuild managed question scripts in a fresh location without fixture promotion.
         code = self.output / 'code/modeling/q1_model.py'
         code.unlink()
-        self.invoke(SKILLS / 'model-code-and-result-generator/scripts/build_result_contracts.py')
+        self.invoke(self.skill_root / 'model-code-and-result-generator/scripts/build_result_contracts.py')
         self.invoke(self.runner)
-        result = self.invoke(SKILLS / 'quality-assurance-auditor/scripts/evidence_gate.py', success=False)
+        result = self.invoke(self.skill_root / 'quality-assurance-auditor/scripts/evidence_gate.py', success=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.load('qa/evidence_gate_report.json')['status'], 'FAIL')
 

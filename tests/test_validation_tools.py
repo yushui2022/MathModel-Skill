@@ -14,7 +14,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 
-SCRIPTS = Path(__file__).resolve().parents[1] / 'packages/claude/.claude/skills/model-code-and-result-generator/scripts'
+SCRIPTS = Path(__file__).resolve().parents[1] / 'skills/model-code-and-result-generator/scripts'
 sys.path.insert(0, str(SCRIPTS))
 from validation_tools import validation_splits, backtest_regression
 from solver_evidence import solve_linear_problem, validate_solver_report

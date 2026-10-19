@@ -34,11 +34,11 @@ jobs:
       - name: Verify dependencies
         run: python -m pip check
 
-      - name: Check platform synchronization
-        run: python scripts/sync_platform_packages.py --check
+      - name: Check portable payload
+        run: python scripts/check_skills.py
 
       - name: Compile Python sources
-        run: python -m compileall -q packages scripts tests
+        run: python -m compileall -q skills scripts tests install.py
 
       - name: Run test suite
         run: python -u tests/run_tests.py
@@ -64,6 +64,9 @@ jobs:
       - name: Run offline evidence-to-claim benchmarks
         run: python tests/test_validation_integration.py
 
+      - name: Test installed ZIP workflows
+        run: python tests/test_installed_workflow.py
+
   render:
     name: LibreOffice render gate
     runs-on: ubuntu-latest
@@ -86,11 +89,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libreoffice-writer
 
       - name: Run required render integration test
-        run: python -c "import sys; sys.path.insert(0, 'tests'); import setup_sandbox, run_tests; setup_sandbox.main(); run_tests.test_render_required_when_libreoffice_is_available()"
+        env:
+          MATHMODEL_REQUIRE_RENDER: "1"
+        run: python -m unittest discover -s tests -p test_installed_workflow.py -k installed_render_pipeline
 
   packages:
-    name: Deterministic tracked packages
-    runs-on: ubuntu-latest
+    name: Install and package / ${{ matrix.os }} / ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12"]
     timeout-minutes: 15
 
     steps:
@@ -100,7 +110,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
+
+      - name: Test installer without third-party dependencies
+        run: python -S tests/test_installation.py
 
       - name: Verify tracked archives
         run: python scripts/build_release_packages.py --verify
@@ -111,8 +124,8 @@ jobs:
           python scripts/build_release_packages.py --output-dir build-b
 
       - name: Compare archive hashes
+        shell: bash
         run: |
-          sha256sum build-a/*.zip | sed 's#build-a/##' > hashes-a.txt
-          sha256sum build-b/*.zip | sed 's#build-b/##' > hashes-b.txt
-          diff -u hashes-a.txt hashes-b.txt
+          cmp build-a/MathModel-Skill-Standard.zip build-b/MathModel-Skill-Standard.zip
+          cmp build-a/MathModel-Skill-Standard.zip dist/MathModel-Skill-Standard.zip
           cmp build-a/SHA256SUMS.txt build-b/SHA256SUMS.txt

@@ -3,7 +3,7 @@ name: Release Standard
 on:
   push:
     tags:
-      - "v2.2.0"
+      - "v[0-9]*"
 
 permissions:
   contents: write
@@ -24,7 +24,8 @@ jobs:
 
       - name: Verify version and tracked archives
         run: |
-          test "$(cat VERSION)" = "2.2.0"
+          python scripts/verify_release_tag.py "${GITHUB_REF_NAME}"
+          python scripts/check_skills.py
           python scripts/build_release_packages.py --verify
 
       - name: Publish GitHub Release
@@ -32,10 +33,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "${GITHUB_REF_NAME}"
-          dist/MathModel-Skill-Trae.zip
-          dist/MathModel-Skill-Claude-Code.zip
-          dist/MathModel-Skill-Codex.zip
+          dist/MathModel-Skill-Standard.zip
           dist/SHA256SUMS.txt
           --verify-tag
-          --title "MathModel Skill Standard 2.2.0"
+          --title "MathModel Skill Standard ${GITHUB_REF_NAME#v}"
           --generate-notes

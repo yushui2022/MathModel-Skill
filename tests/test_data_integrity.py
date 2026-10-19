@@ -16,7 +16,7 @@ from unittest.mock import patch
 from openpyxl import Workbook
 
 REPO = Path(__file__).resolve().parents[1]
-SCRIPTS = REPO / 'packages/claude/.claude/skills/data-cleaning-and-visualization/scripts'
+SCRIPTS = REPO / 'skills/data-cleaning-and-visualization/scripts'
 
 
 class DataIntegrityTests(unittest.TestCase):

@@ -107,7 +107,7 @@ def main() -> int:
     print()
     print("Run preflight per scenario, e.g.:")
     print("  cd tests/sandbox/scenario_1_empty")
-    print("  python ../../../packages/claude/.claude/skills/paper-workflow-orchestrator/scripts/preflight_check.py")
+    print("  python ../../../skills/paper-workflow-orchestrator/scripts/preflight_check.py")
     return 0
 
 

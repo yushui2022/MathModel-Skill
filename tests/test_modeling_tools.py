@@ -17,7 +17,7 @@ import pandas as pd
 from openpyxl import Workbook
 
 REPO = Path(__file__).resolve().parents[1]
-SKILLS = REPO / 'packages/claude/.claude/skills'
+SKILLS = REPO / 'skills'
 SCRIPTS = SKILLS / 'model-code-and-result-generator/scripts'
 sys.path.insert(0, str(SCRIPTS))
 from modeling_tools import load_current_dataset, regression_baseline, verify_linear_solution

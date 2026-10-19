@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
-import shutil
+import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,9 @@ VERSION_FILE = REPO_ROOT / "VERSION"
 BUILD_MANIFEST = "MATHMODEL_BUILD.json"
 CHECKSUM_FILE = "SHA256SUMS.txt"
 ZIP_TIMESTAMP = (2020, 1, 1, 0, 0, 0)
+sys.path.insert(0, str(REPO_ROOT / "skills/paper-workflow-orchestrator/scripts"))
+from installation import ENTRY, SKILLS, no_links
+TEXT_SUFFIXES = {".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml", ".svg", ".csv", ".tsv"}
 
 EXCLUDED_DIRS = {
     "__pycache__",
@@ -44,6 +48,7 @@ class PackageSpec:
 
 
 COMMON_DOCS = (
+    (REPO_ROOT / "install.py", Path("install.py")),
     (REPO_ROOT / "LICENSE", Path("LICENSE")),
     (REPO_ROOT / "requirements.txt", Path("requirements.txt")),
     (REPO_ROOT / "requirements-modeling.txt", Path("requirements-modeling.txt")),
@@ -60,29 +65,11 @@ COMMON_DOCS = (
 
 PACKAGE_SPECS = (
     PackageSpec(
-        name="Trae",
-        archive_name="MathModel-Skill-Trae.zip",
-        roots=((REPO_ROOT / "packages" / "trae" / ".trae", Path(".trae")),),
+        name="Standard",
+        archive_name="MathModel-Skill-Standard.zip",
+        roots=((REPO_ROOT / "skills", Path("skills")),),
         extra_files=(
-            (REPO_ROOT / "packages" / "trae" / "README.md", Path("README-MathModel-Skill.md")),
-            *COMMON_DOCS,
-        ),
-    ),
-    PackageSpec(
-        name="Claude Code",
-        archive_name="MathModel-Skill-Claude-Code.zip",
-        roots=((REPO_ROOT / "packages" / "claude" / ".claude", Path(".claude")),),
-        extra_files=(
-            (REPO_ROOT / "packages" / "claude" / "README.md", Path("README-MathModel-Skill.md")),
-            *COMMON_DOCS,
-        ),
-    ),
-    PackageSpec(
-        name="Codex",
-        archive_name="MathModel-Skill-Codex.zip",
-        roots=((REPO_ROOT / "packages" / "codex" / ".agents", Path(".agents")),),
-        extra_files=(
-            (REPO_ROOT / "packages" / "codex" / "README.md", Path("README-MathModel-Skill.md")),
+            (REPO_ROOT / "docs" / "agent-install-guide.md", Path("README-MathModel-Skill.md")),
             *COMMON_DOCS,
         ),
     ),
@@ -100,6 +87,7 @@ def should_skip(path: Path) -> bool:
 def iter_files(root: Path) -> list[Path]:
     files: list[Path] = []
     for path in root.rglob("*"):
+        no_links(path)
         if not path.is_file():
             continue
         relative = path.relative_to(root)
@@ -120,10 +108,9 @@ def package_version() -> str:
 
 def normalized_source_bytes(path: Path) -> bytes:
     data = path.read_bytes()
-    try:
-        text = data.decode("utf-8-sig")
-    except UnicodeDecodeError:
+    if path.suffix.lower() not in TEXT_SUFFIXES and path.name not in {"VERSION", "LICENSE"}:
         return data
+    text = data.decode("utf-8-sig")
     return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
 
 
@@ -156,8 +143,11 @@ def build_manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
         digest.update(file_hash.encode("ascii"))
         digest.update(b"\n")
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "2.0",
         "package": spec.name,
+        "edition": "standard",
+        "entry_skill": ENTRY,
+        "skills": list(SKILLS),
         "version": package_version(),
         "file_count": len(entries),
         "payload_sha256": digest.hexdigest(),
@@ -168,23 +158,28 @@ def build_manifest(spec: PackageSpec, entries: dict[str, bytes]) -> bytes:
 
 def write_zip_entry(archive: zipfile.ZipFile, path: str, data: bytes) -> None:
     info = zipfile.ZipInfo(path, ZIP_TIMESTAMP)
-    info.compress_type = zipfile.ZIP_DEFLATED
+    info.create_system = 3
+    info.compress_type = zipfile.ZIP_STORED
     info.external_attr = 0o100644 << 16
     info.flag_bits |= 0x800
-    archive.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+    archive.writestr(info, data, compress_type=zipfile.ZIP_STORED)
+
+
+def package_bytes(spec: PackageSpec) -> bytes:
+    entries = source_entries(spec)
+    entries[BUILD_MANIFEST] = build_manifest(spec, entries)
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for archive_path, data in sorted(entries.items()):
+            write_zip_entry(archive, archive_path, data)
+    return buffer.getvalue()
 
 
 def build_package(spec: PackageSpec, output_dir: Path) -> tuple[Path, int]:
     output_dir.mkdir(parents=True, exist_ok=True)
     output = output_dir / spec.archive_name
-    entries = source_entries(spec)
-    entries[BUILD_MANIFEST] = build_manifest(spec, entries)
-
-    with zipfile.ZipFile(output, "w") as archive:
-        for archive_path, data in entries.items():
-            write_zip_entry(archive, archive_path, data)
-
-    return output, len(entries)
+    output.write_bytes(package_bytes(spec))
+    return output, len(source_entries(spec)) + 1
 
 
 def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
@@ -195,6 +190,8 @@ def verify_package(spec: PackageSpec, output_dir: Path) -> list[str]:
     expected = source_entries(spec)
     expected[BUILD_MANIFEST] = build_manifest(spec, expected)
     failures: list[str] = []
+    if output.read_bytes() != package_bytes(spec):
+        failures.append(f"{spec.name}: archive bytes or metadata differ from deterministic build")
     with zipfile.ZipFile(output) as archive:
         actual_names = sorted(item.filename for item in archive.infolist() if not item.is_dir())
         expected_names = sorted(expected)
@@ -221,12 +218,6 @@ def clean_dist(output_dir: Path) -> None:
         target = output_dir / spec.archive_name
         if target.exists():
             target.unlink()
-    staging = output_dir / "_staging"
-    if staging.exists():
-        resolved = staging.resolve()
-        if output_dir.resolve() == DIST_DIR.resolve() and not resolved.is_relative_to(REPO_ROOT.resolve()):
-            raise RuntimeError(f"Refusing to delete outside repo: {resolved}")
-        shutil.rmtree(staging)
     checksum_path = output_dir / CHECKSUM_FILE
     if checksum_path.exists():
         checksum_path.unlink()

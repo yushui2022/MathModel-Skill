@@ -14,7 +14,7 @@ import unittest
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[1]
-SKILLS = REPO / 'packages/claude/.claude/skills'
+SKILLS = REPO / 'skills'
 SCRIPTS = SKILLS / 'model-code-and-result-generator/scripts'
 
 # A small real producer: its sentinel deliberately does not modify code or inputs.

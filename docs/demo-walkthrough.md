@@ -4,23 +4,16 @@ Quickstart checks installation, basic input parsing, legacy scaffold generation,
 
 ## Prepare
 
-Create a temporary project and extract one platform archive. Copy the sample inputs:
+Create a temporary contest project and install the universal archive into one host directory. Copy the sample inputs from the repository:
 
 ```text
 examples/quickstart/problem_files/
 ```
 
-Install dependencies, then run the platform command:
+Install dependencies. Replace <SKILL_ROOT> with the actual installed skills directory, then run:
 
 ```bash
-# Codex
-python .agents/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
-
-# Claude Code
-python .claude/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
-
-# Trae
-python .trae/skills/paper-workflow-orchestrator/scripts/quickstart_run.py
+python "<SKILL_ROOT>/paper-workflow-orchestrator/scripts/quickstart_run.py" --project-root "<contest-project>"
 ```
 
 ## Expected Boundary
@@ -38,4 +31,4 @@ paper_output/final_paper_source.md
 paper_output/final_paper.docx
 ```
 
-For a real contest, invoke `$paper-workflow-orchestrator` and execute S0-S8 instead of promoting quickstart output.
+For a real contest, invoke `paper-workflow-orchestrator` and execute S0-S8 instead of promoting quickstart output.
