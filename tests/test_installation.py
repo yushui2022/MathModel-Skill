@@ -102,6 +102,36 @@ class InstallationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(snapshot(self.project), before)
 
+    def test_installer_logs_unicode_with_legacy_console_encoding(self):
+        env = {**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"}
+        command = [sys.executable, "-S", str(self.source / "install.py"),
+                   "--project-root", str(self.project), "--platform", "codex"]
+        result = subprocess.run(command, capture_output=True, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(self.project.name, result.stdout.decode("utf-8"))
+        changed = self.project / ".agents/skills/paper-formal-writer/SKILL.md"
+        changed.write_text("user customization", encoding="utf-8")
+        before = snapshot(self.project)
+        result = subprocess.run(command, capture_output=True, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Managed files", result.stderr.decode("utf-8"))
+        self.assertEqual(snapshot(self.project), before)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS system aliases")
+    def test_macos_system_alias_is_allowed_but_nested_link_is_not(self):
+        with tempfile.TemporaryDirectory(dir="/var/tmp", prefix="mathmodel-alias-") as directory:
+            project = Path(directory) / "contest"
+            project.mkdir()
+            result = subprocess.run([sys.executable, "-S", str(self.source / "install.py"),
+                "--project-root", str(project), "--platform", "codex"], capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = inst.load(project / inst.RECORD)
+            inst.verify_owned(project, record)
+            link = Path(directory) / "linked-project"
+            link.symlink_to(project, target_is_directory=True)
+            with self.assertRaises(inst.InstallError):
+                inst.inside(link, ".agents/skills")
+
     def test_unmanaged_and_legacy_installs_in_all_roots_block_without_writes(self):
         for index, target in enumerate(inst.SKILL_ROOTS):
             for entry in (inst.ENTRY, "mathmodel-lite", "mathmodel-flash", "pro-workflow-orchestrator"):

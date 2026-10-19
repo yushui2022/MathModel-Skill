@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import sys
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -48,6 +49,12 @@ def no_links(path: Path) -> None:
         except FileNotFoundError:
             continue
         if part.is_symlink() or getattr(stat, "st_file_attributes", 0) & 0x400:
+            # macOS exposes these root-owned system directories through fixed aliases.
+            # Project-local links and junctions remain forbidden.
+            if (sys.platform == "darwin" and part.as_posix() in ("/var", "/tmp", "/etc")
+                    and stat.st_uid == 0 and part.resolve() == Path("/private") / part.name):
+                no_links(Path("/private") / part.name)
+                continue
             raise InstallError(f"Symlink or reparse point forbidden: {part}")
 
 
