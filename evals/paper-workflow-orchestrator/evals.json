@@ -1,0 +1,20 @@
+{
+  "skill_name": "paper-workflow-orchestrator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "赛题和附件都放在 problem_files 了，帮我从零跑完整篇数学建模论文，最后要 Word。",
+      "expected_output": "先执行 S0 预检并报告输入清单与哈希，再按 S0-S8 推进；过程中给出真实的运行结果与证据，而不是直接编造论文。最终产物包含 final_paper.docx、final_paper_source.md、渲染 PDF 与 format_check_report.json；任何门禁未通过时明确说明不是最终稿。"
+    },
+    {
+      "id": 2,
+      "prompt": "昨天做到证据检查那步被打回了，帮我看下现在能不能继续。",
+      "expected_output": "用 workflow_guard 与 workflow_memory 恢复当前阶段而不是重新开始；指出被拒的具体原因（例如图表未绑定本次运行或指标缺元数据），要求补齐真实运行后再继续；不沿用旧的 PASS 结论。"
+    },
+    {
+      "id": 3,
+      "prompt": "只要一个能快速看效果的草稿，别跑全套流程。",
+      "expected_output": "识别为演练/草稿请求，使用 quickstart 之类的草稿路径，产物写入独立目录并明确标注为非正式稿；不把草稿写进 final_paper.docx，也不声称通过证据或格式门禁。"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Deterministic trigger regression cases for the ten Standard skills. Each case is a realistic user prompt plus the skill that should be selected (null means no MathModel skill applies).",
+  "note": "Used by scripts/check_skill_triggers.py, which scores prompts against skill descriptions with a lexical TF-IDF proxy. That proxy is not a model-based routing test; it exists to catch description collisions and borrowings between skills.",
+  "cases": [
+    { "id": 1, "prompt": "课题附件都在 problem_files 里，我要做完整篇数学建模论文", "expect": "paper-workflow-orchestrator" },
+    { "id": 2, "prompt": "上次做到一半，接着把剩下的流程跑完", "expect": "paper-workflow-orchestrator" },
+    { "id": 3, "prompt": "这篇论文整体还没写，从赛题开始一路到 Word 都要", "expect": "paper-workflow-orchestrator" },
+    { "id": 4, "prompt": "这份赛题 PDF 第二问到底要什么，帮我把分问和约束拆清楚", "expect": "problem-doc-model-selector" },
+    { "id": 5, "prompt": "题面是从 Word 里抽的，公式和图片好像漏了，核一下", "expect": "problem-doc-model-selector" },
+    { "id": 6, "prompt": "预测这条路线到底用 ARIMA 还是 LSTM，给我对照方案", "expect": "modeling-paper-rubric-and-model-selector" },
+    { "id": 7, "prompt": "评分点怎么映射到章节，帮我出个大纲和评分对齐表", "expect": "modeling-paper-rubric-and-model-selector" },
+    { "id": 8, "prompt": "帮我清洗这三份附件，缺失值和异常值怎么处理", "expect": "data-cleaning-and-visualization" },
+    { "id": 9, "prompt": "把结果画成能放进论文的图，图注也写上", "expect": "data-cleaning-and-visualization" },
+    { "id": 10, "prompt": "模型路线定了，帮我写 q2 的求解代码并跑出结果", "expect": "model-code-and-result-generator" },
+    { "id": 11, "prompt": "运行完了，帮我把指标和表格沉淀成可核验的记录", "expect": "model-code-and-result-generator" },
+    { "id": 12, "prompt": "证据链过了吗，q1 的指标真是从这次运行来的吗", "expect": "quality-assurance-auditor" },
+    { "id": 13, "prompt": "帮我审一下论文，有没有编数据或者结论没支撑的地方", "expect": "quality-assurance-auditor" },
+    { "id": 14, "prompt": "第 3 章被审计打回了两次，帮我局部重写", "expect": "paper-micro-unit-generator" },
+    { "id": 15, "prompt": "生成最终 Word，公式要能在 Word 里编辑", "expect": "paper-formal-writer" },
+    { "id": 16, "prompt": "导出 PDF 检查一下页数和渲染", "expect": "paper-formal-writer" },
+    { "id": 17, "prompt": "我需要近十年的人口统计数据，最好走官方接口", "expect": "authoritative-data-harvester" },
+    { "id": 18, "prompt": "上次的决策和约束记一下，别一会儿又忘了", "expect": "context-memory-keeper" },
+    { "id": 19, "prompt": "帮我修一下这个 Python 报错", "expect": null },
+    { "id": 20, "prompt": "明天下午三点提醒我开会", "expect": null }
+  ]
+}
