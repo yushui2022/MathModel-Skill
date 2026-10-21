@@ -1,0 +1,8 @@
+interface:
+  display_name: "Rubric And Model Selector"
+  short_description: "评分对齐大纲与模型路线"
+  brand_color: "#0F766E"
+  default_prompt: "Use $modeling-paper-rubric-and-model-selector to turn the analyzed problem into an outline, a rubric alignment table and a model route with comparison experiments."
+
+policy:
+  allow_implicit_invocation: true

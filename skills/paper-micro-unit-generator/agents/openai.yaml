@@ -1,0 +1,8 @@
+interface:
+  display_name: "Micro-Unit Generator"
+  short_description: "失败章节局部重写与旧版草稿"
+  brand_color: "#0F766E"
+  default_prompt: "Use $paper-micro-unit-generator only for a queued micro-repair of a failing section, or an explicitly requested legacy scaffold; the formal manuscript belongs to paper-formal-writer."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Problem Doc Selector"
+  short_description: "赛题解析与分问拆解"
+  brand_color: "#0F766E"
+  default_prompt: "Use $problem-doc-model-selector to extract every question, constraint and attachment mapping from the contest documents before route planning."
+
+policy:
+  allow_implicit_invocation: true

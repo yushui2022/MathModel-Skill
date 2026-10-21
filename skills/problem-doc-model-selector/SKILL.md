@@ -142,7 +142,7 @@ python "<SKILL_ROOT>/problem-doc-model-selector/scripts/analyze_problem.py"
 - D 模型路线：任务类型/基线/改进/验证/风险与备选。
 
 ## 使用示例
-- 输入：赛题文件路径 `c:\path\to\赛题.pdf` 或题面文本全文。
+- 输入：赛题文件路径（如 `problem_files/赛题.pdf`）或题面文本全文。
 - 行为：读取文档→抽取每问→识别任务类型与数据条件→输出 A/B/C/D 四类结果与建议模型。
 - 自动建议：
   - 基线：选择最简单的经典模型（如线性回归、K-means、最短路算法）。

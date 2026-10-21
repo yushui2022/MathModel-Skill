@@ -1,0 +1,8 @@
+interface:
+  display_name: "Data Harvester"
+  short_description: "权威数据取数与来源留痕"
+  brand_color: "#0F766E"
+  default_prompt: "Use $authoritative-data-harvester to locate official sources and produce a reproducible retrieval log before any contest data is modeled."
+
+policy:
+  allow_implicit_invocation: true

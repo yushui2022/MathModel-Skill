@@ -1,0 +1,8 @@
+interface:
+  display_name: "Model Code Generator"
+  short_description: "各问求解代码与结果契约"
+  brand_color: "#0F766E"
+  default_prompt: "Use $model-code-and-result-generator to scaffold and run per-question model code that emits result contracts, metrics and tables for the evidence gate."
+
+policy:
+  allow_implicit_invocation: true

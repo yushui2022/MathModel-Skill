@@ -1,0 +1,8 @@
+interface:
+  display_name: "Context Memory Keeper"
+  short_description: "跨会话记忆与任务清单"
+  brand_color: "#0F766E"
+  default_prompt: "Use $context-memory-keeper to record confirmed decisions and open tasks so a later session can resume without replaying the chat."
+
+policy:
+  allow_implicit_invocation: true

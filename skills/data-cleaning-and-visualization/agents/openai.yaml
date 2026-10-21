@@ -1,0 +1,8 @@
+interface:
+  display_name: "Data Cleaning And Visualization"
+  short_description: "数据清洗与论文级图表"
+  brand_color: "#0F766E"
+  default_prompt: "Use $data-cleaning-and-visualization to load only manifest-approved inputs, clean them with a recorded report, and produce figures plus a figure index."
+
+policy:
+  allow_implicit_invocation: true
