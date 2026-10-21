@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -19,6 +20,10 @@ import installation as inst
 import build_release_packages as build
 
 
+
+def next_version(version: str) -> str:
+    match = re.match(r"^(.*?)(\d+)$", version)
+    return f"{match.group(1)}{int(match.group(2)) + 1}" if match else f"{version}.1"
 def snapshot(root):
     return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
 
@@ -56,7 +61,8 @@ class InstallationTests(unittest.TestCase):
         return inst.load(self.project / inst.RECORD)
 
     def modified_source(self, version=None):
-        version = version or '3.3.0-pro.4.next'
+        if version is None:
+            version = next_version((self.source / "VERSION").read_text().strip())
         target = self.root / "upgrade bundle"
         shutil.copytree(self.source, target, ignore=shutil.ignore_patterns("__pycache__"))
         (target / "VERSION").write_text(version + "\n", encoding="utf-8")

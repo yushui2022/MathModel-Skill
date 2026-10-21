@@ -365,6 +365,11 @@ def generated_asset_errors(path: Path, *, kind: str | None = None) -> list[str]:
 
 def check_artifacts(root: Path, runs: dict, *, required_paths=()) -> list[str]:
     """Inspect generated assets before approval, including files not cited yet."""
+    # safe_path() resolves its result, so the root must be resolved too: temp or
+    # runner directories can be symlinked (macOS /var -> /private/var) or reach
+    # us through an 8.3 short name, and relative_to() then compares mismatched
+    # prefixes.
+    root = root.resolve()
     from artifact_checks import status_errors, IMAGE_SUFFIXES, TABLE_SUFFIXES
 
     errors = []
@@ -443,6 +448,7 @@ def check_artifacts(root: Path, runs: dict, *, required_paths=()) -> list[str]:
 
 
 def evidence_files(root: Path) -> dict[str, str]:
+    root = root.resolve()
     names = [
         "pro_config.json", "input_manifest.json", "instruction_manifest.json", "instruction_audit.json",
         "problem_consensus.json", "source_ledger.json", "candidate_routes.json", "tournament_report.json",

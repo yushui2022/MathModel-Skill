@@ -13,7 +13,7 @@ from pathlib import Path
 from pro_contracts import contract, hash_paths, output_root, read_json, sha256_file, write_json
 
 
-VERSION = "3.3.0-pro.4"
+VERSION = "3.3.0-pro.5"
 MODEL_CATALOG_PATH = Path(__file__).resolve().parents[1] / "references" / "model-profiles.json"
 MODEL_SUFFIXES = {"low", "medium", "high", "xhigh", "max", "ultra", "preview", "latest"}
 EXPECTED_EDITION = "pro"
