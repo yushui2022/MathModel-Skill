@@ -189,7 +189,7 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 - 通用包迁移提交 `8dd9c95` 的 [远端 CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/39225754825) 已通过全部 11 个任务，包括跨系统安装、确定性构建和强制渲染；后续提交仍以 [PR 最新 Checks](https://github.com/yushui2022/MathModel-Skill/pull/4/checks) 为准。测试边界见 [迁移验收记录](docs/universal-package-validation.md) 与 [宿主发现验收](docs/host-discovery-validation.md)。
 - 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
 - 文档索引：[安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md) · [Agent 原生工作流](docs/agent-native-workflow.md) · [启动与恢复提示词](docs/starter-prompts.md) · [提示词资产](docs/prompt-assets.md) · [CUMCM 论文规范](docs/cumcm-paper-standard.md)
-- 验收与示例记录：[通用包迁移验收](docs/universal-package-validation.md) · [宿主发现验收](docs/host-discovery-validation.md) · [2.4 实验验证工具升级](docs/standard-2.4-validation-plan.md) · [2.4 证据门禁修复验收](docs/standard-evidence-hardening-validation.md) · [示例工作流说明](docs/generated-demo-workflow.md) · [Quickstart 演练](docs/demo-walkthrough.md) · [Skill 评估集](evals/README.md)
+- 验收与示例记录：[通用包迁移验收](docs/universal-package-validation.md) · [宿主发现验收](docs/host-discovery-validation.md) · [2.4 实验验证工具升级](docs/standard-2.4-validation-plan.md) · [2.4 证据门禁修复验收](docs/standard-evidence-hardening-validation.md) · [2.4 Skill 元数据验收](docs/standard-skill-metadata-validation.md) · [示例工作流说明](docs/generated-demo-workflow.md) · [Quickstart 演练](docs/demo-walkthrough.md) · [Skill 评估集](evals/README.md)
 - 分支 `dist/` 是随提交维护的构建包；历史 Release 是固定版本快照，不会随 README 更新而被覆盖。本次通用包迁移不创建正式 Release。
 
 开发者可在仓库中执行：
