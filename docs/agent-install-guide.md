@@ -4,7 +4,7 @@
 
 ### 1. 下载一个通用包
 
-当前分支版本为 **3.3.0-pro.5**。下载 [MathModel-Skill-Pro.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
+当前分支版本为 **3.3.0-pro.6**。下载 [MathModel-Skill-Pro.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
 
 **同一份内容适用于不同宿主，不再分别下载 Claude、Codex、Trae 包。** ZIP 内有完整 `skills/`、安全安装器、依赖与启动说明。
 

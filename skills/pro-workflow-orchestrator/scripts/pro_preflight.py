@@ -13,7 +13,7 @@ from pathlib import Path
 from pro_contracts import contract, hash_paths, output_root, read_json, sha256_file, write_json
 
 
-VERSION = "3.3.0-pro.5"
+VERSION = "3.3.0-pro.6"
 MODEL_CATALOG_PATH = Path(__file__).resolve().parents[1] / "references" / "model-profiles.json"
 MODEL_SUFFIXES = {"low", "medium", "high", "xhigh", "max", "ultra", "preview", "latest"}
 EXPECTED_EDITION = "pro"
@@ -187,7 +187,16 @@ def mathmodel_installations(project_root: Path) -> list[dict]:
     return scan_installations(project_root)
 
 
+def configure_utf8_stdio() -> None:
+    # Windows runners default to a legacy ANSI code page, and preflight echoes
+    # the project path: a non-ASCII directory name would crash the print.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def main() -> int:
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Initialize the MathModel Skill Pro P0 contracts.")
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--output-root", type=Path)

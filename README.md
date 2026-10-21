@@ -12,7 +12,7 @@
 
 </div>
 
-MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.5 定位旗舰档**，推荐 GPT-6.1 Sol、Claude Opus 5.5、Claude Fable 5.1、GPT-6 Astra 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
+MathModel Skill 帮助编程 Agent 从题意分析、建模与真实计算，一直推进到有证据支撑的数学建模论文。**Pro 3.3.0-pro.6 定位旗舰档**，推荐 GPT-6.1 Sol、Claude Opus 5.5、Claude Fable 5.1、GPT-6 Astra 等高能力、长上下文模型：增加多路线比较、独立复算、稳健性实验和五角色审稿，优先追求可验证质量，而非最低时间和费用。
 
 Pro 输出正式 Markdown、原生公式 Word、渲染 PDF，以及代码、图表、证据与评审记录。正常流程有 **三个用户确认点**，其余已授权工作自动推进。当前为 **Preview 预发布**：工程测试通过，但真实多问赛题约 20 页长文的前向质量验收尚未完成，不承诺论文优秀或竞赛获奖。
 
@@ -62,7 +62,7 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 ### 1. 下载一个通用包
 
-当前分支版本为 **3.3.0-pro.5**。下载 [MathModel-Skill-Pro.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
+当前分支版本为 **3.3.0-pro.6**。下载 [MathModel-Skill-Pro.zip](https://github.com/yushui2022/MathModel-Skill/raw/refs/heads/pro/dist/MathModel-Skill-Pro.zip) 和 [SHA256SUMS.txt](dist/SHA256SUMS.txt)。这是分支构建，不是新建的正式 Release；历史 Release 平台包不作改动。
 
 **同一份内容适用于不同宿主，不再分别下载 Claude、Codex、Trae 包。** ZIP 内有完整 `skills/`、安全安装器、依赖与启动说明。
 

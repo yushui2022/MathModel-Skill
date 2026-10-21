@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "product": "MathModel-Skill",
   "edition": "pro",
-  "version": "3.3.0-pro.5",
+  "version": "3.3.0-pro.6",
   "entry_skill": "pro-workflow-orchestrator",
   "required_files": [
     "authoritative-data-harvester/SKILL.md",
