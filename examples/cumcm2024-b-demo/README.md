@@ -89,7 +89,7 @@ Codex       -> ..\..\packages\codex\skills\
 这个目录是样例，不是新题模板答案。新赛题应按下面方式使用：
 
 1. 新建你的比赛项目目录。
-2. 按平台复制 skill 包：Codex 复制 `packages/codex/skills/`，Claude Code 复制 `packages/claude/.claude/skills/`，Trae 复制 `packages/trae/.trae/skills/`。
+2. 解压通用包，用安装器把 Skills 装进你的项目（三端只是目标目录不同）：`python install.py --project-root "<赛题目录>" --platform codex`，`--platform` 可换 `claude` / `trae`；先加 `--check` 只做只读校验。不要再复制 `packages/` 目录，它已随通用包迁移移除。
 3. 在新项目中创建 `problem_files/`，放入官方赛题 PDF/Word 和附件数据。
 4. 对 Agent 说：
 
