@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,10 @@ import build_release_packages as build
 def snapshot(root):
     return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
 
+
+def next_version(version: str) -> str:
+    match = re.match(r"^(.*?)(\d+)$", version)
+    return f"{match.group(1)}{int(match.group(2)) + 1}" if match else f"{version}.1"
 
 class InstallationTests(unittest.TestCase):
     @classmethod
@@ -55,7 +60,9 @@ class InstallationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         return inst.load(self.project / inst.RECORD)
 
-    def modified_source(self, version="2.4.0-dev.4"):
+    def modified_source(self, version=None):
+        if version is None:
+            version = next_version((self.source / "VERSION").read_text().strip())
         target = self.root / "upgrade bundle"
         shutil.copytree(self.source, target, ignore=shutil.ignore_patterns("__pycache__"))
         (target / "VERSION").write_text(version + "\n", encoding="utf-8")

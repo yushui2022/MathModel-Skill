@@ -1,6 +1,7 @@
 ---
 name: "authoritative-data-harvester"
-description: "自动定位并获取权威公开数据（优先API/官方批量下载），输出可复现抓取与清洗方案。Invoke when用户需要权威数据、官方统计、API下载或数据源爬取。"
+description: "定位并获取权威公开数据，优先使用官方 API 与批量下载，产出可复现的抓取代码、来源与许可说明、校验记录。当赛题未提供附件、需要用人口或经济或气象或交通等官方统计补齐数据，或用户要求从权威来源取数时使用。"
+compatibility: "Requires Python 3.11-3.12 and the requests package; network access needed for retrieval; LibreOffice not required."
 ---
 
 # 权威数据自动获取（Authoritative Data Harvester）

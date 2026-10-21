@@ -4,6 +4,12 @@ This reference preserves the original detailed CUMCM micro-unit handbook and its
 
 # Historical Handbook
 
+## Contents
+
+- Governance: 全局流程协作约束 · 执行契约 · 目标 · 适用时机 · 脚本清单 · 输入 · 输出 · 目录约定 · 前后衔接 · 约束 · 工作流程 · 与其他技能的关系 · 防跑偏检查 · 何时不必使用本技能
+- Legacy chapter templates, one per paper chapter: 0 前置公共变量 / 1 摘要 / 2 问题重述 / 3 问题分析 / 4 模型假设 / 5 符号说明 / 6 模型建立与求解 / 7 结果分析与可视化 / 8 模型检验 / 9 结论与建议 / 10 不足与展望 / 11 参考文献 / 12 附录
+- Tooling: 自动化脚本 · 合并流程 · 使用步骤 · 扩展说明 · 附录 B 合并脚本
+
 ## 全局流程协作约束（长对话防漂移）
 
 - 本 skill 不得作为孤立入口。用户要求完整论文、生成 Word、继续流程或不确定阶段时，先回到 `paper-workflow-orchestrator` 判断当前 S0-S8 阶段。

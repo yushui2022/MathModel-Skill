@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "product": "MathModel-Skill",
   "edition": "standard",
-  "version": "2.4.0-dev.3",
+  "version": "2.4.0-dev.4",
   "entry_skill": "paper-workflow-orchestrator",
   "required_files": [
     "authoritative-data-harvester/scripts/run.py",

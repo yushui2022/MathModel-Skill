@@ -1,6 +1,7 @@
 ---
 name: "data-cleaning-and-visualization"
-description: "自动清洗赛题或爬取的数据（处理缺失/异常/格式），并生成可视化图表。Invoke when 用户需要处理原始数据、清洗数据或生成数据分析图表。"
+description: "清洗原始数据并生成论文级图表，处理缺失值、异常值、单位与格式不一致，产出加载报告、数据计划、图表索引、可复现的图文件与图注。当用户提供 csv 或 xlsx 原始附件需要清洗、需要为某一问画图或补图注、或数据与可视化计划待执行时使用。"
+compatibility: "Requires Python 3.11-3.12 with numpy, pandas, matplotlib, seaborn, openpyxl and xlrd; Pillow needed for figure checks; LibreOffice not required."
 ---
 
 # 数据清洗与可视化 (Data Cleaning and Visualization)

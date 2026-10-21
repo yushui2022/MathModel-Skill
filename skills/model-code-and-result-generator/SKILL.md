@@ -1,6 +1,7 @@
 ---
 name: "model-code-and-result-generator"
-description: "根据 model_route.json、数据计划和清洗数据，为数学建模论文生成结果证据契约和 q1/q2/q3 建模代码脚手架。Invoke when 需要把模型输出、评价指标、结构化结论、论文表格和当前赛题专用建模代码沉淀到 paper_output/results/、paper_output/tables/ 和 paper_output/code/modeling/，供 QA 与正文生成读取。"
+description: "按已确定的模型路线为每一问生成可运行代码，并沉淀结果证据契约、评价指标、结构化结论与论文表格。当模型路线已定、需要编写并真实运行各问求解代码、或运行结果需要可核验的契约记录时使用。"
+compatibility: "Requires Python 3.11-3.12 with numpy and pandas; scipy optional for linear and integer optimization; LibreOffice not required."
 ---
 
 # 建模代码与结果证据生成器
@@ -54,6 +55,7 @@ Resolve <SKILL_ROOT> to the parent directory of this loaded skill folder, using 
 - `scripts/modeling_tools.py`
   - 生成脚手架时复制到赛题代码目录，提供当前数据集选择、训练集内预处理的回归基线，以及线性优化解的约束/目标值复核。
   - 需要这些工具时读取 [references/modeling-tools.md](references/modeling-tools.md)。先明确数据源、工作表、字段和样本划分，再调用工具；不要把工具输出自动升级为正式结论。
+- 需要判断每个 `question_id` 应该沉淀哪些证据字段时读取 [建模结果规范](references/modeling_result_guidelines.md)。
 - `scripts/validation_tools.py` / `scripts/solver_evidence.py`
   - 预测验证或线性/整数优化时读取 [references/experiment-validation.md](references/experiment-validation.md)：时间留出、滚动回测、分组留出、特征可用时点、可选 SciPy/HiGHS 求解与独立约束复核。
   - 报告、预测表和指标 CSV 自动连接运行账本及数值声明；工具成功不自动通过 S6。求解限时/非零差距不能被写成最优。

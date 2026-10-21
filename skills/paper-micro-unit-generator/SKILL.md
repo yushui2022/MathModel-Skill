@@ -1,6 +1,7 @@
 ---
 name: paper-micro-unit-generator
-description: Repair a repeatedly failing Standard paper section from repair_queue.json, or generate an explicitly requested legacy/quickstart scaffold. Do not use it as the formal paper writer.
+description: "按修复队列重写反复不通过的论文章节，或按明确要求生成旧版与演练草稿脚手架。当章节连续审计失败需要局部重写、或用户明确要求快速草稿而非正式论文时使用。"
+compatibility: "Requires Python 3.11-3.12; draft modes additionally need python-docx; LibreOffice not required."
 ---
 
 # Paper Micro-Unit Generator

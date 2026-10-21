@@ -5,7 +5,7 @@
 
 ### 从赛题分析、真实计算到可复现的数学建模论文
 
-[![Version](https://img.shields.io/badge/version-2.4.0--dev.3-0f766e)](./VERSION)
+[![Version](https://img.shields.io/badge/version-2.4.0--dev.4-0f766e)](./VERSION)
 [![Platforms](https://img.shields.io/badge/platforms-Codex%20%7C%20Claude%20Code%20%7C%20Trae-111827)](#快速导入使用)
 [![License](https://img.shields.io/badge/license-MIT-16a34a)](./LICENSE)
 
@@ -13,7 +13,7 @@
 
 MathModel Skill 是一套供编程 Agent 使用的数学建模 Skills。把赛题与附件放入项目后，Agent 按工作流分析问题、选择模型、编写并运行代码、整理图表和证据，再撰写与检查论文；它不只是让模型直接生成一篇文章的提示词。
 
-当前开发内容面向默认 `standard` 分支的 **Standard 2.4.0-dev.3 开发版，定位标准档**，建议搭配 GPT-6.1 Sol、Claude Opus 5.5 等具备稳定推理、长上下文和工具调用能力的模型，GPT-5.5、GPT-5.6 Sol 仍可使用。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
+当前开发内容面向默认 `standard` 分支的 **Standard 2.4.0-dev.4 开发版，定位标准档**，建议搭配 GPT-6.1 Sol、Claude Opus 5.5 等具备稳定推理、长上下文和工具调用能力的模型，GPT-5.5、GPT-5.6 Sol 仍可使用。它在流程复杂度与计算成本可控的前提下，提供完整章节写作、原生 Word 公式和 PDF 渲染检查。最终产物包括论文、赛题代码、计算结果、图表和验证记录；检查通过不等于保证论文优秀或竞赛获奖。
 
 **版本分工：低负担 → 速度优先 → 标准交付 → 旗舰验证**
 
@@ -61,7 +61,7 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 ### 1. 下载一个通用包
 
-下载本开发分支的 [MathModel-Skill-Standard.zip](./dist/MathModel-Skill-Standard.zip)，可用 [SHA256SUMS.txt](./dist/SHA256SUMS.txt) 核对完整性。**2.4.0-dev.3 尚未发布正式 Release**；历史 Release 保持原有平台包，不代表本开发版。
+下载本开发分支的 [MathModel-Skill-Standard.zip](./dist/MathModel-Skill-Standard.zip)，可用 [SHA256SUMS.txt](./dist/SHA256SUMS.txt) 核对完整性。**2.4.0-dev.4 尚未发布正式 Release**；历史 Release 保持原有平台包，不代表本开发版。
 
 本版收紧正式证据检查：失败或未知状态不放行，探索草图不冒充模型实验，图表必须可读取且绑定实际运行。题面分问、公式或图片提取不完整时，需 Agent 对照原件复核。升级后旧 S6 PASS 不再沿用，请重新预检、补齐运行证据并执行审计；不会自动改写旧赛题产物。
 
@@ -188,13 +188,15 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 - 新增[两个原创离线验收案例](benchmarks/validation/README.md)，覆盖真实 runner、S6 和 S7 数值声明连接，并用解析关系/穷举核算结果。这些是软件验收案例，不是竞赛论文质量评测。
 - 通用包迁移提交 `8dd9c95` 的 [远端 CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/39225754825) 已通过全部 11 个任务，包括跨系统安装、确定性构建和强制渲染；后续提交仍以 [PR 最新 Checks](https://github.com/yushui2022/MathModel-Skill/pull/4/checks) 为准。测试边界见 [迁移验收记录](docs/universal-package-validation.md) 与 [宿主发现验收](docs/host-discovery-validation.md)。
 - 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
-- [安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md)
+- 文档索引：[安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md) · [Agent 原生工作流](docs/agent-native-workflow.md) · [启动与恢复提示词](docs/starter-prompts.md) · [提示词资产](docs/prompt-assets.md) · [CUMCM 论文规范](docs/cumcm-paper-standard.md)
+- 验收与示例记录：[通用包迁移验收](docs/universal-package-validation.md) · [宿主发现验收](docs/host-discovery-validation.md) · [2.4 实验验证工具升级](docs/standard-2.4-validation-plan.md) · [2.4 证据门禁修复验收](docs/standard-evidence-hardening-validation.md) · [示例工作流说明](docs/generated-demo-workflow.md) · [Quickstart 演练](docs/demo-walkthrough.md) · [Skill 评估集](evals/README.md)
 - 分支 `dist/` 是随提交维护的构建包；历史 Release 是固定版本快照，不会随 README 更新而被覆盖。本次通用包迁移不创建正式 Release。
 
 开发者可在仓库中执行：
 
 ```bash
 python scripts/check_skills.py
+python scripts/check_skill_triggers.py --strict
 python -S tests/test_installation.py
 python -u tests/run_tests.py
 python tests/test_paper_scope.py

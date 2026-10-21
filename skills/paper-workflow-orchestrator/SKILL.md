@@ -1,6 +1,7 @@
 ---
 name: paper-workflow-orchestrator
-description: Run or resume the complete Standard mathematical-modeling workflow from contest files through reproducible evidence, adaptive formal writing, native-equation Word output, and final render QA. Use as the entry point for complete-paper requests.
+description: "编排完整的数学建模工作流，从赛题与附件出发依次完成输入预检、题意分析、模型路线、数据与图表、代码与真实运行、证据门禁、正式写作与 Word/PDF 检查。当用户要做完整篇数学建模论文、需要从零跑通或从中断处续跑整个流程时使用。"
+compatibility: "Requires Python 3.11-3.12 with requirements.txt installed; LibreOffice required for final PDF render QA; scipy optional for optimization."
 ---
 
 # MathModel Standard Orchestrator

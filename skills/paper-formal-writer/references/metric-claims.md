@@ -5,6 +5,13 @@ a familiar label is insufficient: preserve the unit, sample population, split,
 experiment and evidence strength. This is deterministic consistency checking,
 not a proof of the model, experiment design or arbitrary natural-language claims.
 
+## Contents
+
+- Before S6: Computed Metrics
+- Prepare And Migrate
+- Write And Bind
+- Audit, Assembly And Export
+
 ## Before S6: Computed Metrics
 
 The modeling program must emit each key metric in `results/metrics.json` with:

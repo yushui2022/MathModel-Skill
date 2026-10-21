@@ -1,6 +1,7 @@
 ---
 name: "problem-doc-model-selector"
-description: "解析赛题PDF/Word，抽取任务与数据条件并给出模型选型与验证路线。Invoke when用户提供赛题文档或题目文本，需要确定采用何模型/方法。"
+description: "解析赛题 PDF 或 Word 或题面文本，抽取每一问的任务、数据条件与约束，并复核公式、图片与分问标题的提取完整性。当用户提供赛题文档、需要先明确题意与分问、或题面提取结果待人工复核时使用。"
+compatibility: "Requires Python 3.11-3.12 with pypdf and python-docx for extraction; LibreOffice not required."
 ---
 
 # 赛题文档自动解析与模型选型

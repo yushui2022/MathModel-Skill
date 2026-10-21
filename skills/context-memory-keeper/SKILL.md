@@ -1,6 +1,7 @@
 ---
 name: "context-memory-keeper"
-description: "Manages persistent memory. Invoke to read active context or archive old tasks. Structure: Long-term Principles (Rules) + Short-term Workbench (Tasks)."
+description: "维护跨会话的项目记忆，记录长期规则与当前任务清单，供后续阶段恢复上下文。当长对话需要压缩、已确认的决策与约束需要落盘、或用户要求记住或恢复之前进展时使用。"
+compatibility: "Pure Python 3.11-3.12; no third-party packages or external tools required."
 ---
 
 # Context Memory Keeper
@@ -49,10 +50,10 @@ Resolve <SKILL_ROOT> to the parent directory of this loaded skill folder, using 
   - `paper_output/context/workflow_memory.md`
 - Long conversations and resumed sessions should read `workflow_memory.json` before relying on chat history.
 
-1. **`memoryskill.md` (Active Memory)**:
+1. **[`memoryskill.md`](memoryskill.md) (Active Memory)**:
    - **长期准则**: 用户偏好、角色设定、全局约束 (Read-Only mostly)。
    - **短期工作台**: 当前任务状态、变量、正在进行的步骤、**外部文献/数据索引** (Read-Write frequently)。
-2. **`memory_archive.md` (Archive)**:
+2. **[`memory_archive.md`](memory_archive.md) (Archive)**:
    - 历史记录、已完成的任务详情 (Write-Only mostly)。
 
 ## When to Invoke

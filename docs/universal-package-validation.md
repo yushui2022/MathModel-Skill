@@ -2,7 +2,7 @@
 
 ## 范围与基线
 
-- 开发分支：`unified-skills`；版本：`2.4.0-dev.2`。
+- 开发分支：`unified-skills`；版本：`2.4.0-dev.2`。该分支已通过 PR #4 合入 `standard`，当前版本为 `2.4.0-dev.4`；本文其余结果仍是 dev.2 时点的记录。
 - 运行完整性基线：`47423bf`，提交前通过 126 项单元/集成测试及原有 42 项工作流回归。
 - 原 Claude canonical 迁入 `skills/`，删除两个镜像 payload 和三个旧平台 ZIP；十个 Skill 和 S0-S8 业务流程保留。
 - Lite、Flash、Pro、LaTeX 分支及既有 B 题示例未修改；不创建 Tag/Release，不调用付费模型。

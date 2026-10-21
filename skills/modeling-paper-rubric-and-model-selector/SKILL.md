@@ -1,6 +1,7 @@
 ---
 name: "modeling-paper-rubric-and-model-selector"
-description: "按常见评分点生成建模论文结构与写作清单，并根据题目类型与数据条件给出模型选择与对照实验路线。Invoke when需要“论文格式/评分对齐/模型选型/路线不确定”。"
+description: "按评分点组织论文结构并给出模型路线，产出论文大纲、评分点对齐表与候选模型对照实验方案。当需要在多个候选模型间取舍、需要把评分要求映射成章节结构、或模型路线尚未确定时使用。赛题原文解析由 problem-doc-model-selector 负责。"
+compatibility: "Pure Python 3.11-3.12 for the route builder; no third-party packages or external tools required."
 ---
 
 # 评分对齐论文结构与模型选型（Paper Rubric & Model Selector）
@@ -209,7 +210,7 @@ python "<SKILL_ROOT>/modeling-paper-rubric-and-model-selector/scripts/build_mode
 
 ## 默认提示词文件（可复用）
 当未提供 `paper_prompt_path` / `paper_prompt_text` 时，默认从以下文件读取论文结构提示词：
-- `references/paper_prompt_default.md`
+- [references/paper_prompt_default.md](references/paper_prompt_default.md)
 
 ## 目录约定（与项目全局对齐）
 - 赛题与附件统一放在 `problem_files/`，补充数据放在 `crawled_data/`。

@@ -1,6 +1,7 @@
 ---
 name: "quality-assurance-auditor"
-description: "强制审计论文生成质量，防止模型偷换、逻辑断链、内容空洞。Invoke when 用户提出检查/审计/验收/确保/verify/QA，或合并前需要把关。"
+description: "审计建模证据链与论文质量，检查指标与声明是否绑定、图表是否可读取并对应真实运行、结论是否有证据支撑，产出可追踪的审计报告。当运行证据需要放行判定、章节或全文需要质量复核、或用户要求验收与查漏洞时使用。"
+compatibility: "Requires Python 3.11-3.12 with Pillow for figure checks and pypdf for PDF extraction; LibreOffice not required."
 ---
 
 # 质量审计员（Quality Assurance Auditor）

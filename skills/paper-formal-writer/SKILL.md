@@ -1,6 +1,7 @@
 ---
 name: paper-formal-writer
-description: Plan, draft, audit, globally revise, format, and verify a formal mathematical-modeling paper after the Standard evidence gate passes. Use for the sole S7/S8 formal manuscript path, not for legacy micro-unit scaffolds.
+description: "正式论文的唯一撰写路径，制定写作计划、按章节写作与审计、全文统一改写，并生成原生公式 Word 与 PDF 渲染检查。当运行证据已通过校验、需要撰写或续写完整竞赛论文、或需要产出 final_paper.docx 与渲染 PDF 时使用。"
+compatibility: "Requires Python 3.11-3.12 with python-docx, pypdf, lxml and latex2mathml; LibreOffice required for final PDF render QA."
 ---
 
 # Paper Formal Writer
