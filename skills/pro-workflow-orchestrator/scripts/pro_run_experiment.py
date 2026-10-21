@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from pro_checkpoint import require_checkpoints
-from pro_contracts import contract, hash_paths, output_root, read_json, safe_path, sha256_file, utc_now, write_json
+from pro_contracts import contract, hash_paths, output_root, read_json, safe_path, sha256_file, utc_now, write_json, configure_utf8_stdio
 
 
 def refresh_manifest(root: Path) -> None:
@@ -123,6 +123,7 @@ def execute(project: Path, spec_path: Path) -> tuple[Path, bool]:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Execute a Pro experiment and record actual outputs.")
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--spec", help="Run specification relative to paper_output_pro/")

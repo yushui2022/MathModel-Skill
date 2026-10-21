@@ -4,11 +4,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from pro_contracts import contract, output_root, read_json, sha256_file, write_json
+from pro_contracts import contract, output_root, read_json, sha256_file, write_json, configure_utf8_stdio
 from pro_validation import REVIEW_ROLES, check_review, review_inputs
 
 
 def main():
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser()
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--round", type=int, required=True)

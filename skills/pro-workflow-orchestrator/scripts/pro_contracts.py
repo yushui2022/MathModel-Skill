@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
@@ -261,3 +262,10 @@ def approval_is_fresh(root: Path, entry: dict[str, Any]) -> bool:
     if not isinstance(recorded, dict) or not recorded:
         return False
     return not check_hashes(root, recorded) and canonical_json_hash(recorded) == entry.get("approval_hash")
+
+
+def configure_utf8_stdio() -> None:
+    """Windows consoles default to a legacy code page; echoed paths may be non-ASCII."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")

@@ -9,7 +9,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 
 from pro_checkpoint import require_checkpoints
-from pro_contracts import contract, output_root, safe_path, sha256_file, utc_now, write_json
+from pro_contracts import contract, output_root, safe_path, sha256_file, utc_now, write_json, configure_utf8_stdio
 
 
 def public_url(url: str) -> None:
@@ -69,6 +69,7 @@ def capture(root: Path, url: str, source_id: str) -> Path:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Save a public source and its actual retrieval receipt.")
     parser.add_argument("--project-root", type=Path, default=Path.cwd())
     parser.add_argument("--url", required=True)

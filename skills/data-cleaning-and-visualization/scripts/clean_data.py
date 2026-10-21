@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sys
 from pathlib import Path
 
 SEARCH_DIRS = ["problem_files", "crawled_data"]
@@ -103,7 +104,16 @@ def clean_dataset(file_path: Path):
     except Exception as e:
         print(f"❌ 处理 {file_path.name} 时出错: {str(e)}")
 
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except Exception:
+            pass
+
 def main():
+    configure_utf8_stdio()
     if not OUTPUT_DIR.exists():
         OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         

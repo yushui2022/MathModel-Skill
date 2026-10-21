@@ -8,7 +8,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from pro_contracts import contract, sha256_file, write_json
+from pro_contracts import contract, sha256_file, write_json, configure_utf8_stdio
 
 
 def find_soffice(explicit: str | None) -> Path | None:
@@ -28,6 +28,7 @@ def find_soffice(explicit: str | None) -> Path | None:
 
 
 def main() -> int:
+    configure_utf8_stdio()
     parser = argparse.ArgumentParser(description="Render the Pro DOCX to PDF with LibreOffice.")
     parser.add_argument("--docx", type=Path, default=Path("paper_output_pro/final_paper.docx"))
     parser.add_argument("--output-dir", type=Path, default=Path("paper_output_pro"))

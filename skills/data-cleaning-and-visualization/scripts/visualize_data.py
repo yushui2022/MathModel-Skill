@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import sys
 from pathlib import Path
 import platform
 
@@ -101,7 +102,16 @@ def visualize_dataset(file_path: Path):
     except Exception as e:
         print(f"❌ 可视化 {file_path.name} 时出错: {str(e)}")
 
+
+def configure_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except Exception:
+            pass
+
 def main():
+    configure_utf8_stdio()
     if not INPUT_DIR.exists():
         print(f"⚠️ 找不到清洗后的数据目录: {INPUT_DIR}")
         print("请先运行数据清洗脚本 (clean_data.py)。")
