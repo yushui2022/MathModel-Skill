@@ -28,40 +28,17 @@ Lite、Flash、Standard、Pro 的定位不同，分别在独立 Git 分支维护
 
 模型推荐更新于 **2026-10-07**：已核对 Opus 5.5、Fable 5.1、GPT-6.1 Sol 的官方配置资料，尚未完成这些模型的完整赛题长文实测。**档位区分的是工作流，不是模型使用权限**：同一个模型可选 Standard 控制投入，也可选 Pro 加深验证；GPT-5.5、GPT-5.6 Sol 等旧款强模型仍可使用 Standard。
 
-这不是对同品牌所有模型的固定排名，也不是质量认证。模型名称、API 档位与宿主实际能力须分开核对；中转站的显示名不能证明底层型号。
+这不是对同品牌所有模型的固定排名，也不是质量认证。模型名称、API 档位与宿主实际能力须分开核对；第三方转发服务的显示名不能证明底层型号。
 
 另有 [**LaTeX（实验性预发布）**](https://github.com/yushui2022/MathModel-Skill/tree/Latex)：旧版工作流的 TeX/PDF 导出分支，**不是另一个能力档位**，也不是当前 Standard 或 Pro 的 LaTeX 模式。
 
 **一个项目只安装一个版本、一个安装位置，不要混装。** Flash 只追求快速基础稿；需要正式交付请选 Standard，需要最高验证深度请选 Pro。各版本的具体导入方法见下方快速使用说明。
 
-## 小红书
-
-作者：**Orlando Liu（奥兰多）**，小红书号：[`xiaoyushui2022`](https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb)。点击图片进入主页，也可以扫码找到我。
-
-<p align="center">
-  <a href="https://www.xiaohongshu.com/user/profile/610d282b0000000001004ffb">
-    <img src="./assets/orlando-liu-social.jpg" alt="Orlando Liu 小红书主页与二维码" width="480" />
-  </a>
-</p>
-
-## TokensFactory
-
-<p align="center">
-  <a href="https://tokensfactory.cc/">
-    <img src="./assets/tokensfactory-logo.png" alt="TokensFactory Logo" width="96" />
-  </a>
-</p>
-
-### TokensFactory
-
-这是我的大学朋友 **Yeadon** 开的中转站，也非常感谢他当年带我走向 AI 的道路。[TokensFactory](https://tokensfactory.cc/) 支持 OpenAI、Claude、Gemini 等兼容接口，主打一个**量大管饱**，适合需要快速调用图片、视频或文本模型的个人开发者和团队。需要接入 Agent 时，可以查看 [TokensFactory Agent 快速接入](https://tokensfactory.cc/skills)。
-
-
 ## 快速导入使用
 
 ### 1. 下载一个通用包
 
-下载本开发分支的 [MathModel-Skill-Standard.zip](./dist/MathModel-Skill-Standard.zip)，可用 [SHA256SUMS.txt](./dist/SHA256SUMS.txt) 核对完整性。**2.4.0-dev.4 尚未发布正式 Release**；历史 Release 保持原有平台包，不代表本开发版。
+下载本开发分支的 [MathModel-Skill-Standard.zip](./dist/MathModel-Skill-Standard.zip)，可用 [SHA256SUMS.txt](./dist/SHA256SUMS.txt) 核对完整性。另有一个等价的 [MathModel-Skill-Standard-store.zip](./dist/MathModel-Skill-Standard-store.zip) 供技能市场上架：内容相同，根目录多一份 `SKILL.md` 条目说明，两个包都用同一个 `install.py` 安装。**2.4.0-dev.4 尚未发布正式 Release**；历史 Release 保持原有平台包，不代表本开发版。
 
 本版收紧正式证据检查：失败或未知状态不放行，探索草图不冒充模型实验，图表必须可读取且绑定实际运行。题面分问、公式或图片提取不完整时，需 Agent 对照原件复核。升级后旧 S6 PASS 不再沿用，请重新预检、补齐运行证据并执行审计；不会自动改写旧赛题产物。
 
@@ -188,7 +165,7 @@ S0 输入与安装预检 → S1 题意分析 → S2 模型路线
 - 新增[两个原创离线验收案例](benchmarks/validation/README.md)，覆盖真实 runner、S6 和 S7 数值声明连接，并用解析关系/穷举核算结果。这些是软件验收案例，不是竞赛论文质量评测。
 - 通用包迁移提交 `8dd9c95` 的 [远端 CI](https://github.com/yushui2022/MathModel-Skill/actions/runs/39225754825) 已通过全部 11 个任务，包括跨系统安装、确定性构建和强制渲染；后续提交仍以 [PR 最新 Checks](https://github.com/yushui2022/MathModel-Skill/pull/4/checks) 为准。测试边界见 [迁移验收记录](docs/universal-package-validation.md) 与 [宿主发现验收](docs/host-discovery-validation.md)。
 - 历史 B 题工程示例没有重新生成，可用于理解产物组织方式，不代表通过当前全部检查。真实赛题约 20 页终稿的质量验收仍未完成。
-- 文档索引：[安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md) · [Agent 原生工作流](docs/agent-native-workflow.md) · [启动与恢复提示词](docs/starter-prompts.md) · [提示词资产](docs/prompt-assets.md) · [CUMCM 论文规范](docs/cumcm-paper-standard.md)
+- 文档索引：[安装指南](docs/agent-install-guide.md) · [正式写作指南](docs/formal-paper-authoring.md) · [工作流契约](docs/workflow-contracts.md) · [输出目录](docs/output-layout.md) · [Agent 原生工作流](docs/agent-native-workflow.md) · [启动与恢复提示词](docs/starter-prompts.md) · [提示词资产](docs/prompt-assets.md) · [CUMCM 论文规范](docs/cumcm-paper-standard.md) · [技能市场上架说明](docs/marketplace-listing.md)
 - 验收与示例记录：[通用包迁移验收](docs/universal-package-validation.md) · [宿主发现验收](docs/host-discovery-validation.md) · [2.4 实验验证工具升级](docs/standard-2.4-validation-plan.md) · [2.4 证据门禁修复验收](docs/standard-evidence-hardening-validation.md) · [2.4 Skill 元数据验收](docs/standard-skill-metadata-validation.md) · [示例工作流说明](docs/generated-demo-workflow.md) · [Quickstart 演练](docs/demo-walkthrough.md) · [Skill 评估集](evals/README.md)
 - 分支 `dist/` 是随提交维护的构建包；历史 Release 是固定版本快照，不会随 README 更新而被覆盖。本次通用包迁移不创建正式 Release。
 
