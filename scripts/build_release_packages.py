@@ -64,11 +64,26 @@ COMMON_DOCS = (
 
 
 PACKAGE_SPECS = (
+    # Standard stays first: tests read PACKAGE_SPECS[0] as the release archive.
     PackageSpec(
         name="Standard",
         archive_name="MathModel-Skill-Standard.zip",
         roots=((REPO_ROOT / "skills", Path("skills")),),
         extra_files=(
+            (REPO_ROOT / "docs" / "agent-install-guide.md", Path("README-MathModel-Skill.md")),
+            *COMMON_DOCS,
+        ),
+    ),
+    # Storefront variant of the same payload plus a root SKILL.md, so a skill
+    # marketplace can read the entry metadata from the archive root. It stays
+    # installable because the extra file is listed in the build manifest, which
+    # keeps validate_source() satisfied instead of tripping the file-list check.
+    PackageSpec(
+        name="StandardStore",
+        archive_name="MathModel-Skill-Standard-store.zip",
+        roots=((REPO_ROOT / "skills", Path("skills")),),
+        extra_files=(
+            (REPO_ROOT / "store" / "SKILL.md", Path("SKILL.md")),
             (REPO_ROOT / "docs" / "agent-install-guide.md", Path("README-MathModel-Skill.md")),
             *COMMON_DOCS,
         ),
